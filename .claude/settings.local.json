@@ -8,7 +8,9 @@
       "Bash(grep -h \"description\\\\|shortText\" c:UsersadminOneDriveDocumentsSAPsap-projectsrc/*.xml)",
       "Bash(sed 's/.*\\\\.//')",
       "Bash(grep -o '\\\\.[^.]*\\\\.[^.]*$')",
-      "Bash(xargs wc:*)"
+      "Bash(xargs wc:*)",
+      "Bash(/tmp/verification_report.txt:*)",
+      "Read(//tmp/**)"
     ]
   }
 }
