@@ -1,177 +1,101 @@
 *&---------------------------------------------------------------------*
+*& Include Z_GSP18_SAP15_I01
+*& PAI Modules — tương đương "PAI Modules" trong cây SE80
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*& Module F4_TABNAME INPUT — F4 Help cho field Table Name
+*&---------------------------------------------------------------------*
+MODULE f4_tabname INPUT.
+  DATA: lt_f4  TYPE TABLE OF zsp26_arch_cfg,
+        lt_ret TYPE TABLE OF ddshretval,
+        ls_ret TYPE ddshretval.
+
+  SELECT * FROM zsp26_arch_cfg INTO TABLE lt_f4
+    WHERE is_active = 'X' ORDER BY table_name.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield    = 'TABLE_NAME'
+      dynpprog    = sy-repid
+      dynpnr      = sy-dynnr
+      dynprofield = 'GV_TABNAME'
+      window_title = 'Chọn bảng Archive'
+      value_org   = 'S'
+    TABLES
+      value_tab   = lt_f4
+      return_tab  = lt_ret
+    EXCEPTIONS OTHERS = 1.
+
+  READ TABLE lt_ret INTO ls_ret INDEX 1.
+  IF sy-subrc = 0. gv_tabname = ls_ret-fieldval. ENDIF.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
 *& Module USER_COMMAND_0100 INPUT
 *&---------------------------------------------------------------------*
-MODULE USER_COMMAND_0100 INPUT.
-  DATA: LV_OK_CODE TYPE SY-UCOMM.
+MODULE user_command_0100 INPUT.
+  DATA: lv_cmd TYPE sy-ucomm.
+  lv_cmd = ok_code.
+  CLEAR ok_code.
 
-  LV_OK_CODE = OK_CODE.
-  CLEAR OK_CODE.
-
-  CASE LV_OK_CODE.
+  CASE lv_cmd.
     WHEN 'BACK' OR 'EXIT' OR 'CANC'.
       LEAVE PROGRAM.
 
     WHEN 'BT_WRITE'.
-      " Mở Z_ARCHIVE_WRITE_V2 — generic write cho tất cả ZSP26_* tables
-      SUBMIT Z_ARCHIVE_WRITE_V2 VIA SELECTION-SCREEN AND RETURN.
-
-    WHEN 'BT_MANAGE'.
-      " Mở chương trình quản lý cấu hình Archive
-      SUBMIT Z_CONFIG_Z15_EKKO VIA SELECTION-SCREEN AND RETURN.
-
-    WHEN 'BT_DELETE'.
-      " Mở Z_ARCHIVE_RESTORE_V2 — generic restore cho tất cả ZSP26_* tables
-      SUBMIT Z_ARCHIVE_RESTORE_V2 VIA SELECTION-SCREEN AND RETURN.
-
-    WHEN 'BT_MONITOR'.
-      " Mở Z_ARCHIVE_MONITOR_V2 — thống kê & log toàn bộ archive
-      SUBMIT Z_ARCHIVE_MONITOR_V2 VIA SELECTION-SCREEN AND RETURN.
-  ENDCASE.
-ENDMODULE.
-
-*&---------------------------------------------------------------------*
-*& Module CHECK_VARIANT_0300 INPUT
-*&---------------------------------------------------------------------*
-MODULE CHECK_VARIANT_0300 INPUT.
-* --- BẮT ĐẦU PHẦN SỬA ĐỔI: Sửa lỗi hàm bảo trì Variant ---
-  DATA: LV_RC     TYPE SY-SUBRC,
-        LV_ANSWER TYPE CHAR1.
-
-  CHECK GV_VARIANT IS NOT INITIAL.
-
-  IF GV_PROG_WRITE IS INITIAL.
-    PERFORM GET_ARCHIVE_PROGRAMS.
-  ENDIF.
-
-  " Kiểm tra Variant tồn tại
-  CALL FUNCTION 'RS_VARIANT_EXISTS'
-    EXPORTING
-      REPORT  = GV_PROG_WRITE
-      VARIANT = GV_VARIANT
-    IMPORTING
-      R_C     = LV_RC.
-
-  " Nếu chưa có, hỏi tạo mới
-  IF LV_RC <> 0.
-    CALL FUNCTION 'POPUP_TO_CONFIRM'
-      EXPORTING
-        TITLEBAR              = 'Thông báo'
-        TEXT_QUESTION         = 'Variant này chưa tồn tại. Bạn có muốn tạo mới không?'
-        TEXT_BUTTON_1         = 'Có (Tạo)'
-        TEXT_BUTTON_2         = 'Không'
-        DISPLAY_CANCEL_BUTTON = ' '
-      IMPORTING
-        ANSWER                = LV_ANSWER.
-
-    IF LV_ANSWER = '1'.
-      " ĐÃ FIX: Đang tạo mới thì không được gọi USING SELECTION-SET
-      SUBMIT (GV_PROG_WRITE) VIA SELECTION-SCREEN AND RETURN.
-    ELSE.
-      CLEAR GV_VARIANT.
-    ENDIF.
-  ENDIF.
-* --- KẾT THÚC PHẦN SỬA ĐỔI ---
-ENDMODULE.
-
-**&---------------------------------------------------------------------*
-**& Module USER_COMMAND_0300 INPUT
-**&---------------------------------------------------------------------*
-*MODULE USER_COMMAND_0300 INPUT.
-*  CASE OK_CODE.
-** --- BẮT ĐẦU PHẦN SỬA ĐỔI: Cập nhật nút bấm Edit ---
-*    WHEN 'EDIT_BTN'.
-*      IF GV_VARIANT IS NOT INITIAL.
-*
-*        " Kiểm tra xem Variant đã tồn tại trong Database chưa
-*        CALL FUNCTION 'RS_VARIANT_EXISTS'
-*          EXPORTING
-*            REPORT  = GV_PROG_WRITE
-*            VARIANT = GV_VARIANT
-*          IMPORTING
-*            R_C     = LV_RC.
-*
-*        IF LV_RC = 0.
-*          " Đã tồn tại -> Mở lên để sửa kèm dữ liệu cũ
-*          SUBMIT (GV_PROG_WRITE) VIA SELECTION-SCREEN USING SELECTION-SET GV_VARIANT AND RETURN.
-*        ELSE.
-*          " Chưa tồn tại -> Mở màn hình trắng để tạo mới
-*          SUBMIT (GV_PROG_WRITE) VIA SELECTION-SCREEN AND RETURN.
-*        ENDIF.
-*
-*      ELSE.
-*        MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
-*      ENDIF.
-** --- KẾT THÚC PHẦN SỬA ĐỔI ---
-*    WHEN 'START_BTN'.
-*      PERFORM MAINTENANCE_START_DATE.
-*    WHEN 'SPOOL_BTN'.
-*      PERFORM MAINTENANCE_SPOOL_PARAMS.
-*    WHEN 'EXECUTE'.
-*      PERFORM EXECUTE_WRITE_JOB.
-*    WHEN 'BACK'.
-*      SET SCREEN 0100. LEAVE SCREEN.
-*  ENDCASE.
-*  CLEAR OK_CODE.
-*ENDMODULE.
-
-*&---------------------------------------------------------------------*
-*& Module USER_COMMAND_0300 INPUT
-*&---------------------------------------------------------------------*
-MODULE USER_COMMAND_0300 INPUT.
-  " LV_RC và LV_ANSWER đã khai báo global ở MODULE CHECK_VARIANT_0300 phía trên
-  DATA: LV_UCOMM TYPE SY-UCOMM.
-
-
-  LV_UCOMM = SY-UCOMM.
-  CLEAR OK_CODE.
-
-  CASE LV_UCOMM.
-    WHEN 'EDIT_BTN'.
-      IF GV_VARIANT IS NOT INITIAL.
-        CALL FUNCTION 'RS_VARIANT_EXISTS'
-          EXPORTING REPORT  = GV_PROG_WRITE
-                    VARIANT = GV_VARIANT
-          IMPORTING R_C     = LV_RC.
-
-        IF LV_RC = 0.
-          SUBMIT (GV_PROG_WRITE) VIA SELECTION-SCREEN USING SELECTION-SET GV_VARIANT AND RETURN.
-        ELSE.
-          CALL FUNCTION 'POPUP_TO_CONFIRM'
-            EXPORTING
-              TITLEBAR              = 'Thông báo'
-              TEXT_QUESTION         = 'Variant này chưa tồn tại. Bạn có muốn tạo mới không?'
-              TEXT_BUTTON_1         = 'Có (Tạo)'
-              TEXT_BUTTON_2         = 'Không'
-              DISPLAY_CANCEL_BUTTON = ' '
-            IMPORTING
-              ANSWER                = LV_ANSWER.
-
-          IF LV_ANSWER = '1'.
-            SUBMIT (GV_PROG_WRITE) VIA SELECTION-SCREEN AND RETURN.
-          ELSE.
-            CLEAR GV_VARIANT.
-          ENDIF.
-        ENDIF.
+      IF gv_tabname IS INITIAL.
+        MESSAGE 'Vui lòng nhập Table Name (F4 để chọn)' TYPE 'E'.
       ELSE.
-        MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
+        TRANSLATE gv_tabname TO UPPER CASE.
+        PERFORM do_archive_write.
       ENDIF.
 
-    WHEN 'START_BTN'.
-      PERFORM MAINTENANCE_START_DATE.
-    WHEN 'SPOOL_BTN'.
-      PERFORM MAINTENANCE_SPOOL_PARAMS.
-    WHEN 'EXECUTE'.
-      PERFORM EXECUTE_WRITE_JOB.
-    WHEN 'BACK'.
-      SET SCREEN 0100. LEAVE SCREEN.
+    WHEN 'BT_DELETE'.
+      IF gv_tabname IS INITIAL.
+        MESSAGE 'Vui lòng nhập Table Name (F4 để chọn)' TYPE 'E'.
+      ELSE.
+        TRANSLATE gv_tabname TO UPPER CASE.
+        PERFORM do_restore_preview.
+      ENDIF.
+
+    WHEN 'BT_MONITOR'.
+      PERFORM do_monitor.
+
+    WHEN 'BT_CONFIG'.
+      PERFORM do_config.
   ENDCASE.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Module EXIT_COMMAND INPUT — Xử lý thoát nhanh (AT EXIT-COMMAND)
+*& Module USER_COMMAND_0200 INPUT — Màn hình Monitor ALV (Screen 0200)
 *&---------------------------------------------------------------------*
-MODULE EXIT_COMMAND INPUT.
-  CASE SY-UCOMM.
+MODULE user_command_0200 INPUT.
+  DATA: lv_cmd TYPE sy-ucomm.
+  lv_cmd = ok_code.
+  CLEAR ok_code.
+
+  CASE lv_cmd.
+    WHEN 'BACK' OR 'EXIT' OR 'CANC'.
+      IF go_cont_200 IS BOUND.
+        go_cont_200->free( ).
+        CLEAR: go_cont_200, go_alv_200.
+      ENDIF.
+      CLEAR gt_arch_stat.
+      SET SCREEN 0100. LEAVE SCREEN.
+
+    WHEN 'BT_REFRESH'.
+      CLEAR: gt_arch_stat, go_cont_200, go_alv_200.
+      PERFORM get_data.
+      PERFORM build_fieldcat.
+  ENDCASE.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module EXIT_COMMAND INPUT
+*&---------------------------------------------------------------------*
+MODULE exit_command INPUT.
+  CASE sy-ucomm.
     WHEN 'BACK'.
       SET SCREEN 0100. LEAVE SCREEN.
     WHEN 'EXIT' OR 'CANC'.
@@ -180,39 +104,91 @@ MODULE EXIT_COMMAND INPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Module USER_COMMAND_0200 INPUT — Màn hình Monitor/Delete
+*& Module CHECK_VARIANT_0300 INPUT
 *&---------------------------------------------------------------------*
-MODULE USER_COMMAND_0200 INPUT.
-  DATA: LV_CMD TYPE SY-UCOMM.
-  LV_CMD = SY-UCOMM.
-  CLEAR OK_CODE.
+MODULE check_variant_0300 INPUT.
+  DATA: lv_rc     TYPE sy-subrc,
+        lv_answer TYPE char1.
 
-  CASE LV_CMD.
-    WHEN 'BACK' OR 'EXIT' OR 'CANC'.
-      " Giải phóng ALV container trước khi thoát
-      IF GO_CONT_200 IS BOUND.
-        GO_CONT_200->FREE( ).
-        CLEAR: GO_CONT_200, GO_ALV_200.
-      ENDIF.
-      CLEAR GT_ARCH_STAT.
-      SET SCREEN 0100. LEAVE SCREEN.
+  CHECK gv_variant IS NOT INITIAL.
 
-    WHEN 'BT_EXEC_DEL'.
-      " Chạy chương trình Delete qua selection screen
-      IF GV_PROG_DEL IS INITIAL.
-        MESSAGE 'Không tìm thấy chương trình Delete cho Object này' TYPE 'E'.
+  IF gv_prog_write IS INITIAL.
+    PERFORM get_archive_programs.
+  ENDIF.
+
+  CALL FUNCTION 'RS_VARIANT_EXISTS'
+    EXPORTING
+      report  = gv_prog_write
+      variant = gv_variant
+    IMPORTING
+      r_c     = lv_rc.
+
+  IF lv_rc <> 0.
+    CALL FUNCTION 'POPUP_TO_CONFIRM'
+      EXPORTING
+        titlebar              = 'Thông báo'
+        text_question         = 'Variant này chưa tồn tại. Bạn có muốn tạo mới không?'
+        text_button_1         = 'Có (Tạo)'
+        text_button_2         = 'Không'
+        display_cancel_button = ' '
+      IMPORTING
+        answer                = lv_answer.
+
+    IF lv_answer = '1'.
+      SUBMIT (gv_prog_write) VIA SELECTION-SCREEN AND RETURN.
+    ELSE.
+      CLEAR gv_variant.
+    ENDIF.
+  ENDIF.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module USER_COMMAND_0300 INPUT
+*&---------------------------------------------------------------------*
+MODULE user_command_0300 INPUT.
+  DATA: lv_rc     TYPE sy-subrc,
+        lv_answer TYPE char1,
+        lv_ucomm  TYPE sy-ucomm.
+
+  lv_ucomm = ok_code.
+  CLEAR ok_code.
+
+  CASE lv_ucomm.
+    WHEN 'EDIT_BTN'.
+      IF gv_variant IS NOT INITIAL.
+        CALL FUNCTION 'RS_VARIANT_EXISTS'
+          EXPORTING report  = gv_prog_write
+                    variant = gv_variant
+          IMPORTING r_c     = lv_rc.
+
+        IF lv_rc = 0.
+          SUBMIT (gv_prog_write) VIA SELECTION-SCREEN
+            USING SELECTION-SET gv_variant AND RETURN.
+        ELSE.
+          CALL FUNCTION 'POPUP_TO_CONFIRM'
+            EXPORTING
+              titlebar              = 'Thông báo'
+              text_question         = 'Variant chưa tồn tại. Tạo mới?'
+              text_button_1         = 'Có'
+              text_button_2         = 'Không'
+              display_cancel_button = ' '
+            IMPORTING
+              answer                = lv_answer.
+          IF lv_answer = '1'.
+            SUBMIT (gv_prog_write) VIA SELECTION-SCREEN AND RETURN.
+          ELSE.
+            CLEAR gv_variant.
+          ENDIF.
+        ENDIF.
       ELSE.
-        SUBMIT (GV_PROG_DEL) VIA SELECTION-SCREEN AND RETURN.
-        " Sau khi chạy xong, refresh lại thống kê
-        CLEAR GT_ARCH_STAT.
-        PERFORM GET_DATA.
-        PERFORM BUILD_FIELDCAT.
+        MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
       ENDIF.
 
-    WHEN 'BT_REFRESH'.
-      " Refresh lại dữ liệu thống kê
-      CLEAR: GT_ARCH_STAT, GO_CONT_200, GO_ALV_200.
-      PERFORM GET_DATA.
-      PERFORM BUILD_FIELDCAT.
+    WHEN 'START_BTN'.
+      PERFORM maintenance_start_date.
+    WHEN 'SPOOL_BTN'.
+      PERFORM maintenance_spool_params.
+    WHEN 'BACK'.
+      SET SCREEN 0100. LEAVE SCREEN.
   ENDCASE.
 ENDMODULE.

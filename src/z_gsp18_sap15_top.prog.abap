@@ -1,38 +1,40 @@
 *&---------------------------------------------------------------------*
 *& Include Z_GSP18_SAP15_TOP
+*& Fields / Types / Classes — tương đương "Fields" + "Types" + "Classes"
+*& trong cây object của SE80
 *&---------------------------------------------------------------------*
 INCLUDE <icon>.
 
+"----------------------------------------------------------------------
+" OK-Code (mọi screen đều dùng chung)
+"----------------------------------------------------------------------
 DATA: ok_code TYPE sy-ucomm.
 
-* Đối tượng ALV
-DATA: go_alv_grid    TYPE REF TO cl_gui_alv_grid,
-      go_custom_cont TYPE REF TO cl_gui_custom_container.
+"----------------------------------------------------------------------
+" Types — Preview Archive
+"----------------------------------------------------------------------
+TYPES: BEGIN OF ty_prev,
+         key_vals TYPE char100,
+         date_val TYPE d,
+         age_days TYPE i,
+         status   TYPE char10,
+         detail   TYPE char60,
+       END OF ty_prev.
 
-* Biến nghiệp vụ
-DATA: gv_object       TYPE arch_obj-object,
-      gv_variant      TYPE variant,
-      gv_prog_write   TYPE programm,
-      gv_prog_del     TYPE programm.
+" Types — Restore preview
+TYPES: BEGIN OF ty_arch_row,
+         sel         TYPE c,
+         arch_id     TYPE sysuuid_x16,
+         data_seq    TYPE i,
+         table_name  TYPE tabname,
+         key_values  TYPE char255,
+         archived_on TYPE d,
+         archived_by TYPE xubname,
+         arch_status TYPE char1,
+         data_json   TYPE string,
+       END OF ty_arch_row.
 
-DATA: gs_print_params TYPE pri_params,   " Spool parameters
-      gv_start_date   TYPE char1,        " Trạng thái đã set ngày bắt đầu chưa
-      gv_spool_set    TYPE char1,        " Trạng thái đã set Spool chưa
-      gv_test_mode    TYPE char1 VALUE 'X',
-      gv_det_log      TYPE char1 VALUE 'X'.
-* Cấu trúc bảng hiển thị (Screen 0100 - Object list)
-TYPES: BEGIN OF ty_outtab,
-         status TYPE icon_d,
-         object TYPE char10,
-         sonum  TYPE i,
-         text   TYPE char40,
-       END OF ty_outtab.
-
-DATA: gt_outtab TYPE TABLE OF ty_outtab,
-      gs_layout TYPE lvc_s_layo,
-      gt_fcat   TYPE lvc_t_fcat.
-
-* Screen 0200 - Archive Monitor / Statistics (generic — không phụ thuộc ZEKKO_15)
+" Types — Monitor summary
 TYPES: BEGIN OF ty_arch_stat,
          table_name   TYPE tabname,
          cnt_archived TYPE i,
@@ -43,7 +45,76 @@ TYPES: BEGIN OF ty_arch_stat,
          last_action  TYPE char10,
        END OF ty_arch_stat.
 
+" Types — Monitor detail log
+TYPES: BEGIN OF ty_log_det,
+         table_name TYPE tabname,
+         action     TYPE char10,
+         rec_count  TYPE i,
+         status     TYPE char1,
+         exec_user  TYPE xubname,
+         exec_date  TYPE d,
+         message    TYPE char255,
+       END OF ty_log_det.
+
+"----------------------------------------------------------------------
+" Fields (Global Data) — tương đương tab "Fields" trong SE80
+"----------------------------------------------------------------------
+
+" Screen 0100 — input chính
+DATA: gv_tabname TYPE tabname.        " Bảng ZSP26_* đang thao tác
+
+" Archive operation globals
+DATA: gs_cfg      TYPE zsp26_arch_cfg,
+      gr_all      TYPE REF TO data,
+      gr_ready    TYPE REF TO data,
+      gv_rdy_cnt  TYPE i,
+      gv_skp_cnt  TYPE i.
+
+FIELD-SYMBOLS: <lt_all>   TYPE ANY TABLE,
+               <lt_ready> TYPE ANY TABLE.
+
+" Restore globals
+DATA: gt_arch_rows TYPE TABLE OF ty_arch_row,
+      gv_restored  TYPE i,
+      gv_errors    TYPE i.
+
+" Monitor globals
 DATA: gt_arch_stat TYPE TABLE OF ty_arch_stat,
       go_alv_200   TYPE REF TO cl_gui_alv_grid,
       go_cont_200  TYPE REF TO cl_gui_custom_container,
       gt_fcat_200  TYPE lvc_t_fcat.
+
+" Screen 0300 — SARA scheduler (giữ để tương thích)
+DATA: gv_object     TYPE arch_obj-object,
+      gv_variant    TYPE variant,
+      gv_prog_write TYPE programm,
+      gv_prog_del   TYPE programm,
+      gv_start_date TYPE char1,
+      gv_spool_set  TYPE char1,
+      gv_test_mode  TYPE char1 VALUE 'X',
+      gv_det_log    TYPE char1 VALUE 'X'.
+
+DATA: go_alv_grid    TYPE REF TO cl_gui_alv_grid,
+      go_custom_cont TYPE REF TO cl_gui_custom_container,
+      gt_fcat        TYPE lvc_t_fcat,
+      gs_layout      TYPE lvc_s_layo.
+
+"----------------------------------------------------------------------
+" Classes — Event handler cho SALV custom buttons
+" (tương đương tab "Classes" trong SE80)
+"----------------------------------------------------------------------
+CLASS lcl_handler DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS on_cmd
+      FOR EVENT added_function OF cl_salv_events
+      IMPORTING e_salv_function.
+ENDCLASS.
+
+CLASS lcl_handler IMPLEMENTATION.
+  METHOD on_cmd.
+    CASE e_salv_function.
+      WHEN 'ARCH_NOW'. PERFORM do_archive.
+      WHEN 'RESTORE'.  PERFORM do_restore_now.
+    ENDCASE.
+  ENDMETHOD.
+ENDCLASS.

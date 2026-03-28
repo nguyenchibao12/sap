@@ -1,159 +1,556 @@
 *&---------------------------------------------------------------------*
 *& Include Z_GSP18_SAP15_F01
+*& Subroutines — tương đương "Subroutines" trong cây SE80
 *&---------------------------------------------------------------------*
 
 *&---------------------------------------------------------------------*
-*& Form GET_ARCHIVE_PROGRAMS
+*& FORM DO_ARCHIVE_WRITE — Phase 2+3: Preview & Archive
+*& Đọc config → dynamic SELECT → SALV Preview → Archive Now
 *&---------------------------------------------------------------------*
-FORM GET_ARCHIVE_PROGRAMS.
-  " --- BẮT ĐẦU PHẦN SỬA ĐỔI ---
-  " Sửa tên cột APPL_DEL thành APPL_DELE (đây là tên chuẩn trong bảng ARCH_OBJ)
-  "SELECT SINGLE appl_writ, appl_dele
-  "FROM arch_obj
-  "INTO (@gv_prog_write, @gv_prog_del)
-  "WHERE object = @gv_object.
-  SELECT SINGLE REORGA_PRG, DELETE_PRG
-  FROM ARCH_OBJ
-  INTO (@GV_PROG_WRITE, @GV_PROG_DEL)
-  WHERE OBJECT = @GV_OBJECT.
+FORM do_archive_write.
+  " 1. Đọc config
+  SELECT SINGLE * FROM zsp26_arch_cfg INTO gs_cfg
+    WHERE table_name = @gv_tabname AND is_active = 'X'.
 
-  IF SY-SUBRC <> 0.
-    CLEAR: GV_PROG_WRITE, GV_PROG_DEL.
-    MESSAGE 'Archiving Object không hợp lệ hoặc chưa cấu hình trong AOBJ' TYPE 'S' DISPLAY LIKE 'E'.
-  ENDIF.
-  " --- KẾT THÚC PHẦN SỬA ĐỔI ---
-ENDFORM.
-
-*&---------------------------------------------------------------------*
-*& Form POPUP_SELECT_VARIANT
-*&---------------------------------------------------------------------*
-FORM POPUP_SELECT_VARIANT USING P_PROGRAM TYPE PROGRAMM.
-  DATA: LV_SEL_VARIANT TYPE VARIANT.
-
-  IF P_PROGRAM IS INITIAL.
-    MESSAGE 'Không tìm thấy chương trình tương ứng cho Object này' TYPE 'E'.
+  IF sy-subrc <> 0.
+    MESSAGE |Chưa có config cho '{ gv_tabname }'. Chạy BT_CONFIG để tạo.| TYPE 'S'
+            DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
-  " --- BẮT ĐẦU PHẦN SỬA ĐỔI ---
-  " Sửa tên cột REPID thành NAME (đây là tên cột chuẩn trong bảng TRDIR)
-  SELECT SINGLE NAME FROM TRDIR INTO @DATA(LV_EXISTS) WHERE NAME = @P_PROGRAM.
-  IF SY-SUBRC <> 0.
-    MESSAGE 'Chương trình ' && P_PROGRAM && ' chưa được cài đặt (SE38)' TYPE 'E'.
+  IF gs_cfg-data_field IS INITIAL.
+    MESSAGE |Config cho { gv_tabname } chưa có Date Field| TYPE 'S'
+            DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
-  " --- KẾT THÚC PHẦN SỬA ĐỔI ---
 
-  CALL FUNCTION 'RS_VARIANT_CATALOG'
-    EXPORTING
-      REPORT              = P_PROGRAM
-    IMPORTING
-      SEL_VARIANT         = LV_SEL_VARIANT
-    EXCEPTIONS
-      NO_REPORT           = 1
-      REPORT_NOT_EXTENDED = 2
-      NOT_EXECUTED        = 3
-      INVALID_REPORT_TYPE = 4
-      NO_VARIANTS         = 5
-      OTHERS              = 6.
+  " 2. Dynamic SELECT toàn bộ bảng
+  CREATE DATA gr_all TYPE TABLE OF (gv_tabname).
+  ASSIGN gr_all->* TO <lt_all>.
+  SELECT * FROM (gv_tabname) INTO TABLE <lt_all>.
 
-  IF SY-SUBRC = 0.
-    GV_VARIANT = LV_SEL_VARIANT.
-  ELSEIF SY-SUBRC = 5.
-    MESSAGE 'Vui lòng tạo ít nhất 1 Variant cho ' && P_PROGRAM TYPE 'W'.
-    CLEAR GV_VARIANT.
-  ELSE.
-    CLEAR GV_VARIANT.
+  IF <lt_all> IS INITIAL.
+    MESSAGE |Không có dữ liệu trong { gv_tabname }| TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
   ENDIF.
+
+  " 3. Hiển thị SALV Preview
+  PERFORM show_archive_preview.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Form MAINTENANCE_SPOOL_PARAMS
+*& FORM SHOW_ARCHIVE_PREVIEW — Phân loại READY/TOO NEW, hiển thị SALV
 *&---------------------------------------------------------------------*
-FORM maintenance_spool_params.
-* --- BẮT ĐẦU PHẦN THÊM MỚI ---
-  CALL FUNCTION 'ARCHIVE_ADMIN_SET_PRINT_PARAMS'
-    EXPORTING
-      object             = gv_object
-    EXCEPTIONS
-      no_write_privilege = 1
-      others             = 2.
-  IF sy-subrc = 0.
-    gv_spool_set = 'X'.
-    MESSAGE 'Đã thiết lập tham số máy in (Spool)' TYPE 'S'.
-  ENDIF.
-* --- KẾT THÚC PHẦN THÊM MỚI ---
+FORM show_archive_preview.
+  DATA: lt_prev TYPE TABLE OF ty_prev,
+        ls_prev TYPE ty_prev.
+
+  CREATE DATA gr_ready TYPE TABLE OF (gv_tabname).
+  ASSIGN gr_ready->* TO <lt_ready>.
+  CLEAR: gv_rdy_cnt, gv_skp_cnt.
+
+  " Lấy key field đầu tiên (để hiển thị)
+  DATA: lt_dd   TYPE TABLE OF dfies,
+        lv_kfld TYPE string.
+
+  CALL FUNCTION 'DDIF_FIELDINFO_GET'
+    EXPORTING  tabname   = gv_tabname
+    TABLES     dfies_tab = lt_dd
+    EXCEPTIONS OTHERS    = 1.
+
+  LOOP AT lt_dd INTO DATA(ls_dd)
+    WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
+    lv_kfld = ls_dd-fieldname. EXIT.
+  ENDLOOP.
+
+  " Phân loại từng record
+  LOOP AT <lt_all> ASSIGNING FIELD-SYMBOL(<row>).
+    CLEAR ls_prev.
+
+    ASSIGN COMPONENT lv_kfld OF STRUCTURE <row> TO FIELD-SYMBOL(<kv>).
+    IF <kv> IS ASSIGNED. ls_prev-key_vals = <kv>. ENDIF.
+
+    ASSIGN COMPONENT gs_cfg-data_field OF STRUCTURE <row> TO FIELD-SYMBOL(<dt>).
+    IF <dt> IS ASSIGNED.
+      ls_prev-date_val = <dt>.
+      ls_prev-age_days = sy-datum - ls_prev-date_val.
+    ENDIF.
+
+    IF ls_prev-age_days >= gs_cfg-retention.
+      ls_prev-status = 'READY'.
+      ls_prev-detail = |Eligible: { ls_prev-age_days } days ≥ { gs_cfg-retention }d|.
+      ADD 1 TO gv_rdy_cnt.
+      INSERT <row> INTO TABLE <lt_ready>.
+    ELSE.
+      ls_prev-status = 'TOO NEW'.
+      ls_prev-detail = |Only { ls_prev-age_days } / { gs_cfg-retention } days|.
+      ADD 1 TO gv_skp_cnt.
+    ENDIF.
+
+    APPEND ls_prev TO lt_prev.
+  ENDLOOP.
+
+  " SALV Display
+  DATA: lo_alv   TYPE REF TO cl_salv_table,
+        lo_funcs TYPE REF TO cl_salv_functions,
+        lo_cols  TYPE REF TO cl_salv_columns_table,
+        lo_col   TYPE REF TO cl_salv_column_table,
+        lo_disp  TYPE REF TO cl_salv_display_settings.
+
+  TRY.
+    cl_salv_table=>factory(
+      IMPORTING r_salv_table = lo_alv
+      CHANGING  t_table      = lt_prev ).
+
+    lo_funcs = lo_alv->get_functions( ).
+    lo_funcs->set_all( abap_true ).
+
+    IF gv_rdy_cnt > 0.
+      TRY.
+        lo_funcs->add_function(
+          name     = 'ARCH_NOW'
+          icon     = '@2L@'
+          text     = 'Archive Now'
+          tooltip  = |Move { gv_rdy_cnt } READY records → ZSP26_ARCH_DATA|
+          position = if_salv_c_function_position=>right_of_salv_functions ).
+      CATCH cx_salv_method_not_supported.
+      ENDTRY.
+      SET HANDLER lcl_handler=>on_cmd FOR lo_alv->get_event( ).
+    ENDIF.
+
+    lo_cols = lo_alv->get_columns( ).
+    lo_cols->set_optimize( abap_true ).
+
+    TRY.
+      lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
+      lo_col->set_long_text( |Key ({ lv_kfld })| ).
+      lo_col ?= lo_cols->get_column( 'DATE_VAL' ).
+      lo_col->set_long_text( |Date ({ gs_cfg-data_field })| ).
+      lo_col ?= lo_cols->get_column( 'AGE_DAYS' ).
+      lo_col->set_long_text( 'Age (days)' ).
+      lo_col ?= lo_cols->get_column( 'STATUS' ).
+      lo_col->set_long_text( 'Archive Status' ).
+      lo_col ?= lo_cols->get_column( 'DETAIL' ).
+      lo_col->set_long_text( 'Detail / Reason' ).
+    CATCH cx_salv_not_found.
+    ENDTRY.
+
+    lo_disp = lo_alv->get_display_settings( ).
+    lo_disp->set_list_header(
+      |PREVIEW — { gv_tabname }  [ Total: { lines( lt_prev ) } | &&
+      |  READY: { gv_rdy_cnt }  TOO NEW: { gv_skp_cnt } | &&
+      |/ Retention: { gs_cfg-retention }d / Field: { gs_cfg-data_field } ]| ).
+
+    lo_alv->display( ).
+
+  CATCH cx_salv_msg INTO DATA(lx).
+    MESSAGE lx->get_text( ) TYPE 'E'.
+  ENDTRY.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Form ARCHIVE_SELECTION
+*& FORM DO_ARCHIVE — thực hiện lưu vào ZSP26_ARCH_DATA (gọi từ lcl_handler)
 *&---------------------------------------------------------------------*
-FORM ARCHIVE_SELECTION.
-*  " --- BẮT ĐẦU PHẦN SỬA ĐỔI ---
-*  " Sử dụng cấu trúc as_selected_files (Table Type chuẩn) thay cho tên struct lạ
-*  DATA: lt_selected_files TYPE as_selected_files.
-*
-*  CALL FUNCTION 'ARCHIVE_SELECT_FILES'
-*    EXPORTING
-*      object                 = gv_object
-*    TABLES
-*      selected_files         = lt_selected_files
-*    EXCEPTIONS
-*      no_files_selected      = 1
-*      no_files_found         = 2
-*      object_not_found       = 3
-*      OTHERS                 = 4.
-*
-*  IF sy-subrc <> 0.
-*    MESSAGE 'Bạn phải chọn ít nhất một archive file' TYPE 'S' DISPLAY LIKE 'E'.
-*    CLEAR gv_variant.
-*  ENDIF.
-*  " --- KẾT THÚC PHẦN SỬA ĐỔI ---
-  " Khai báo biến để nhận ID (Handle) của phiên làm việc Archive
-  DATA: LV_ARCHIVE_HANDLE TYPE SY-TABIX.
-
-  " Gọi hàm chuẩn của SAP để tự động mở Popup cho người dùng chọn file Archive
-  CALL FUNCTION 'ARCHIVE_OPEN_FOR_READ'
-    EXPORTING
-      OBJECT                  = GV_OBJECT
-    IMPORTING
-      ARCHIVE_HANDLE          = LV_ARCHIVE_HANDLE
-    EXCEPTIONS
-      FILE_ALREADY_OPEN       = 1
-      FILE_IO_ERROR           = 2
-      INTERNAL_ERROR          = 3
-      NO_FILES_AVAILABLE      = 4
-      OBJECT_NOT_FOUND        = 5
-      OPEN_ERROR              = 6
-      NOT_AUTHORIZED          = 7
-      ARCH_ENV_NOT_CUSTOMIZED = 8
-      OTHERS                  = 9.
-
-  IF SY-SUBRC <> 0.
-    " Nếu người dùng bấm Cancel ở màn hình Popup hoặc hệ thống lỗi
-    MESSAGE 'Bạn chưa chọn file Archive nào hoặc có lỗi hệ thống!' TYPE 'S' DISPLAY LIKE 'E'.
-    CLEAR GV_VARIANT.
-    RETURN. " Thoát khỏi FORM nếu không chọn file
+FORM do_archive.
+  IF NOT <lt_ready> IS ASSIGNED OR <lt_ready> IS INITIAL.
+    MESSAGE 'Không có records READY để archive' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
   ENDIF.
+
+  DATA: ls_adata   TYPE zsp26_arch_data,
+        ls_alog    TYPE zsp26_arch_log,
+        lv_arch_id TYPE sysuuid_x16,
+        lv_log_id  TYPE sysuuid_x16,
+        lv_json    TYPE string,
+        lv_ok      TYPE i VALUE 0,
+        lv_err     TYPE i VALUE 0,
+        lv_seq     TYPE i VALUE 0,
+        lv_ts_s    TYPE timestampl.
+
+  TRY.
+    lv_arch_id = cl_system_uuid=>create_uuid_x16_static( ).
+    lv_log_id  = cl_system_uuid=>create_uuid_x16_static( ).
+  CATCH cx_uuid_error.
+    MESSAGE 'Lỗi tạo UUID' TYPE 'E'. RETURN.
+  ENDTRY.
+  GET TIME STAMP FIELD lv_ts_s.
+
+  " Key fields
+  DATA: lt_dd  TYPE TABLE OF dfies,
+        lt_kfs TYPE TABLE OF string.
+  CALL FUNCTION 'DDIF_FIELDINFO_GET'
+    EXPORTING  tabname   = gv_tabname
+    TABLES     dfies_tab = lt_dd
+    EXCEPTIONS OTHERS    = 1.
+  LOOP AT lt_dd INTO DATA(ls_dd) WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
+    APPEND ls_dd-fieldname TO lt_kfs.
+  ENDLOOP.
+
+  LOOP AT <lt_ready> ASSIGNING FIELD-SYMBOL(<row>).
+    ADD 1 TO lv_seq.
+    DATA: lv_kv TYPE char255, lv_where TYPE string.
+    CLEAR: lv_kv, lv_where.
+
+    LOOP AT lt_kfs INTO DATA(lv_kf).
+      ASSIGN COMPONENT lv_kf OF STRUCTURE <row> TO FIELD-SYMBOL(<fv>).
+      IF <fv> IS ASSIGNED.
+        DATA(lv_fv_str) = CONV string( <fv> ).
+        IF lv_kv    IS NOT INITIAL. lv_kv    &&= '|'. ENDIF.
+        IF lv_where IS NOT INITIAL. lv_where &&= ' AND '. ENDIF.
+        lv_kv    &&= lv_kf && '=' && lv_fv_str.
+        lv_where &&= lv_kf && ` EQ '` && lv_fv_str && `'`.
+      ENDIF.
+    ENDLOOP.
+    lv_where = |MANDT EQ '{ sy-mandt }' AND | && lv_where.
+
+    TRY.
+      lv_json = /ui2/cl_json=>serialize( data = <row> ).
+    CATCH cx_root.
+      lv_json = lv_kv.
+    ENDTRY.
+
+    CLEAR ls_adata.
+    ls_adata-arch_id     = lv_arch_id.
+    ls_adata-data_seq    = lv_seq.
+    ls_adata-table_name  = gv_tabname.
+    ls_adata-key_values  = lv_kv.
+    ls_adata-data_json   = lv_json.
+    ls_adata-archived_on = sy-datum.
+    ls_adata-archived_by = sy-uname.
+    ls_adata-arch_status = 'A'.
+    INSERT zsp26_arch_data FROM ls_adata.
+
+    IF sy-subrc = 0.
+      DELETE FROM (gv_tabname) WHERE (lv_where).
+      IF sy-subrc = 0. ADD 1 TO lv_ok. ELSE. ADD 1 TO lv_err. ENDIF.
+    ELSE.
+      ADD 1 TO lv_err.
+    ENDIF.
+  ENDLOOP.
+
+  IF lv_ok > 0. COMMIT WORK AND WAIT. ENDIF.
+
+  " Log
+  CLEAR ls_alog.
+  ls_alog-log_id     = lv_log_id.
+  ls_alog-arch_id    = lv_arch_id.
+  ls_alog-config_id  = gs_cfg-config_id.
+  ls_alog-table_name = gv_tabname.
+  ls_alog-action     = 'ARCHIVE'.
+  ls_alog-rec_count  = lv_ok.
+  ls_alog-status     = COND #( WHEN lv_err = 0 THEN 'S' ELSE 'W' ).
+  ls_alog-start_time = lv_ts_s.
+  GET TIME STAMP FIELD ls_alog-end_time.
+  ls_alog-message    = |Archived { lv_ok } records. Errors: { lv_err }|.
+  ls_alog-exec_user  = sy-uname.
+  ls_alog-exec_date  = sy-datum.
+  INSERT zsp26_arch_log FROM ls_alog.
+  COMMIT WORK AND WAIT.
+
+  MESSAGE |Archive xong: { lv_ok } records từ { gv_tabname } → ZSP26_ARCH_DATA|
+          TYPE 'S'.
 ENDFORM.
+
 *&---------------------------------------------------------------------*
-*& Form build_fieldcat
+*& FORM DO_RESTORE_PREVIEW — Phase 4: Hiển thị records đã archive
 *&---------------------------------------------------------------------*
-*& text
+FORM do_restore_preview.
+  CLEAR gt_arch_rows.
+
+  SELECT arch_id data_seq table_name key_values archived_on archived_by arch_status data_json
+    FROM zsp26_arch_data
+    INTO CORRESPONDING FIELDS OF TABLE gt_arch_rows
+    WHERE table_name  = @gv_tabname
+      AND arch_status = 'A'
+    ORDER BY archived_on DESCENDING data_seq ASCENDING.
+
+  IF gt_arch_rows IS INITIAL.
+    MESSAGE |Không có records đã archive cho '{ gv_tabname }'| TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  DATA: lo_alv   TYPE REF TO cl_salv_table,
+        lo_funcs TYPE REF TO cl_salv_functions,
+        lo_cols  TYPE REF TO cl_salv_columns_table,
+        lo_col   TYPE REF TO cl_salv_column_table,
+        lo_disp  TYPE REF TO cl_salv_display_settings,
+        lo_sel   TYPE REF TO cl_salv_selections.
+
+  TRY.
+    cl_salv_table=>factory(
+      IMPORTING r_salv_table = lo_alv
+      CHANGING  t_table      = gt_arch_rows ).
+
+    lo_funcs = lo_alv->get_functions( ).
+    lo_funcs->set_all( abap_true ).
+
+    TRY.
+      lo_funcs->add_function(
+        name     = 'RESTORE'
+        icon     = '@49@'
+        text     = 'Restore Selected'
+        tooltip  = |Restore records được chọn về { gv_tabname }|
+        position = if_salv_c_function_position=>right_of_salv_functions ).
+    CATCH cx_salv_method_not_supported.
+    ENDTRY.
+    SET HANDLER lcl_handler=>on_cmd FOR lo_alv->get_event( ).
+
+    lo_sel = lo_alv->get_selections( ).
+    lo_sel->set_selection_mode( if_salv_c_selection_mode=>row_column ).
+
+    lo_cols = lo_alv->get_columns( ).
+    lo_cols->set_optimize( abap_true ).
+
+    TRY.
+      lo_col ?= lo_cols->get_column( 'ARCH_ID' ).   lo_col->set_visible( abap_false ).
+      lo_col ?= lo_cols->get_column( 'DATA_JSON' ).  lo_col->set_visible( abap_false ).
+      lo_col ?= lo_cols->get_column( 'SEL' ).
+      lo_col->set_long_text( 'Select' ).
+      lo_col ?= lo_cols->get_column( 'KEY_VALUES' ).
+      lo_col->set_long_text( 'Key Values' ).
+      lo_col ?= lo_cols->get_column( 'ARCHIVED_ON' ).
+      lo_col->set_long_text( 'Archived On' ).
+      lo_col ?= lo_cols->get_column( 'ARCHIVED_BY' ).
+      lo_col->set_long_text( 'Archived By' ).
+      lo_col ?= lo_cols->get_column( 'ARCH_STATUS' ).
+      lo_col->set_long_text( 'Status' ).
+    CATCH cx_salv_not_found.
+    ENDTRY.
+
+    lo_disp = lo_alv->get_display_settings( ).
+    lo_disp->set_list_header(
+      |ARCHIVED RECORDS — { gv_tabname }  [ { lines( gt_arch_rows ) } records ]| ).
+
+    lo_alv->display( ).
+
+  CATCH cx_salv_msg INTO DATA(lx).
+    MESSAGE lx->get_text( ) TYPE 'E'.
+  ENDTRY.
+ENDFORM.
+
 *&---------------------------------------------------------------------*
-*& -->  p1        text
-*& <--  p2        text
+*& FORM DO_RESTORE_NOW — thực hiện restore (gọi từ lcl_handler)
 *&---------------------------------------------------------------------*
+FORM do_restore_now.
+  IF gt_arch_rows IS INITIAL.
+    MESSAGE 'Không có records để restore' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  CREATE DATA DATA(gr_rec) TYPE (gv_tabname).
+  ASSIGN gr_rec->* TO FIELD-SYMBOL(<rec>).
+
+  DATA: ls_alog    TYPE zsp26_arch_log,
+        lv_log_id  TYPE sysuuid_x16,
+        lv_arch_id TYPE sysuuid_x16,
+        lv_ts_s    TYPE timestampl.
+  CLEAR: gv_restored, gv_errors.
+  GET TIME STAMP FIELD lv_ts_s.
+
+  " Kiểm tra có record nào được tick không
+  DATA(lv_any_sel) = abap_false.
+  LOOP AT gt_arch_rows ASSIGNING FIELD-SYMBOL(<chk>).
+    IF <chk>-sel = 'X'. lv_any_sel = abap_true. EXIT. ENDIF.
+  ENDLOOP.
+
+  LOOP AT gt_arch_rows ASSIGNING FIELD-SYMBOL(<arch>).
+    IF lv_any_sel = abap_true AND <arch>-sel <> 'X'. CONTINUE. ENDIF.
+    IF <arch>-data_json IS INITIAL. ADD 1 TO gv_errors. CONTINUE. ENDIF.
+
+    TRY.
+      /ui2/cl_json=>deserialize( EXPORTING json = <arch>-data_json CHANGING data = <rec> ).
+    CATCH cx_root.
+      ADD 1 TO gv_errors. CONTINUE.
+    ENDTRY.
+
+    INSERT (<arch>-table_name) FROM <rec>.
+    IF sy-subrc = 0.
+      UPDATE zsp26_arch_data SET arch_status = 'R'
+        WHERE arch_id  = <arch>-arch_id
+          AND data_seq = <arch>-data_seq.
+      <arch>-arch_status = 'R'.
+      lv_arch_id = <arch>-arch_id.
+      ADD 1 TO gv_restored.
+    ELSE.
+      ADD 1 TO gv_errors.
+    ENDIF.
+  ENDLOOP.
+
+  IF gv_restored > 0. COMMIT WORK AND WAIT. ENDIF.
+
+  TRY. lv_log_id = cl_system_uuid=>create_uuid_x16_static( ).
+  CATCH cx_uuid_error. ENDTRY.
+
+  CLEAR ls_alog.
+  ls_alog-log_id     = lv_log_id.
+  ls_alog-arch_id    = lv_arch_id.
+  ls_alog-table_name = gv_tabname.
+  ls_alog-action     = 'RESTORE'.
+  ls_alog-rec_count  = gv_restored.
+  ls_alog-status     = COND #( WHEN gv_errors = 0 THEN 'S' ELSE 'W' ).
+  ls_alog-start_time = lv_ts_s.
+  GET TIME STAMP FIELD ls_alog-end_time.
+  ls_alog-message    = |Restored { gv_restored } records to { gv_tabname }. Errors: { gv_errors }|.
+  ls_alog-exec_user  = sy-uname.
+  ls_alog-exec_date  = sy-datum.
+  INSERT zsp26_arch_log FROM ls_alog.
+  COMMIT WORK AND WAIT.
+
+  MESSAGE |Restore xong: { gv_restored } records về { gv_tabname }. Lỗi: { gv_errors }|
+          TYPE 'S'.
+ENDFORM.
+
 *&---------------------------------------------------------------------*
-*& Form GET_DATA — Đọc thống kê archive từ ZSP26_ARCH_LOG + ZSP26_ARCH_DATA
+*& FORM DO_MONITOR — Phase 5: Thống kê Archive
 *&---------------------------------------------------------------------*
-FORM GET_DATA.
+FORM do_monitor.
+  DATA: lt_sum   TYPE TABLE OF ty_arch_stat,
+        lt_det   TYPE TABLE OF ty_log_det,
+        lv_cnt   TYPE i,
+        lv_tn    TYPE tabname.
+
+  " Lấy danh sách bảng đã có log
+  SELECT DISTINCT table_name FROM zsp26_arch_log
+    INTO TABLE @DATA(lt_tabs).
+
+  IF lt_tabs IS INITIAL.
+    MESSAGE 'Chưa có log archive nào' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_tabs INTO DATA(ls_t).
+    lv_tn = ls_t-table_name.
+    APPEND INITIAL LINE TO lt_sum ASSIGNING FIELD-SYMBOL(<s>).
+    <s>-table_name = lv_tn.
+
+    SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_cnt
+      WHERE table_name = @lv_tn AND action = 'ARCHIVE'.
+    <s>-cnt_archived = lv_cnt.
+
+    SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_cnt
+      WHERE table_name = @lv_tn AND action = 'RESTORE'.
+    <s>-cnt_restored = lv_cnt.
+
+    SELECT COUNT(*) FROM zsp26_arch_data INTO @lv_cnt
+      WHERE table_name = @lv_tn AND arch_status = 'A'.
+    <s>-cnt_active = lv_cnt.
+
+    SELECT exec_date, exec_user, action FROM zsp26_arch_log
+      INTO (@<s>-last_arch_on, @<s>-last_arch_by, @<s>-last_action)
+      WHERE table_name = @lv_tn ORDER BY exec_date DESCENDING.
+      EXIT.
+    ENDSELECT.
+  ENDLOOP.
+
+  DATA: lo_alv   TYPE REF TO cl_salv_table,
+        lo_funcs TYPE REF TO cl_salv_functions,
+        lo_cols  TYPE REF TO cl_salv_columns_table,
+        lo_col   TYPE REF TO cl_salv_column_table,
+        lo_disp  TYPE REF TO cl_salv_display_settings.
+
+  TRY.
+    cl_salv_table=>factory(
+      IMPORTING r_salv_table = lo_alv
+      CHANGING  t_table      = lt_sum ).
+
+    lo_funcs = lo_alv->get_functions( ).
+    lo_funcs->set_all( abap_true ).
+    lo_cols = lo_alv->get_columns( ).
+    lo_cols->set_optimize( abap_true ).
+
+    TRY.
+      lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
+      lo_col->set_long_text( 'Table Name' ).
+      lo_col ?= lo_cols->get_column( 'CNT_ARCHIVED' ).
+      lo_col->set_long_text( 'Total Archived' ).
+      lo_col ?= lo_cols->get_column( 'CNT_RESTORED' ).
+      lo_col->set_long_text( 'Total Restored' ).
+      lo_col ?= lo_cols->get_column( 'CNT_ACTIVE' ).
+      lo_col->set_long_text( 'Active in Archive' ).
+      lo_col ?= lo_cols->get_column( 'LAST_ARCH_ON' ).
+      lo_col->set_long_text( 'Last Activity Date' ).
+      lo_col ?= lo_cols->get_column( 'LAST_ARCH_BY' ).
+      lo_col->set_long_text( 'Last By' ).
+      lo_col ?= lo_cols->get_column( 'LAST_ACTION' ).
+      lo_col->set_long_text( 'Last Action' ).
+    CATCH cx_salv_not_found.
+    ENDTRY.
+
+    lo_disp = lo_alv->get_display_settings( ).
+    lo_disp->set_list_header( |ARCHIVE MONITOR — { lines( lt_sum ) } tables| ).
+    lo_alv->display( ).
+
+  CATCH cx_salv_msg INTO DATA(lx).
+    MESSAGE lx->get_text( ) TYPE 'E'.
+  ENDTRY.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM DO_CONFIG — Phase 1: Xem & Maintain ZSP26_ARCH_CFG
+*&---------------------------------------------------------------------*
+FORM do_config.
+  DATA: lt_cfg   TYPE TABLE OF zsp26_arch_cfg,
+        lo_alv   TYPE REF TO cl_salv_table,
+        lo_cols  TYPE REF TO cl_salv_columns_table,
+        lo_col   TYPE REF TO cl_salv_column_table,
+        lo_funcs TYPE REF TO cl_salv_functions,
+        lo_disp  TYPE REF TO cl_salv_display_settings.
+
+  SELECT * FROM zsp26_arch_cfg INTO TABLE lt_cfg ORDER BY table_name.
+
+  IF lt_cfg IS INITIAL.
+    MESSAGE 'Chưa có config nào. Chạy ZSP26_LOAD_SAMPLE_DATA để tạo.' TYPE 'S'
+            DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  TRY.
+    cl_salv_table=>factory(
+      IMPORTING r_salv_table = lo_alv
+      CHANGING  t_table      = lt_cfg ).
+
+    lo_funcs = lo_alv->get_functions( ).
+    lo_funcs->set_all( abap_true ).
+    lo_cols = lo_alv->get_columns( ).
+    lo_cols->set_optimize( abap_true ).
+
+    TRY.
+      lo_col ?= lo_cols->get_column( 'CONFIG_ID' ).   lo_col->set_visible( abap_false ).
+      lo_col ?= lo_cols->get_column( 'MANDT' ).        lo_col->set_visible( abap_false ).
+      lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
+      lo_col->set_long_text( 'Table Name' ).
+      lo_col ?= lo_cols->get_column( 'DESCRIPTION' ).
+      lo_col->set_long_text( 'Description' ).
+      lo_col ?= lo_cols->get_column( 'RETENTION' ).
+      lo_col->set_long_text( 'Retention (days)' ).
+      lo_col ?= lo_cols->get_column( 'DATA_FIELD' ).
+      lo_col->set_long_text( 'Date Field' ).
+      lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).
+      lo_col->set_long_text( 'Active' ).
+    CATCH cx_salv_not_found.
+    ENDTRY.
+
+    lo_disp = lo_alv->get_display_settings( ).
+    lo_disp->set_list_header(
+      |ARCHIVE CONFIG — { lines( lt_cfg ) } entries | &&
+      |/ Để sửa: chạy Z_CONFIG_Z15_EKKO (SE38)| ).
+
+    lo_alv->display( ).
+
+  CATCH cx_salv_msg INTO DATA(lx).
+    MESSAGE lx->get_text( ) TYPE 'E'.
+  ENDTRY.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM GET_DATA — đọc thống kê cho screen 0200 ALV
+*&---------------------------------------------------------------------*
+FORM get_data.
   DATA: lv_cnt     TYPE i,
         lv_tabname TYPE zsp26_arch_log-table_name.
 
   CLEAR gt_arch_stat.
 
-  " Lấy danh sách bảng có log
   SELECT DISTINCT table_name FROM zsp26_arch_log
     INTO TABLE @DATA(lt_tables).
 
@@ -162,35 +559,30 @@ FORM GET_DATA.
     APPEND INITIAL LINE TO gt_arch_stat ASSIGNING FIELD-SYMBOL(<stat>).
     <stat>-table_name = lv_tabname.
 
-    " Tổng archived
     SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_cnt
       WHERE table_name = @lv_tabname AND action = 'ARCHIVE'.
     <stat>-cnt_archived = lv_cnt.
 
-    " Tổng restored
     SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_cnt
       WHERE table_name = @lv_tabname AND action = 'RESTORE'.
     <stat>-cnt_restored = lv_cnt.
 
-    " Active records in archive
     SELECT COUNT(*) FROM zsp26_arch_data INTO @lv_cnt
       WHERE table_name = @lv_tabname AND arch_status = 'A'.
     <stat>-cnt_active = lv_cnt.
 
-    " Last activity (SELECT + ORDER BY — không dùng SINGLE)
     SELECT exec_date, exec_user, action FROM zsp26_arch_log
       INTO (@<stat>-last_arch_on, @<stat>-last_arch_by, @<stat>-last_action)
-      WHERE table_name = @lv_tabname
-      ORDER BY exec_date DESCENDING.
+      WHERE table_name = @lv_tabname ORDER BY exec_date DESCENDING.
       EXIT.
     ENDSELECT.
   ENDLOOP.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Form BUILD_FIELDCAT — Định nghĩa cột cho ALV Screen 0200
+*& FORM BUILD_FIELDCAT — cột cho ALV screen 0200
 *&---------------------------------------------------------------------*
-FORM BUILD_FIELDCAT.
+FORM build_fieldcat.
   DATA: ls_fc TYPE lvc_s_fcat.
   CLEAR gt_fcat_200.
 
@@ -212,137 +604,70 @@ FORM BUILD_FIELDCAT.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Form DISPLAY_ALV — Hiển thị ALV trong container CONT_0200 (Screen 0200)
+*& FORM DISPLAY_ALV — hiển thị ALV trong container screen 0200
 *&---------------------------------------------------------------------*
-FORM DISPLAY_ALV.
-  " Giải phóng đối tượng cũ khi vào lại màn hình
+FORM display_alv.
   IF go_cont_200 IS BOUND.
     go_cont_200->free( ).
     CLEAR: go_cont_200, go_alv_200.
   ENDIF.
 
   CREATE OBJECT go_cont_200
-    EXPORTING
-      container_name        = 'ALV_CONTAINER'
-    EXCEPTIONS
-      cntl_error            = 1
-      cntl_system_error     = 2
-      create_error          = 3
-      lifetime_error        = 4
-      OTHERS                = 5.
+    EXPORTING container_name = 'ALV_CONTAINER'
+    EXCEPTIONS OTHERS        = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE 'Lỗi tạo container ALV (kiểm tra CONT_0200 trong SE51)' TYPE 'S'
-            DISPLAY LIKE 'E'.
+    MESSAGE 'Lỗi tạo container ALV' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   CREATE OBJECT go_alv_200
-    EXPORTING
-      i_parent          = go_cont_200
-    EXCEPTIONS
-      error_cntl_create = 1
-      error_cntl_init   = 2
-      error_cntl_link   = 3
-      error_dp_create   = 4
-      OTHERS            = 5.
-
+    EXPORTING i_parent = go_cont_200
+    EXCEPTIONS OTHERS  = 1.
   IF sy-subrc <> 0. RETURN. ENDIF.
 
   CALL METHOD go_alv_200->set_table_for_first_display
-    CHANGING
-      it_outtab       = gt_arch_stat
-      it_fieldcatalog = gt_fcat_200.
+    CHANGING it_outtab       = gt_arch_stat
+             it_fieldcatalog = gt_fcat_200.
 ENDFORM.
+
 *&---------------------------------------------------------------------*
-*& Form CHECK_AND_CREATE_VARIANT
+*& FORM GET_ARCHIVE_PROGRAMS — đọc Write/Delete program từ ARCH_OBJ
 *&---------------------------------------------------------------------*
-FORM check_and_create_variant.
-  DATA: lv_answer TYPE c,
-        lv_rc     TYPE sy-subrc. " Biến phụ để nhận giá trị trả về
+FORM get_archive_programs.
+  SELECT SINGLE reorga_prg, delete_prg FROM arch_obj
+    INTO (@gv_prog_write, @gv_prog_del)
+    WHERE object = @gv_object.
 
-  IF gv_variant IS INITIAL.
-    MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
-    RETURN.
-  ENDIF.
-
-  " --- BẮT ĐẦU PHẦN SỬA ĐỔI ---
-  " Thay đổi sy-subrc thành lv_rc để tránh lỗi biên dịch
-  CALL FUNCTION 'RS_VARIANT_EXISTS'
-    EXPORTING
-      report  = gv_prog_write
-      variant = gv_variant
-    IMPORTING
-      r_c     = lv_rc. " Sử dụng biến trung gian thay vì sy-subrc
-
-  IF lv_rc <> 0.
-  " --- KẾT THÚC PHẦN SỬA ĐỔI ---
-
-    " Nếu không tồn tại, hiển thị Popup hỏi người dùng
-    CALL FUNCTION 'POPUP_TO_CONFIRM'
-      EXPORTING
-        titlebar       = 'Variant không tồn tại'
-        text_question  = 'Variant này chưa có. Bạn có muốn tạo mới không?'
-        text_button_1  = 'Có'
-        text_button_2  = 'Không'
-      IMPORTING
-        answer         = lv_answer.
-
-    IF lv_answer = '1'.
-      " Gọi màn hình tạo Variant của SAP
-      CALL FUNCTION 'RS_VARIANT_MAINTAIN'
-        EXPORTING
-          curr_report = gv_prog_write
-          curr_variant = gv_variant
-          action      = 'MAINT'
-        EXCEPTIONS
-          others      = 1.
-    ENDIF.
-  ELSE.
-    " Nếu đã tồn tại, gọi vào màn hình Edit
-    IF ok_code = 'BT_EDIT' OR ok_code = 'CHECK_VARI'.
-       CALL FUNCTION 'RS_VARIANT_MAINTAIN'
-        EXPORTING
-          curr_report = gv_prog_write
-          curr_variant = gv_variant
-          action      = 'MAINT'.
-    ENDIF.
+  IF sy-subrc <> 0.
+    CLEAR: gv_prog_write, gv_prog_del.
+    MESSAGE 'Archiving Object không hợp lệ hoặc chưa cấu hình trong AOBJ'
+            TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Form MAINTENANCE_START_DATE
+*& FORM MAINTENANCE_SPOOL_PARAMS
+*&---------------------------------------------------------------------*
+FORM maintenance_spool_params.
+  CALL FUNCTION 'ARCHIVE_ADMIN_SET_PRINT_PARAMS'
+    EXPORTING object = gv_object
+    EXCEPTIONS OTHERS = 2.
+  IF sy-subrc = 0.
+    gv_spool_set = 'X'.
+    MESSAGE 'Đã thiết lập tham số máy in (Spool)' TYPE 'S'.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM MAINTENANCE_START_DATE
 *&---------------------------------------------------------------------*
 FORM maintenance_start_date.
-* --- BẮT ĐẦU PHẦN THÊM MỚI ---
   CALL FUNCTION 'ARCHIVE_ADMIN_SET_START_TIME'
-    EXPORTING
-      object             = gv_object
-    EXCEPTIONS
-      no_write_privilege = 1
-      others             = 2.
+    EXPORTING object = gv_object
+    EXCEPTIONS OTHERS = 2.
   IF sy-subrc = 0.
     gv_start_date = 'X'.
     MESSAGE 'Đã thiết lập thời gian bắt đầu' TYPE 'S'.
   ENDIF.
-* --- KẾT THÚC PHẦN THÊM MỚI ---
-ENDFORM.
-*&---------------------------------------------------------------------*
-*& Form EXECUTE_WRITE_JOB
-*&---------------------------------------------------------------------*
-FORM execute_write_job.
-  IF gv_variant IS INITIAL OR gv_start_date IS INITIAL OR gv_spool_set IS INITIAL.
-    MESSAGE 'Bạn phải nhập Variant, Start Date và Spool Parameter' TYPE 'E'.
-    RETURN.
-  ENDIF.
-
-  " Thực hiện gọi SUBMIT qua SARA handle hoặc Job Open như bước trước
-  " Ở đây dùng Submit đơn giản để minh họa:
-  SUBMIT (gv_prog_write) USING SELECTION-SET gv_variant
-    WITH p_test = gv_test_mode
-    WITH p_log  = gv_det_log
-    VIA JOB 'ARCH_WRITE' NUMBER '1' " Thực tế cần lấy Jobcount từ JOB_OPEN
-    AND RETURN.
-
-  MESSAGE 'Chương trình Write đã được lập lịch' TYPE 'S'.
 ENDFORM.

@@ -33,8 +33,8 @@
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
-       <NAME>INPUT_FIELD</NAME>
-       <TEXT>Archiving_Object__________</TEXT>
+       <NAME>LBL_TABNAME</NAME>
+       <TEXT>Table_Name_(F4)___________</TEXT>
        <LINE>004</LINE>
        <COLUMN>013</COLUMN>
        <LENGTH>026</LENGTH>
@@ -48,12 +48,12 @@
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
-       <NAME>GV_OBJECT</NAME>
-       <TEXT>_____________</TEXT>
+       <NAME>GV_TABNAME</NAME>
+       <TEXT>______________________________</TEXT>
        <LINE>004</LINE>
        <COLUMN>040</COLUMN>
-       <LENGTH>013</LENGTH>
-       <VISLENGTH>013</VISLENGTH>
+       <LENGTH>030</LENGTH>
+       <VISLENGTH>030</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <INPUT_FLD>X</INPUT_FLD>
