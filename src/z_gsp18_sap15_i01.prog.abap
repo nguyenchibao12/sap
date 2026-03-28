@@ -136,9 +136,8 @@ ENDMODULE.
 *& Module USER_COMMAND_0300 INPUT
 *&---------------------------------------------------------------------*
 MODULE USER_COMMAND_0300 INPUT.
-  DATA: LV_UCOMM  TYPE SY-UCOMM,
-        LV_RC     TYPE SY-SUBRC,
-        LV_ANSWER TYPE CHAR1.
+  " LV_RC và LV_ANSWER đã khai báo global ở MODULE CHECK_VARIANT_0300 phía trên
+  DATA: LV_UCOMM TYPE SY-UCOMM.
 
 
   LV_UCOMM = SY-UCOMM.

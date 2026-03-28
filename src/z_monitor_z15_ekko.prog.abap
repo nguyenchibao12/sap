@@ -143,22 +143,25 @@ FORM show_summary.
     lo_cols = lo_alv->get_columns( ).
     lo_cols->set_optimize( abap_true ).
 
-    lo_col ?= lo_cols->get_column( 'BUKRS' ).
-    lo_col->set_long_text( 'Company Code' ).
-    lo_col ?= lo_cols->get_column( 'BSART' ).
-    lo_col->set_long_text( 'Doc. Type' ).
-    lo_col ?= lo_cols->get_column( 'CNT_TOTAL' ).
-    lo_col->set_long_text( 'Total Records' ).
-    lo_col ?= lo_cols->get_column( 'CNT_READY' ).
-    lo_col->set_long_text( |READY (>={ p_ret }d)| ).
-    lo_col ?= lo_cols->get_column( 'CNT_NEW' ).
-    lo_col->set_long_text( 'Too New' ).
-    lo_col ?= lo_cols->get_column( 'PCT_READY' ).
-    lo_col->set_long_text( '% Ready' ).
-    lo_col ?= lo_cols->get_column( 'MIN_DATE' ).
-    lo_col->set_long_text( 'Oldest Record' ).
-    lo_col ?= lo_cols->get_column( 'MAX_DATE' ).
-    lo_col->set_long_text( 'Newest Record' ).
+    TRY.
+      lo_col ?= lo_cols->get_column( 'BUKRS' ).
+      lo_col->set_long_text( 'Company Code' ).
+      lo_col ?= lo_cols->get_column( 'BSART' ).
+      lo_col->set_long_text( 'Doc. Type' ).
+      lo_col ?= lo_cols->get_column( 'CNT_TOTAL' ).
+      lo_col->set_long_text( 'Total Records' ).
+      lo_col ?= lo_cols->get_column( 'CNT_READY' ).
+      lo_col->set_long_text( |READY (>={ p_ret }d)| ).
+      lo_col ?= lo_cols->get_column( 'CNT_NEW' ).
+      lo_col->set_long_text( 'Too New' ).
+      lo_col ?= lo_cols->get_column( 'PCT_READY' ).
+      lo_col->set_long_text( '% Ready' ).
+      lo_col ?= lo_cols->get_column( 'MIN_DATE' ).
+      lo_col->set_long_text( 'Oldest Record' ).
+      lo_col ?= lo_cols->get_column( 'MAX_DATE' ).
+      lo_col->set_long_text( 'Newest Record' ).
+    CATCH cx_salv_not_found.
+    ENDTRY.
 
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(
@@ -235,20 +238,23 @@ FORM show_detail.
     lo_cols = lo_alv->get_columns( ).
     lo_cols->set_optimize( abap_true ).
 
-    lo_col ?= lo_cols->get_column( 'EBELN' ).
-    lo_col->set_long_text( 'Purchase Order' ).
-    lo_col ?= lo_cols->get_column( 'BUKRS' ).
-    lo_col->set_long_text( 'Company Code' ).
-    lo_col ?= lo_cols->get_column( 'BSART' ).
-    lo_col->set_long_text( 'Doc. Type' ).
-    lo_col ?= lo_cols->get_column( 'LIFNR' ).
-    lo_col->set_long_text( 'Supplier' ).
-    lo_col ?= lo_cols->get_column( 'AEDAT' ).
-    lo_col->set_long_text( 'Entry Date' ).
-    lo_col ?= lo_cols->get_column( 'AGE_DAYS' ).
-    lo_col->set_long_text( 'Age (days)' ).
-    lo_col ?= lo_cols->get_column( 'ELIGIBLE' ).
-    lo_col->set_long_text( 'Archive Status' ).
+    TRY.
+      lo_col ?= lo_cols->get_column( 'EBELN' ).
+      lo_col->set_long_text( 'Purchase Order' ).
+      lo_col ?= lo_cols->get_column( 'BUKRS' ).
+      lo_col->set_long_text( 'Company Code' ).
+      lo_col ?= lo_cols->get_column( 'BSART' ).
+      lo_col->set_long_text( 'Doc. Type' ).
+      lo_col ?= lo_cols->get_column( 'LIFNR' ).
+      lo_col->set_long_text( 'Supplier' ).
+      lo_col ?= lo_cols->get_column( 'AEDAT' ).
+      lo_col->set_long_text( 'Entry Date' ).
+      lo_col ?= lo_cols->get_column( 'AGE_DAYS' ).
+      lo_col->set_long_text( 'Age (days)' ).
+      lo_col ?= lo_cols->get_column( 'ELIGIBLE' ).
+      lo_col->set_long_text( 'Archive Status' ).
+    CATCH cx_salv_not_found.
+    ENDTRY.
 
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(

@@ -98,24 +98,29 @@ FORM display_config.
     lo_cols = lo_alv->get_columns( ).
     lo_cols->set_optimize( abap_true ).
 
-    lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
-    lo_col->set_long_text( 'Table Name' ).
-    lo_col ?= lo_cols->get_column( 'DESCRIPTION' ).
-    lo_col->set_long_text( 'Description' ).
-    lo_col ?= lo_cols->get_column( 'RETENTION' ).
-    lo_col->set_long_text( 'Retention (days)' ).
-    lo_col ?= lo_cols->get_column( 'DATA_FIELD' ).
-    lo_col->set_long_text( 'Date Field' ).
-    lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).
-    lo_col->set_long_text( 'Active' ).
-    lo_col ?= lo_cols->get_column( 'CREATED_BY' ).
-    lo_col->set_long_text( 'Created By' ).
-    lo_col ?= lo_cols->get_column( 'CREATED_ON' ).
-    lo_col->set_long_text( 'Created On' ).
-    lo_col ?= lo_cols->get_column( 'CHANGED_BY' ).
-    lo_col->set_long_text( 'Changed By' ).
-    lo_col ?= lo_cols->get_column( 'CHANGED_ON' ).
-    lo_col->set_long_text( 'Changed On' ).
+    " get_column() raise CX_SALV_NOT_FOUND nếu cột không tồn tại — bắt riêng
+    TRY.
+      lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
+      lo_col->set_long_text( 'Table Name' ).
+      lo_col ?= lo_cols->get_column( 'DESCRIPTION' ).
+      lo_col->set_long_text( 'Description' ).
+      lo_col ?= lo_cols->get_column( 'RETENTION' ).
+      lo_col->set_long_text( 'Retention (days)' ).
+      lo_col ?= lo_cols->get_column( 'DATA_FIELD' ).
+      lo_col->set_long_text( 'Date Field' ).
+      lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).
+      lo_col->set_long_text( 'Active' ).
+      lo_col ?= lo_cols->get_column( 'CREATED_BY' ).
+      lo_col->set_long_text( 'Created By' ).
+      lo_col ?= lo_cols->get_column( 'CREATED_ON' ).
+      lo_col->set_long_text( 'Created On' ).
+      lo_col ?= lo_cols->get_column( 'CHANGED_BY' ).
+      lo_col->set_long_text( 'Changed By' ).
+      lo_col ?= lo_cols->get_column( 'CHANGED_ON' ).
+      lo_col->set_long_text( 'Changed On' ).
+    CATCH cx_salv_not_found.
+      " Bỏ qua nếu cột không tìm thấy — hiển thị tên mặc định
+    ENDTRY.
 
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(
