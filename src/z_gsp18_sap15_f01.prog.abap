@@ -148,6 +148,9 @@ ENDFORM.
 *& Form GET_DATA — Đọc thống kê archive từ ZSP26_ARCH_LOG + ZSP26_ARCH_DATA
 *&---------------------------------------------------------------------*
 FORM GET_DATA.
+  DATA: lv_cnt     TYPE i,
+        lv_tabname TYPE zsp26_arch_log-table_name.
+
   CLEAR gt_arch_stat.
 
   " Lấy danh sách bảng có log
@@ -155,29 +158,32 @@ FORM GET_DATA.
     INTO TABLE @DATA(lt_tables).
 
   LOOP AT lt_tables INTO DATA(ls_tab).
+    lv_tabname = ls_tab-table_name.
     APPEND INITIAL LINE TO gt_arch_stat ASSIGNING FIELD-SYMBOL(<stat>).
-    <stat>-table_name = ls_tab-table_name.
+    <stat>-table_name = lv_tabname.
 
     " Tổng archived
-    SELECT COUNT(*) FROM zsp26_arch_log INTO @DATA(lv_cnt)
-      WHERE table_name = ls_tab-table_name AND action = 'ARCHIVE'.
+    SELECT COUNT(*) FROM zsp26_arch_log INTO lv_cnt
+      WHERE table_name = @lv_tabname AND action = 'ARCHIVE'.
     <stat>-cnt_archived = lv_cnt.
 
     " Tổng restored
     SELECT COUNT(*) FROM zsp26_arch_log INTO lv_cnt
-      WHERE table_name = ls_tab-table_name AND action = 'RESTORE'.
+      WHERE table_name = @lv_tabname AND action = 'RESTORE'.
     <stat>-cnt_restored = lv_cnt.
 
-    " Active records
+    " Active records in archive
     SELECT COUNT(*) FROM zsp26_arch_data INTO lv_cnt
-      WHERE table_name = ls_tab-table_name AND arch_status = 'A'.
+      WHERE table_name = @lv_tabname AND arch_status = 'A'.
     <stat>-cnt_active = lv_cnt.
 
-    " Last activity
-    SELECT SINGLE exec_date exec_user action FROM zsp26_arch_log
+    " Last activity (SELECT + ORDER BY — không dùng SINGLE)
+    SELECT exec_date exec_user action FROM zsp26_arch_log
       INTO (@<stat>-last_arch_on, @<stat>-last_arch_by, @<stat>-last_action)
-      WHERE table_name = ls_tab-table_name
+      WHERE table_name = @lv_tabname
       ORDER BY exec_date DESCENDING.
+      EXIT.
+    ENDSELECT.
   ENDLOOP.
 ENDFORM.
 
