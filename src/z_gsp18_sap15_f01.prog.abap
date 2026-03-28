@@ -163,22 +163,22 @@ FORM GET_DATA.
     <stat>-table_name = lv_tabname.
 
     " Tổng archived
-    SELECT COUNT(*) FROM zsp26_arch_log INTO lv_cnt
+    SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_cnt
       WHERE table_name = @lv_tabname AND action = 'ARCHIVE'.
     <stat>-cnt_archived = lv_cnt.
 
     " Tổng restored
-    SELECT COUNT(*) FROM zsp26_arch_log INTO lv_cnt
+    SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_cnt
       WHERE table_name = @lv_tabname AND action = 'RESTORE'.
     <stat>-cnt_restored = lv_cnt.
 
     " Active records in archive
-    SELECT COUNT(*) FROM zsp26_arch_data INTO lv_cnt
+    SELECT COUNT(*) FROM zsp26_arch_data INTO @lv_cnt
       WHERE table_name = @lv_tabname AND arch_status = 'A'.
     <stat>-cnt_active = lv_cnt.
 
     " Last activity (SELECT + ORDER BY — không dùng SINGLE)
-    SELECT exec_date exec_user action FROM zsp26_arch_log
+    SELECT exec_date, exec_user, action FROM zsp26_arch_log
       INTO (@<stat>-last_arch_on, @<stat>-last_arch_by, @<stat>-last_action)
       WHERE table_name = @lv_tabname
       ORDER BY exec_date DESCENDING.
