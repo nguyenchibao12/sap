@@ -1,35 +1,6 @@
 *&---------------------------------------------------------------------*
-*& Include Z_GSP18_SAP15_I01
-*& PAI Modules — tương đương "PAI Modules" trong cây SE80
+*& Include Z_GSP18_SAP15_I01  — PAI Modules
 *&---------------------------------------------------------------------*
-
-*&---------------------------------------------------------------------*
-*& Module F4_TABNAME INPUT — F4 Help cho field Table Name
-*&---------------------------------------------------------------------*
-MODULE f4_tabname INPUT.
-  DATA: lt_f4  TYPE TABLE OF zsp26_arch_cfg,
-        lt_ret TYPE TABLE OF ddshretval,
-        ls_ret TYPE ddshretval.
-
-  SELECT * FROM zsp26_arch_cfg INTO TABLE lt_f4
-    WHERE is_active = 'X' ORDER BY table_name.
-
-  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
-    EXPORTING
-      retfield    = 'TABLE_NAME'
-      dynpprog    = sy-repid
-      dynpnr      = sy-dynnr
-      dynprofield = 'GV_TABNAME'
-      window_title = 'Chọn bảng Archive'
-      value_org   = 'S'
-    TABLES
-      value_tab   = lt_f4
-      return_tab  = lt_ret
-    EXCEPTIONS OTHERS = 1.
-
-  READ TABLE lt_ret INTO ls_ret INDEX 1.
-  IF sy-subrc = 0. gv_tabname = ls_ret-fieldval. ENDIF.
-ENDMODULE.
 
 *&---------------------------------------------------------------------*
 *& Module USER_COMMAND_0100 INPUT
@@ -39,43 +10,48 @@ MODULE user_command_0100 INPUT.
   lv_cmd = ok_code.
   CLEAR ok_code.
 
+  " GV_OBJECT là field trên screen 0100 — copy sang gv_tabname để dùng trong FORMs
+  IF gv_object IS NOT INITIAL.
+    gv_tabname = gv_object.
+    TRANSLATE gv_tabname TO UPPER CASE.
+  ENDIF.
+
   CASE lv_cmd.
     WHEN 'BACK' OR 'EXIT' OR 'CANC'.
       LEAVE PROGRAM.
 
     WHEN 'BT_WRITE'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Vui lòng nhập Table Name (F4 để chọn)' TYPE 'E'.
+        MESSAGE 'Vui lòng nhập Table Name' TYPE 'E'.
       ELSE.
-        TRANSLATE gv_tabname TO UPPER CASE.
         PERFORM do_archive_write.
       ENDIF.
 
     WHEN 'BT_DELETE'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Vui lòng nhập Table Name (F4 để chọn)' TYPE 'E'.
+        MESSAGE 'Vui lòng nhập Table Name' TYPE 'E'.
       ELSE.
-        TRANSLATE gv_tabname TO UPPER CASE.
         PERFORM do_restore_preview.
       ENDIF.
 
     WHEN 'BT_MONITOR'.
       PERFORM do_monitor.
 
-    WHEN 'BT_CONFIG'.
+    WHEN 'BT_MANAGE'.
       PERFORM do_config.
+
   ENDCASE.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Module USER_COMMAND_0200 INPUT — Màn hình Monitor ALV (Screen 0200)
+*& Module USER_COMMAND_0200 INPUT
 *&---------------------------------------------------------------------*
 MODULE user_command_0200 INPUT.
-  DATA: lv_cmd TYPE sy-ucomm.
-  lv_cmd = ok_code.
+  DATA: lv_cmd_200 TYPE sy-ucomm.
+  lv_cmd_200 = ok_code.
   CLEAR ok_code.
 
-  CASE lv_cmd.
+  CASE lv_cmd_200.
     WHEN 'BACK' OR 'EXIT' OR 'CANC'.
       IF go_cont_200 IS BOUND.
         go_cont_200->free( ).
@@ -88,6 +64,7 @@ MODULE user_command_0200 INPUT.
       CLEAR: gt_arch_stat, go_cont_200, go_alv_200.
       PERFORM get_data.
       PERFORM build_fieldcat.
+      PERFORM display_alv.
   ENDCASE.
 ENDMODULE.
 
@@ -107,34 +84,30 @@ ENDMODULE.
 *& Module CHECK_VARIANT_0300 INPUT
 *&---------------------------------------------------------------------*
 MODULE check_variant_0300 INPUT.
-  DATA: lv_rc     TYPE sy-subrc,
-        lv_answer TYPE char1.
+  DATA: lv_rc_chk  TYPE sy-subrc,
+        lv_ans_chk TYPE char1.
 
   CHECK gv_variant IS NOT INITIAL.
-
-  IF gv_prog_write IS INITIAL.
-    PERFORM get_archive_programs.
-  ENDIF.
+  IF gv_prog_write IS INITIAL. PERFORM get_archive_programs. ENDIF.
 
   CALL FUNCTION 'RS_VARIANT_EXISTS'
     EXPORTING
       report  = gv_prog_write
       variant = gv_variant
     IMPORTING
-      r_c     = lv_rc.
+      r_c     = lv_rc_chk.
 
-  IF lv_rc <> 0.
+  IF lv_rc_chk <> 0.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
         titlebar              = 'Thông báo'
-        text_question         = 'Variant này chưa tồn tại. Bạn có muốn tạo mới không?'
-        text_button_1         = 'Có (Tạo)'
+        text_question         = 'Variant chưa tồn tại. Tạo mới?'
+        text_button_1         = 'Có'
         text_button_2         = 'Không'
         display_cancel_button = ' '
       IMPORTING
-        answer                = lv_answer.
-
-    IF lv_answer = '1'.
+        answer                = lv_ans_chk.
+    IF lv_ans_chk = '1'.
       SUBMIT (gv_prog_write) VIA SELECTION-SCREEN AND RETURN.
     ELSE.
       CLEAR gv_variant.
@@ -146,9 +119,9 @@ ENDMODULE.
 *& Module USER_COMMAND_0300 INPUT
 *&---------------------------------------------------------------------*
 MODULE user_command_0300 INPUT.
-  DATA: lv_rc     TYPE sy-subrc,
-        lv_answer TYPE char1,
-        lv_ucomm  TYPE sy-ucomm.
+  DATA: lv_rc_300  TYPE sy-subrc,
+        lv_ans_300 TYPE char1,
+        lv_ucomm   TYPE sy-ucomm.
 
   lv_ucomm = ok_code.
   CLEAR ok_code.
@@ -157,11 +130,13 @@ MODULE user_command_0300 INPUT.
     WHEN 'EDIT_BTN'.
       IF gv_variant IS NOT INITIAL.
         CALL FUNCTION 'RS_VARIANT_EXISTS'
-          EXPORTING report  = gv_prog_write
-                    variant = gv_variant
-          IMPORTING r_c     = lv_rc.
+          EXPORTING
+            report  = gv_prog_write
+            variant = gv_variant
+          IMPORTING
+            r_c     = lv_rc_300.
 
-        IF lv_rc = 0.
+        IF lv_rc_300 = 0.
           SUBMIT (gv_prog_write) VIA SELECTION-SCREEN
             USING SELECTION-SET gv_variant AND RETURN.
         ELSE.
@@ -173,8 +148,8 @@ MODULE user_command_0300 INPUT.
               text_button_2         = 'Không'
               display_cancel_button = ' '
             IMPORTING
-              answer                = lv_answer.
-          IF lv_answer = '1'.
+              answer                = lv_ans_300.
+          IF lv_ans_300 = '1'.
             SUBMIT (gv_prog_write) VIA SELECTION-SCREEN AND RETURN.
           ELSE.
             CLEAR gv_variant.

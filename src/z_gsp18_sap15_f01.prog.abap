@@ -9,7 +9,7 @@
 *&---------------------------------------------------------------------*
 FORM do_archive_write.
   " 1. Đọc config
-  SELECT SINGLE * FROM zsp26_arch_cfg INTO gs_cfg
+  SELECT SINGLE * FROM zsp26_arch_cfg INTO @gs_cfg
     WHERE table_name = @gv_tabname AND is_active = 'X'.
 
   IF sy-subrc <> 0.
@@ -149,7 +149,27 @@ FORM show_archive_preview.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_ARCHIVE — thực hiện lưu vào ZSP26_ARCH_DATA (gọi từ lcl_handler)
+*& FORM DO_ARCHIVE_VIA_ADK — gọi ADK Write Program (từ lcl_handler)
+*&---------------------------------------------------------------------*
+FORM do_archive_via_adk.
+  SUBMIT z_arch_ekk_write
+    WITH p_table = gv_tabname
+    WITH p_test  = ' '
+    AND RETURN.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM DO_RESTORE_VIA_ADK — gọi ADK Read Program (từ lcl_handler)
+*&---------------------------------------------------------------------*
+FORM do_restore_via_adk.
+  SUBMIT z_arch_ekk_read
+    WITH p_table = gv_tabname
+    WITH p_rest  = ' '
+    AND RETURN.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM DO_ARCHIVE — (legacy, kept for reference — not called anymore)
 *&---------------------------------------------------------------------*
 FORM do_archive.
   IF NOT <lt_ready> IS ASSIGNED OR <lt_ready> IS INITIAL.
@@ -159,7 +179,7 @@ FORM do_archive.
 
   DATA: ls_adata   TYPE zsp26_arch_data,
         ls_alog    TYPE zsp26_arch_log,
-        lv_arch_id TYPE sysuuid_x16,
+        lv_arch_id TYPE zsp26_de_archid,
         lv_log_id  TYPE sysuuid_x16,
         lv_json    TYPE string,
         lv_ok      TYPE i VALUE 0,
@@ -168,7 +188,7 @@ FORM do_archive.
         lv_ts_s    TYPE timestampl.
 
   TRY.
-    lv_arch_id = cl_system_uuid=>create_uuid_x16_static( ).
+    lv_arch_id = cl_system_uuid=>create_uuid_c32_static( ).
     lv_log_id  = cl_system_uuid=>create_uuid_x16_static( ).
   CATCH cx_uuid_error.
     MESSAGE 'Lỗi tạo UUID' TYPE 'E'. RETURN.
@@ -252,17 +272,25 @@ FORM do_archive.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_RESTORE_PREVIEW — Phase 4: Hiển thị records đã archive
+*& FORM DO_RESTORE_PREVIEW — Phase 4: Mở ADK Read Program
 *&---------------------------------------------------------------------*
 FORM do_restore_preview.
+  " Launch ADK Read/Restore program — shows archived records from file
+  SUBMIT z_arch_ekk_read
+    WITH p_table = gv_tabname
+    WITH p_rest  = ' '
+    AND RETURN.
+  RETURN.
+
+  " --- legacy code below (unreachable, kept for reference) ---
   CLEAR gt_arch_rows.
 
-  SELECT arch_id data_seq table_name key_values archived_on archived_by arch_status data_json
+  SELECT arch_id, data_seq, table_name, key_values, archived_on, archived_by, arch_status, data_json
     FROM zsp26_arch_data
     INTO CORRESPONDING FIELDS OF TABLE gt_arch_rows
     WHERE table_name  = @gv_tabname
       AND arch_status = 'A'
-    ORDER BY archived_on DESCENDING data_seq ASCENDING.
+    ORDER BY archived_on DESCENDING, data_seq ASCENDING.
 
   IF gt_arch_rows IS INITIAL.
     MESSAGE |Không có records đã archive cho '{ gv_tabname }'| TYPE 'S' DISPLAY LIKE 'W'.
@@ -337,12 +365,13 @@ FORM do_restore_now.
     RETURN.
   ENDIF.
 
-  CREATE DATA DATA(gr_rec) TYPE (gv_tabname).
+  DATA: gr_rec TYPE REF TO data.
+  CREATE DATA gr_rec TYPE (gv_tabname).
   ASSIGN gr_rec->* TO FIELD-SYMBOL(<rec>).
 
   DATA: ls_alog    TYPE zsp26_arch_log,
         lv_log_id  TYPE sysuuid_x16,
-        lv_arch_id TYPE sysuuid_x16,
+        lv_arch_id TYPE zsp26_de_archid,
         lv_ts_s    TYPE timestampl.
   CLEAR: gv_restored, gv_errors.
   GET TIME STAMP FIELD lv_ts_s.

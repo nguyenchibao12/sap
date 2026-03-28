@@ -3,8 +3,6 @@
 *& Fields / Types / Classes — tương đương "Fields" + "Types" + "Classes"
 *& trong cây object của SE80
 *&---------------------------------------------------------------------*
-INCLUDE <icon>.
-
 "----------------------------------------------------------------------
 " OK-Code (mọi screen đều dùng chung)
 "----------------------------------------------------------------------
@@ -24,7 +22,7 @@ TYPES: BEGIN OF ty_prev,
 " Types — Restore preview
 TYPES: BEGIN OF ty_arch_row,
          sel         TYPE c,
-         arch_id     TYPE sysuuid_x16,
+         arch_id     TYPE zsp26_de_archid,
          data_seq    TYPE i,
          table_name  TYPE tabname,
          key_values  TYPE char255,
@@ -113,8 +111,8 @@ ENDCLASS.
 CLASS lcl_handler IMPLEMENTATION.
   METHOD on_cmd.
     CASE e_salv_function.
-      WHEN 'ARCH_NOW'. PERFORM do_archive.
-      WHEN 'RESTORE'.  PERFORM do_restore_now.
+      WHEN 'ARCH_NOW'. PERFORM do_archive_via_adk.
+      WHEN 'RESTORE'.  PERFORM do_restore_via_adk.
     ENDCASE.
   ENDMETHOD.
 ENDCLASS.
