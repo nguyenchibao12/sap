@@ -8,9 +8,32 @@ ENDMODULE.
 
 MODULE status_0200 OUTPUT.
   SET PF-STATUS 'STATUS_200'.
-  PERFORM get_data.
-  PERFORM build_fieldcat.
+  SET TITLEBAR 'TITLE_200'.
+  " Load và build field catalog nếu chưa có dữ liệu
+  IF gt_arch_stat IS INITIAL.
+    PERFORM get_data.
+    PERFORM build_fieldcat.
+  ENDIF.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module DISPLAY_ALV_0200 OUTPUT
+*&---------------------------------------------------------------------*
+MODULE display_alv_0200 OUTPUT.
   PERFORM display_alv.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module INIT_FIELDS_0300 OUTPUT
+*&---------------------------------------------------------------------*
+MODULE init_fields_0300 OUTPUT.
+  " Giá trị mặc định cho màn hình Write Job
+  IF gv_test_mode IS INITIAL.
+    gv_test_mode = 'X'.
+  ENDIF.
+  IF gv_det_log IS INITIAL.
+    gv_det_log = 'X'.
+  ENDIF.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*

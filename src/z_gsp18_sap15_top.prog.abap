@@ -20,7 +20,7 @@ DATA: gs_print_params TYPE pri_params,   " Spool parameters
       gv_spool_set    TYPE char1,        " Trạng thái đã set Spool chưa
       gv_test_mode    TYPE char1 VALUE 'X',
       gv_det_log      TYPE char1 VALUE 'X'.
-* Cấu trúc bảng hiển thị
+* Cấu trúc bảng hiển thị (Screen 0100 - Object list)
 TYPES: BEGIN OF ty_outtab,
          status TYPE icon_d,
          object TYPE char10,
@@ -31,3 +31,19 @@ TYPES: BEGIN OF ty_outtab,
 DATA: gt_outtab TYPE TABLE OF ty_outtab,
       gs_layout TYPE lvc_s_layo,
       gt_fcat   TYPE lvc_t_fcat.
+
+* Screen 0200 - Archive Monitor / Statistics
+TYPES: BEGIN OF ty_arch_stat,
+         bukrs     TYPE zekko_15-bukrs,
+         bsart     TYPE zekko_15-bsart,
+         cnt_total TYPE i,
+         cnt_ready TYPE i,
+         cnt_new   TYPE i,
+         min_date  TYPE zekko_15-aedat,
+         max_date  TYPE zekko_15-aedat,
+       END OF ty_arch_stat.
+
+DATA: gt_arch_stat TYPE TABLE OF ty_arch_stat,
+      go_alv_200   TYPE REF TO cl_gui_alv_grid,
+      go_cont_200  TYPE REF TO cl_gui_custom_container,
+      gt_fcat_200  TYPE lvc_t_fcat.

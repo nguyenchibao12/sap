@@ -29,7 +29,21 @@ MODULE USER_COMMAND_0100 INPUT.
       " --- KẾT THÚC PHẦN SỬA ĐỔI ---
 
     WHEN 'BT_DELETE'.
-      " Xử lý nút Delete cũ (nếu cần)
+      IF GV_OBJECT IS INITIAL.
+        MESSAGE 'Vui lòng nhập Archiving Object' TYPE 'E'.
+      ELSE.
+        TRANSLATE GV_OBJECT TO UPPER CASE.
+        PERFORM GET_ARCHIVE_PROGRAMS.
+        IF GV_PROG_DEL IS NOT INITIAL.
+          " Load dữ liệu thống kê rồi mở màn hình Monitor/Delete
+          CLEAR GT_ARCH_STAT.
+          PERFORM GET_DATA.
+          PERFORM BUILD_FIELDCAT.
+          CALL SCREEN 0200.
+        ELSE.
+          MESSAGE 'Archiving Object không hợp lệ hoặc chưa có chương trình Delete' TYPE 'E'.
+        ENDIF.
+      ENDIF.
   ENDCASE.
 ENDMODULE.
 
@@ -122,7 +136,9 @@ ENDMODULE.
 *& Module USER_COMMAND_0300 INPUT
 *&---------------------------------------------------------------------*
 MODULE USER_COMMAND_0300 INPUT.
-  DATA: LV_UCOMM  TYPE SY-UCOMM.
+  DATA: LV_UCOMM  TYPE SY-UCOMM,
+        LV_RC     TYPE SY-SUBRC,
+        LV_ANSWER TYPE CHAR1.
 
 
   LV_UCOMM = SY-UCOMM.
@@ -167,5 +183,55 @@ MODULE USER_COMMAND_0300 INPUT.
       PERFORM EXECUTE_WRITE_JOB.
     WHEN 'BACK'.
       SET SCREEN 0100. LEAVE SCREEN.
+  ENDCASE.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module EXIT_COMMAND INPUT — Xử lý thoát nhanh (AT EXIT-COMMAND)
+*&---------------------------------------------------------------------*
+MODULE EXIT_COMMAND INPUT.
+  CASE SY-UCOMM.
+    WHEN 'BACK'.
+      SET SCREEN 0100. LEAVE SCREEN.
+    WHEN 'EXIT' OR 'CANC'.
+      LEAVE PROGRAM.
+  ENDCASE.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module USER_COMMAND_0200 INPUT — Màn hình Monitor/Delete
+*&---------------------------------------------------------------------*
+MODULE USER_COMMAND_0200 INPUT.
+  DATA: LV_CMD TYPE SY-UCOMM.
+  LV_CMD = SY-UCOMM.
+  CLEAR OK_CODE.
+
+  CASE LV_CMD.
+    WHEN 'BACK' OR 'EXIT' OR 'CANC'.
+      " Giải phóng ALV container trước khi thoát
+      IF GO_CONT_200 IS BOUND.
+        GO_CONT_200->FREE( ).
+        CLEAR: GO_CONT_200, GO_ALV_200.
+      ENDIF.
+      CLEAR GT_ARCH_STAT.
+      SET SCREEN 0100. LEAVE SCREEN.
+
+    WHEN 'BT_EXEC_DEL'.
+      " Chạy chương trình Delete qua selection screen
+      IF GV_PROG_DEL IS INITIAL.
+        MESSAGE 'Không tìm thấy chương trình Delete cho Object này' TYPE 'E'.
+      ELSE.
+        SUBMIT (GV_PROG_DEL) VIA SELECTION-SCREEN AND RETURN.
+        " Sau khi chạy xong, refresh lại thống kê
+        CLEAR GT_ARCH_STAT.
+        PERFORM GET_DATA.
+        PERFORM BUILD_FIELDCAT.
+      ENDIF.
+
+    WHEN 'BT_REFRESH'.
+      " Refresh lại dữ liệu thống kê
+      CLEAR: GT_ARCH_STAT, GO_CONT_200, GO_ALV_200.
+      PERFORM GET_DATA.
+      PERFORM BUILD_FIELDCAT.
   ENDCASE.
 ENDMODULE.

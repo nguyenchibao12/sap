@@ -144,30 +144,107 @@ ENDFORM.
 *& -->  p1        text
 *& <--  p2        text
 *&---------------------------------------------------------------------*
-FORM BUILD_FIELDCAT .
+*&---------------------------------------------------------------------*
+*& Form GET_DATA — Đọc thống kê archive từ ZEKKO_15
+*&---------------------------------------------------------------------*
+FORM GET_DATA.
+  DATA: lt_raw TYPE TABLE OF zekko_15,
+        ls_raw TYPE zekko_15.
 
+  CLEAR gt_arch_stat.
+  SELECT * FROM zekko_15 INTO TABLE lt_raw.
+
+  LOOP AT lt_raw INTO ls_raw.
+    READ TABLE gt_arch_stat ASSIGNING FIELD-SYMBOL(<stat>)
+      WITH KEY bukrs = ls_raw-bukrs bsart = ls_raw-bsart.
+
+    IF sy-subrc <> 0.
+      APPEND INITIAL LINE TO gt_arch_stat ASSIGNING <stat>.
+      <stat>-bukrs    = ls_raw-bukrs.
+      <stat>-bsart    = ls_raw-bsart.
+      <stat>-min_date = ls_raw-aedat.
+      <stat>-max_date = ls_raw-aedat.
+    ENDIF.
+
+    <stat>-cnt_total = <stat>-cnt_total + 1.
+
+    IF sy-datum - ls_raw-aedat >= 180.
+      <stat>-cnt_ready = <stat>-cnt_ready + 1.
+    ELSE.
+      <stat>-cnt_new   = <stat>-cnt_new + 1.
+    ENDIF.
+
+    IF ls_raw-aedat < <stat>-min_date. <stat>-min_date = ls_raw-aedat. ENDIF.
+    IF ls_raw-aedat > <stat>-max_date. <stat>-max_date = ls_raw-aedat. ENDIF.
+  ENDLOOP.
 ENDFORM.
-*&---------------------------------------------------------------------*
-*& Form get_data
-*&---------------------------------------------------------------------*
-*& text
-*&---------------------------------------------------------------------*
-*& -->  p1        text
-*& <--  p2        text
-*&---------------------------------------------------------------------*
-FORM GET_DATA .
 
+*&---------------------------------------------------------------------*
+*& Form BUILD_FIELDCAT — Định nghĩa cột cho ALV Screen 0200
+*&---------------------------------------------------------------------*
+FORM BUILD_FIELDCAT.
+  DATA: ls_fc TYPE lvc_s_fcat.
+  CLEAR gt_fcat_200.
+
+  DEFINE m_col.
+    CLEAR ls_fc.
+    ls_fc-fieldname = &1.
+    ls_fc-coltext   = &2.
+    ls_fc-outputlen = &3.
+    APPEND ls_fc TO gt_fcat_200.
+  END-OF-DEFINITION.
+
+  m_col 'BUKRS'     'Company Code'   12.
+  m_col 'BSART'     'Doc. Type'      12.
+  m_col 'CNT_TOTAL' 'Total Records'  13.
+  m_col 'CNT_READY' 'READY (>=180d)' 13.
+  m_col 'CNT_NEW'   'Too New'        10.
+  m_col 'MIN_DATE'  'Oldest Date'    12.
+  m_col 'MAX_DATE'  'Newest Date'    12.
 ENDFORM.
-*&---------------------------------------------------------------------*
-*& Form display_alv
-*&---------------------------------------------------------------------*
-*& text
-*&---------------------------------------------------------------------*
-*& -->  p1        text
-*& <--  p2        text
-*&---------------------------------------------------------------------*
-FORM DISPLAY_ALV .
 
+*&---------------------------------------------------------------------*
+*& Form DISPLAY_ALV — Hiển thị ALV trong container CONT_0200 (Screen 0200)
+*&---------------------------------------------------------------------*
+FORM DISPLAY_ALV.
+  " Giải phóng đối tượng cũ khi vào lại màn hình
+  IF go_cont_200 IS BOUND.
+    go_cont_200->free( ).
+    CLEAR: go_cont_200, go_alv_200.
+  ENDIF.
+
+  CREATE OBJECT go_cont_200
+    EXPORTING
+      container_name        = 'CONT_0200'
+    EXCEPTIONS
+      cntl_error            = 1
+      cntl_system_error     = 2
+      create_error          = 3
+      lifetime_error        = 4
+      OTHERS                = 5.
+
+  IF sy-subrc <> 0.
+    MESSAGE 'Lỗi tạo container ALV (kiểm tra CONT_0200 trong SE51)' TYPE 'S'
+            DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  CREATE OBJECT go_alv_200
+    EXPORTING
+      i_parent          = go_cont_200
+    EXCEPTIONS
+      error_cntl_create = 1
+      error_cntl_init   = 2
+      error_cntl_link   = 3
+      error_dp_create   = 4
+      OTHERS            = 5.
+
+  IF sy-subrc <> 0. RETURN. ENDIF.
+
+  CALL METHOD go_alv_200->set_table_for_first_display
+    CHANGING
+      it_outtab       = gt_arch_stat
+      it_fieldcatalog = gt_fcat_200.
 ENDFORM.
 *&---------------------------------------------------------------------*
 *& Form CHECK_AND_CREATE_VARIANT
