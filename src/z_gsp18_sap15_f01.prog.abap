@@ -215,7 +215,7 @@ FORM DISPLAY_ALV.
 
   CREATE OBJECT go_cont_200
     EXPORTING
-      container_name        = 'CONT_0200'
+      container_name        = 'ALV_CONTAINER'
     EXCEPTIONS
       cntl_error            = 1
       cntl_system_error     = 2

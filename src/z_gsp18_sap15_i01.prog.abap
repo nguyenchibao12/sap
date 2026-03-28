@@ -28,6 +28,10 @@ MODULE USER_COMMAND_0100 INPUT.
       ENDIF.
       " --- KẾT THÚC PHẦN SỬA ĐỔI ---
 
+    WHEN 'BT_MANAGE'.
+      " Mở chương trình quản lý cấu hình Archive
+      SUBMIT Z_CONFIG_Z15_EKKO VIA SELECTION-SCREEN AND RETURN.
+
     WHEN 'BT_DELETE'.
       IF GV_OBJECT IS INITIAL.
         MESSAGE 'Vui lòng nhập Archiving Object' TYPE 'E'.

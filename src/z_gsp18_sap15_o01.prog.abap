@@ -7,8 +7,9 @@ MODULE status_0100 OUTPUT.
 ENDMODULE.
 
 MODULE status_0200 OUTPUT.
-  SET PF-STATUS 'STATUS_200'.
-  SET TITLEBAR 'TITLE_200'.
+  " STATUS_200 không tồn tại trong CUA — dùng lại STATUS_100
+  SET PF-STATUS 'STATUS_100'.
+  SET TITLEBAR 'TITLE_100'.
   " Load và build field catalog nếu chưa có dữ liệu
   IF gt_arch_stat IS INITIAL.
     PERFORM get_data.
