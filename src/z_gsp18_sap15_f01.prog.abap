@@ -145,37 +145,39 @@ ENDFORM.
 *& <--  p2        text
 *&---------------------------------------------------------------------*
 *&---------------------------------------------------------------------*
-*& Form GET_DATA — Đọc thống kê archive từ ZEKKO_15
+*& Form GET_DATA — Đọc thống kê archive từ ZSP26_ARCH_LOG + ZSP26_ARCH_DATA
 *&---------------------------------------------------------------------*
 FORM GET_DATA.
-  DATA: lt_raw TYPE TABLE OF zekko_15,
-        ls_raw TYPE zekko_15.
-
   CLEAR gt_arch_stat.
-  SELECT * FROM zekko_15 INTO TABLE lt_raw.
 
-  LOOP AT lt_raw INTO ls_raw.
-    READ TABLE gt_arch_stat ASSIGNING FIELD-SYMBOL(<stat>)
-      WITH KEY bukrs = ls_raw-bukrs bsart = ls_raw-bsart.
+  " Lấy danh sách bảng có log
+  SELECT DISTINCT table_name FROM zsp26_arch_log
+    INTO TABLE @DATA(lt_tables).
 
-    IF sy-subrc <> 0.
-      APPEND INITIAL LINE TO gt_arch_stat ASSIGNING <stat>.
-      <stat>-bukrs    = ls_raw-bukrs.
-      <stat>-bsart    = ls_raw-bsart.
-      <stat>-min_date = ls_raw-aedat.
-      <stat>-max_date = ls_raw-aedat.
-    ENDIF.
+  LOOP AT lt_tables INTO DATA(ls_tab).
+    APPEND INITIAL LINE TO gt_arch_stat ASSIGNING FIELD-SYMBOL(<stat>).
+    <stat>-table_name = ls_tab-table_name.
 
-    <stat>-cnt_total = <stat>-cnt_total + 1.
+    " Tổng archived
+    SELECT COUNT(*) FROM zsp26_arch_log INTO @DATA(lv_cnt)
+      WHERE table_name = ls_tab-table_name AND action = 'ARCHIVE'.
+    <stat>-cnt_archived = lv_cnt.
 
-    IF sy-datum - ls_raw-aedat >= 180.
-      <stat>-cnt_ready = <stat>-cnt_ready + 1.
-    ELSE.
-      <stat>-cnt_new   = <stat>-cnt_new + 1.
-    ENDIF.
+    " Tổng restored
+    SELECT COUNT(*) FROM zsp26_arch_log INTO lv_cnt
+      WHERE table_name = ls_tab-table_name AND action = 'RESTORE'.
+    <stat>-cnt_restored = lv_cnt.
 
-    IF ls_raw-aedat < <stat>-min_date. <stat>-min_date = ls_raw-aedat. ENDIF.
-    IF ls_raw-aedat > <stat>-max_date. <stat>-max_date = ls_raw-aedat. ENDIF.
+    " Active records
+    SELECT COUNT(*) FROM zsp26_arch_data INTO lv_cnt
+      WHERE table_name = ls_tab-table_name AND arch_status = 'A'.
+    <stat>-cnt_active = lv_cnt.
+
+    " Last activity
+    SELECT SINGLE exec_date exec_user action FROM zsp26_arch_log
+      INTO (@<stat>-last_arch_on, @<stat>-last_arch_by, @<stat>-last_action)
+      WHERE table_name = ls_tab-table_name
+      ORDER BY exec_date DESCENDING.
   ENDLOOP.
 ENDFORM.
 
@@ -194,13 +196,13 @@ FORM BUILD_FIELDCAT.
     APPEND ls_fc TO gt_fcat_200.
   END-OF-DEFINITION.
 
-  m_col 'BUKRS'     'Company Code'   12.
-  m_col 'BSART'     'Doc. Type'      12.
-  m_col 'CNT_TOTAL' 'Total Records'  13.
-  m_col 'CNT_READY' 'READY (>=180d)' 13.
-  m_col 'CNT_NEW'   'Too New'        10.
-  m_col 'MIN_DATE'  'Oldest Date'    12.
-  m_col 'MAX_DATE'  'Newest Date'    12.
+  m_col 'TABLE_NAME'   'Table Name'         20.
+  m_col 'CNT_ARCHIVED' 'Total Archived'     14.
+  m_col 'CNT_RESTORED' 'Total Restored'     14.
+  m_col 'CNT_ACTIVE'   'Active in Archive'  18.
+  m_col 'LAST_ARCH_ON' 'Last Activity Date' 18.
+  m_col 'LAST_ARCH_BY' 'Last By'            12.
+  m_col 'LAST_ACTION'  'Last Action'        12.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

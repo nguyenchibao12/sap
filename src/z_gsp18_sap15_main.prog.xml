@@ -64,7 +64,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>WRITE_BUTTON</NAME>
-       <TEXT>Write______________________________</TEXT>
+       <TEXT>Archive____________________________</TEXT>
        <LINE>006</LINE>
        <COLUMN>013</COLUMN>
        <LENGTH>035</LENGTH>
@@ -79,7 +79,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>DELETE_BUTTON</NAME>
-       <TEXT>Delete_____________________________</TEXT>
+       <TEXT>Restore____________________________</TEXT>
        <LINE>007</LINE>
        <COLUMN>013</COLUMN>
        <LENGTH>035</LENGTH>
@@ -94,13 +94,28 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>MANAGE_BUTTON</NAME>
-       <TEXT>Manage_____________________________</TEXT>
+       <TEXT>Config_____________________________</TEXT>
        <LINE>008</LINE>
        <COLUMN>013</COLUMN>
        <LENGTH>035</LENGTH>
        <VISLENGTH>035</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <PUSH_FCODE>BT_MANAGE</PUSH_FCODE>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>PUSH</TYPE>
+       <NAME>MONITOR_BUTTON</NAME>
+       <TEXT>Monitor____________________________</TEXT>
+       <LINE>009</LINE>
+       <COLUMN>013</COLUMN>
+       <LENGTH>035</LENGTH>
+       <VISLENGTH>035</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <PUSH_FCODE>BT_MONITOR</PUSH_FCODE>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
@@ -338,6 +353,15 @@
       <FUN_TEXT>Start Date</FUN_TEXT>
       <INFO_TEXT>Maintain Start Date</INFO_TEXT>
      </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_MONITOR</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <TEXT_NAME>ICON_OVERVIEW</TEXT_NAME>
+      <ICON_ID>@3J@</ICON_ID>
+      <FUN_TEXT>Monitor</FUN_TEXT>
+      <INFO_TEXT>Archive Monitor and Statistics</INFO_TEXT>
+     </RSMPE_FUNT>
     </FUN>
     <BUT>
      <RSMPE_BUT>
@@ -427,6 +451,10 @@
      <RSMPE_STAF>
       <STATUS>STATUS_100</STATUS>
       <FUNCTION>EXIT</FUNCTION>
+     </RSMPE_STAF>
+     <RSMPE_STAF>
+      <STATUS>STATUS_100</STATUS>
+      <FUNCTION>BT_MONITOR</FUNCTION>
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STATUS_300</STATUS>

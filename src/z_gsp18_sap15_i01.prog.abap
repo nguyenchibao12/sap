@@ -12,42 +12,20 @@ MODULE USER_COMMAND_0100 INPUT.
       LEAVE PROGRAM.
 
     WHEN 'BT_WRITE'.
-      " --- BẮT ĐẦU PHẦN SỬA ĐỔI ---
-      " Thay vì chạy Job trực tiếp, kiểm tra Object và gọi Screen 0300
-      IF GV_OBJECT IS INITIAL.
-        MESSAGE 'Vui lòng nhập Archiving Object' TYPE 'E'.
-      ELSE.
-        TRANSLATE GV_OBJECT TO UPPER CASE.
-        PERFORM GET_ARCHIVE_PROGRAMS.
-
-        IF GV_PROG_WRITE IS NOT INITIAL.
-          CALL SCREEN 0300. " Điều hướng sang màn hình Write
-        ELSE.
-          MESSAGE 'Archiving Object không hợp lệ hoặc chưa có chương trình Write' TYPE 'E'.
-        ENDIF.
-      ENDIF.
-      " --- KẾT THÚC PHẦN SỬA ĐỔI ---
+      " Mở Z_ARCHIVE_WRITE_V2 — generic write cho tất cả ZSP26_* tables
+      SUBMIT Z_ARCHIVE_WRITE_V2 VIA SELECTION-SCREEN AND RETURN.
 
     WHEN 'BT_MANAGE'.
       " Mở chương trình quản lý cấu hình Archive
       SUBMIT Z_CONFIG_Z15_EKKO VIA SELECTION-SCREEN AND RETURN.
 
     WHEN 'BT_DELETE'.
-      IF GV_OBJECT IS INITIAL.
-        MESSAGE 'Vui lòng nhập Archiving Object' TYPE 'E'.
-      ELSE.
-        TRANSLATE GV_OBJECT TO UPPER CASE.
-        PERFORM GET_ARCHIVE_PROGRAMS.
-        IF GV_PROG_DEL IS NOT INITIAL.
-          " Load dữ liệu thống kê rồi mở màn hình Monitor/Delete
-          CLEAR GT_ARCH_STAT.
-          PERFORM GET_DATA.
-          PERFORM BUILD_FIELDCAT.
-          CALL SCREEN 0200.
-        ELSE.
-          MESSAGE 'Archiving Object không hợp lệ hoặc chưa có chương trình Delete' TYPE 'E'.
-        ENDIF.
-      ENDIF.
+      " Mở Z_ARCHIVE_RESTORE_V2 — generic restore cho tất cả ZSP26_* tables
+      SUBMIT Z_ARCHIVE_RESTORE_V2 VIA SELECTION-SCREEN AND RETURN.
+
+    WHEN 'BT_MONITOR'.
+      " Mở Z_ARCHIVE_MONITOR_V2 — thống kê & log toàn bộ archive
+      SUBMIT Z_ARCHIVE_MONITOR_V2 VIA SELECTION-SCREEN AND RETURN.
   ENDCASE.
 ENDMODULE.
 

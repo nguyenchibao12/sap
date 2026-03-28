@@ -32,15 +32,15 @@ DATA: gt_outtab TYPE TABLE OF ty_outtab,
       gs_layout TYPE lvc_s_layo,
       gt_fcat   TYPE lvc_t_fcat.
 
-* Screen 0200 - Archive Monitor / Statistics
+* Screen 0200 - Archive Monitor / Statistics (generic — không phụ thuộc ZEKKO_15)
 TYPES: BEGIN OF ty_arch_stat,
-         bukrs     TYPE zekko_15-bukrs,
-         bsart     TYPE zekko_15-bsart,
-         cnt_total TYPE i,
-         cnt_ready TYPE i,
-         cnt_new   TYPE i,
-         min_date  TYPE zekko_15-aedat,
-         max_date  TYPE zekko_15-aedat,
+         table_name   TYPE tabname,
+         cnt_archived TYPE i,
+         cnt_restored TYPE i,
+         cnt_active   TYPE i,
+         last_arch_on TYPE d,
+         last_arch_by TYPE xubname,
+         last_action  TYPE char10,
        END OF ty_arch_stat.
 
 DATA: gt_arch_stat TYPE TABLE OF ty_arch_stat,
