@@ -68,7 +68,7 @@ START-OF-SELECTION.
   ls_cfg-created_on = sy-datum.
   ls_cfg-changed_by = sy-uname.
   ls_cfg-changed_on = sy-datum.
-  INSERT zsp26_arch_cfg FROM ls_cfg.
+  MODIFY zsp26_arch_cfg FROM ls_cfg.
   IF sy-subrc = 0.
     WRITE: / '  - ZSP26_EKKO config inserted'.
   ENDIF.
@@ -92,7 +92,7 @@ START-OF-SELECTION.
   ls_cfg-created_on = sy-datum.
   ls_cfg-changed_by = sy-uname.
   ls_cfg-changed_on = sy-datum.
-  INSERT zsp26_arch_cfg FROM ls_cfg.
+  MODIFY zsp26_arch_cfg FROM ls_cfg.
   IF sy-subrc = 0.
     WRITE: / '  - ZSP26_VBAK config inserted'.
   ENDIF.
@@ -116,7 +116,7 @@ START-OF-SELECTION.
   ls_cfg-created_on = sy-datum.
   ls_cfg-changed_by = sy-uname.
   ls_cfg-changed_on = sy-datum.
-  INSERT zsp26_arch_cfg FROM ls_cfg.
+  MODIFY zsp26_arch_cfg FROM ls_cfg.
   IF sy-subrc = 0.
     WRITE: / '  - ZSP26_BKPF config inserted'.
   ENDIF.
@@ -133,7 +133,7 @@ START-OF-SELECTION.
   ls_cfg-is_active   = 'X'.
   ls_cfg-created_by  = sy-uname. ls_cfg-created_on = sy-datum.
   ls_cfg-changed_by  = sy-uname. ls_cfg-changed_on = sy-datum.
-  INSERT zsp26_arch_cfg FROM ls_cfg.
+  MODIFY zsp26_arch_cfg FROM ls_cfg.
   IF sy-subrc = 0. WRITE: / '  - ZSP26_MKPF config inserted'. ENDIF.
 
   " Config for MARA
@@ -148,7 +148,7 @@ START-OF-SELECTION.
   ls_cfg-is_active   = 'X'.
   ls_cfg-created_by  = sy-uname. ls_cfg-created_on = sy-datum.
   ls_cfg-changed_by  = sy-uname. ls_cfg-changed_on = sy-datum.
-  INSERT zsp26_arch_cfg FROM ls_cfg.
+  MODIFY zsp26_arch_cfg FROM ls_cfg.
   IF sy-subrc = 0. WRITE: / '  - ZSP26_MARA config inserted'. ENDIF.
 
   " Config for KNA1
@@ -163,7 +163,7 @@ START-OF-SELECTION.
   ls_cfg-is_active   = 'X'.
   ls_cfg-created_by  = sy-uname. ls_cfg-created_on = sy-datum.
   ls_cfg-changed_by  = sy-uname. ls_cfg-changed_on = sy-datum.
-  INSERT zsp26_arch_cfg FROM ls_cfg.
+  MODIFY zsp26_arch_cfg FROM ls_cfg.
   IF sy-subrc = 0. WRITE: / '  - ZSP26_KNA1 config inserted'. ENDIF.
 
   WRITE: / '  Config loaded: 7 entries'.
@@ -191,7 +191,7 @@ START-OF-SELECTION.
   ls_rule-value_low  = ' '.
   ls_rule-and_or     = 'AND'.
   ls_rule-is_active  = 'X'.
-  INSERT zsp26_arch_rule FROM ls_rule.
+  MODIFY zsp26_arch_rule FROM ls_rule.
 
   TRY.
       lv_guid = cl_system_uuid=>create_uuid_x16_static( ).
@@ -209,7 +209,7 @@ START-OF-SELECTION.
   ls_rule-value_low  = 'F'.
   ls_rule-and_or     = ''.
   ls_rule-is_active  = 'X'.
-  INSERT zsp26_arch_rule FROM ls_rule.
+  MODIFY zsp26_arch_rule FROM ls_rule.
 
   WRITE: / '  Rules loaded: 2 entries'.
 
@@ -235,7 +235,7 @@ START-OF-SELECTION.
   ls_dep-parent_field = 'EBELN'.
   ls_dep-child_field  = 'EBELN'.
   ls_dep-del_cascade  = 'X'.
-  INSERT zsp26_arch_dep FROM ls_dep.
+  MODIFY zsp26_arch_dep FROM ls_dep.
 
   " VBAK → VBAP
   TRY.
@@ -253,7 +253,7 @@ START-OF-SELECTION.
   ls_dep-parent_field = 'VBELN'.
   ls_dep-child_field  = 'VBELN'.
   ls_dep-del_cascade  = 'X'.
-  INSERT zsp26_arch_dep FROM ls_dep.
+  MODIFY zsp26_arch_dep FROM ls_dep.
 
   " BKPF → BSEG (compound key - 3 entries)
   TRY.
@@ -271,7 +271,7 @@ START-OF-SELECTION.
   ls_dep-parent_field = 'BUKRS'.
   ls_dep-child_field  = 'BUKRS'.
   ls_dep-del_cascade  = 'X'.
-  INSERT zsp26_arch_dep FROM ls_dep.
+  MODIFY zsp26_arch_dep FROM ls_dep.
 
   TRY.
       lv_guid = cl_system_uuid=>create_uuid_x16_static( ).
@@ -288,7 +288,7 @@ START-OF-SELECTION.
   ls_dep-parent_field = 'BELNR'.
   ls_dep-child_field  = 'BELNR'.
   ls_dep-del_cascade  = 'X'.
-  INSERT zsp26_arch_dep FROM ls_dep.
+  MODIFY zsp26_arch_dep FROM ls_dep.
 
   TRY.
       lv_guid = cl_system_uuid=>create_uuid_x16_static( ).
@@ -305,7 +305,7 @@ START-OF-SELECTION.
   ls_dep-parent_field = 'GJAHR'.
   ls_dep-child_field  = 'GJAHR'.
   ls_dep-del_cascade  = 'X'.
-  INSERT zsp26_arch_dep FROM ls_dep.
+  MODIFY zsp26_arch_dep FROM ls_dep.
 
   WRITE: / '  Dependencies loaded: 5 entries'.
 
@@ -350,7 +350,7 @@ START-OF-SELECTION.
   add_fmap 'ZSP26_EKKO' 'BEDAT' ' ' 'X' 'X' 'PO Date'.
   add_fmap 'ZSP26_EKKO' 'LOEKZ' ' ' 'X' ' ' 'Deletion Flag'.
 
-  INSERT zsp26_arch_fmap FROM TABLE lt_fmap.
+  MODIFY zsp26_arch_fmap FROM TABLE lt_fmap.
   WRITE: / '  EKKO field mappings loaded:', lines( lt_fmap ), 'entries'.
 
   " VBAK field mappings
@@ -365,7 +365,7 @@ START-OF-SELECTION.
   add_fmap 'ZSP26_VBAK' 'ERNAM' ' ' 'X' ' ' 'Created By'.
   add_fmap 'ZSP26_VBAK' 'AUDAT' ' ' 'X' 'X' 'Doc Date'.
 
-  INSERT zsp26_arch_fmap FROM TABLE lt_fmap.
+  MODIFY zsp26_arch_fmap FROM TABLE lt_fmap.
   WRITE: / '  VBAK field mappings loaded:', lines( lt_fmap ), 'entries'.
 
   " BKPF field mappings
@@ -381,7 +381,7 @@ START-OF-SELECTION.
   add_fmap 'ZSP26_BKPF' 'BKTXT' ' ' 'X' 'X' 'Header Text'.
   add_fmap 'ZSP26_BKPF' 'XBLNR' ' ' 'X' 'X' 'Reference'.
 
-  INSERT zsp26_arch_fmap FROM TABLE lt_fmap.
+  MODIFY zsp26_arch_fmap FROM TABLE lt_fmap.
   WRITE: / '  BKPF field mappings loaded:', lines( lt_fmap ), 'entries'.
 
 
@@ -436,10 +436,10 @@ START-OF-SELECTION.
     ENDDO.
   ENDDO.
 
-  INSERT zsp26_ekko FROM TABLE lt_ekko.
+  MODIFY zsp26_ekko FROM TABLE lt_ekko.
   WRITE: / '  EKKO loaded:', lines( lt_ekko ), 'entries'.
 
-  INSERT zsp26_ekpo FROM TABLE lt_ekpo.
+  MODIFY zsp26_ekpo FROM TABLE lt_ekpo.
   WRITE: / '  EKPO loaded:', lines( lt_ekpo ), 'entries'.
 
 
@@ -489,10 +489,10 @@ START-OF-SELECTION.
     ENDDO.
   ENDDO.
 
-  INSERT zsp26_vbak FROM TABLE lt_vbak.
+  MODIFY zsp26_vbak FROM TABLE lt_vbak.
   WRITE: / '  VBAK loaded:', lines( lt_vbak ), 'entries'.
 
-  INSERT zsp26_vbap FROM TABLE lt_vbap.
+  MODIFY zsp26_vbap FROM TABLE lt_vbap.
   WRITE: / '  VBAP loaded:', lines( lt_vbap ), 'entries'.
 
 
@@ -547,10 +547,10 @@ START-OF-SELECTION.
     ENDDO.
   ENDDO.
 
-  INSERT zsp26_bkpf FROM TABLE lt_bkpf.
+  MODIFY zsp26_bkpf FROM TABLE lt_bkpf.
   WRITE: / '  BKPF loaded:', lines( lt_bkpf ), 'entries'.
 
-  INSERT zsp26_bseg FROM TABLE lt_bseg.
+  MODIFY zsp26_bseg FROM TABLE lt_bseg.
   WRITE: / '  BSEG loaded:', lines( lt_bseg ), 'entries'.
 
 
@@ -596,9 +596,9 @@ START-OF-SELECTION.
     ENDDO.
   ENDDO.
 
-  INSERT zsp26_mkpf FROM TABLE lt_mkpf.
+  MODIFY zsp26_mkpf FROM TABLE lt_mkpf.
   WRITE: / '  MKPF loaded:', lines( lt_mkpf ), 'entries'.
-  INSERT zsp26_mseg FROM TABLE lt_mseg.
+  MODIFY zsp26_mseg FROM TABLE lt_mseg.
   WRITE: / '  MSEG loaded:', lines( lt_mseg ), 'entries'.
 
 *----------------------------------------------------------------------*
@@ -625,7 +625,7 @@ START-OF-SELECTION.
     APPEND ls_mara TO lt_mara.
   ENDDO.
 
-  INSERT zsp26_mara FROM TABLE lt_mara.
+  MODIFY zsp26_mara FROM TABLE lt_mara.
   WRITE: / '  MARA loaded:', lines( lt_mara ), 'entries'.
 
 *----------------------------------------------------------------------*
@@ -655,7 +655,7 @@ START-OF-SELECTION.
     APPEND ls_kna1 TO lt_kna1.
   ENDDO.
 
-  INSERT zsp26_kna1 FROM TABLE lt_kna1.
+  MODIFY zsp26_kna1 FROM TABLE lt_kna1.
   WRITE: / '  KNA1 loaded:', lines( lt_kna1 ), 'entries'.
 
 *----------------------------------------------------------------------*
