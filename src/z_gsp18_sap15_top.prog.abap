@@ -108,11 +108,4 @@ CLASS lcl_handler DEFINITION.
       IMPORTING e_salv_function.
 ENDCLASS.
 
-CLASS lcl_handler IMPLEMENTATION.
-  METHOD on_cmd.
-    CASE e_salv_function.
-      WHEN 'ARCH_NOW'. PERFORM do_archive_via_adk.
-      WHEN 'RESTORE'.  PERFORM do_restore_via_adk.
-    ENDCASE.
-  ENDMETHOD.
-ENDCLASS.
+"  lcl_handler IMPLEMENTATION is in Z_GSP18_SAP15_F01

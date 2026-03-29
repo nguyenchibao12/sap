@@ -1,7 +1,19 @@
 *&---------------------------------------------------------------------*
 *& Include Z_GSP18_SAP15_F01
-*& Subroutines — tương đương "Subroutines" trong cây SE80
+*& Subroutines + Class Implementation
 *&---------------------------------------------------------------------*
+
+"----------------------------------------------------------------------
+" Class Implementation (moved from TOP — TOP allows definitions only)
+"----------------------------------------------------------------------
+CLASS lcl_handler IMPLEMENTATION.
+  METHOD on_cmd.
+    CASE e_salv_function.
+      WHEN 'ARCH_NOW'. PERFORM do_archive_via_adk.
+      WHEN 'RESTORE'.  PERFORM do_restore_via_adk.
+    ENDCASE.
+  ENDMETHOD.
+ENDCLASS.
 
 *&---------------------------------------------------------------------*
 *& FORM DO_ARCHIVE_WRITE — Phase 2+3: Preview & Archive
@@ -143,7 +155,9 @@ FORM show_archive_preview.
 
     lo_alv->display( ).
 
-  CATCH cx_salv_msg INTO DATA(lx).
+  CATCH cx_salv_existing
+        cx_salv_wrong_call
+        cx_salv_msg INTO DATA(lx).
     MESSAGE lx->get_text( ) TYPE 'E'.
   ENDTRY.
 ENDFORM.
@@ -280,80 +294,6 @@ FORM do_restore_preview.
     WITH p_table = gv_tabname
     WITH p_rest  = ' '
     AND RETURN.
-  RETURN.
-
-  " --- legacy code below (unreachable, kept for reference) ---
-  CLEAR gt_arch_rows.
-
-  SELECT arch_id, data_seq, table_name, key_values, archived_on, archived_by, arch_status, data_json
-    FROM zsp26_arch_data
-    INTO CORRESPONDING FIELDS OF TABLE gt_arch_rows
-    WHERE table_name  = @gv_tabname
-      AND arch_status = 'A'
-    ORDER BY archived_on DESCENDING, data_seq ASCENDING.
-
-  IF gt_arch_rows IS INITIAL.
-    MESSAGE |Không có records đã archive cho '{ gv_tabname }'| TYPE 'S' DISPLAY LIKE 'W'.
-    RETURN.
-  ENDIF.
-
-  DATA: lo_alv   TYPE REF TO cl_salv_table,
-        lo_funcs TYPE REF TO cl_salv_functions,
-        lo_cols  TYPE REF TO cl_salv_columns_table,
-        lo_col   TYPE REF TO cl_salv_column_table,
-        lo_disp  TYPE REF TO cl_salv_display_settings,
-        lo_sel   TYPE REF TO cl_salv_selections.
-
-  TRY.
-    cl_salv_table=>factory(
-      IMPORTING r_salv_table = lo_alv
-      CHANGING  t_table      = gt_arch_rows ).
-
-    lo_funcs = lo_alv->get_functions( ).
-    lo_funcs->set_all( abap_true ).
-
-    TRY.
-      lo_funcs->add_function(
-        name     = 'RESTORE'
-        icon     = '@49@'
-        text     = 'Restore Selected'
-        tooltip  = |Restore records được chọn về { gv_tabname }|
-        position = if_salv_c_function_position=>right_of_salv_functions ).
-    CATCH cx_salv_method_not_supported.
-    ENDTRY.
-    SET HANDLER lcl_handler=>on_cmd FOR lo_alv->get_event( ).
-
-    lo_sel = lo_alv->get_selections( ).
-    lo_sel->set_selection_mode( if_salv_c_selection_mode=>row_column ).
-
-    lo_cols = lo_alv->get_columns( ).
-    lo_cols->set_optimize( abap_true ).
-
-    TRY.
-      lo_col ?= lo_cols->get_column( 'ARCH_ID' ).   lo_col->set_visible( abap_false ).
-      lo_col ?= lo_cols->get_column( 'DATA_JSON' ).  lo_col->set_visible( abap_false ).
-      lo_col ?= lo_cols->get_column( 'SEL' ).
-      lo_col->set_long_text( 'Select' ).
-      lo_col ?= lo_cols->get_column( 'KEY_VALUES' ).
-      lo_col->set_long_text( 'Key Values' ).
-      lo_col ?= lo_cols->get_column( 'ARCHIVED_ON' ).
-      lo_col->set_long_text( 'Archived On' ).
-      lo_col ?= lo_cols->get_column( 'ARCHIVED_BY' ).
-      lo_col->set_long_text( 'Archived By' ).
-      lo_col ?= lo_cols->get_column( 'ARCH_STATUS' ).
-      lo_col->set_long_text( 'Status' ).
-    CATCH cx_salv_not_found.
-    ENDTRY.
-
-    lo_disp = lo_alv->get_display_settings( ).
-    lo_disp->set_list_header(
-      |ARCHIVED RECORDS — { gv_tabname }  [ { lines( gt_arch_rows ) } records ]| ).
-
-    lo_alv->display( ).
-
-  CATCH cx_salv_msg INTO DATA(lx).
-    MESSAGE lx->get_text( ) TYPE 'E'.
-  ENDTRY.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
