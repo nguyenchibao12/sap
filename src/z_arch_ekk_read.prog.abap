@@ -35,7 +35,9 @@ START-OF-SELECTION.
     EXPORTING  archiv_obj = 'Z_ARCH_EKK'
     EXCEPTIONS OTHERS     = 1.
   IF sy-subrc <> 0.
-    MESSAGE 'Cannot open archive Z_ARCH_EKK for read.' TYPE 'A'.
+    MESSAGE 'Không mở được archive Z_ARCH_EKK. Chưa có file archive — hãy chạy Write trước qua SARA.'
+            TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
   ENDIF.
 
   " Read all records, filter by table if specified
