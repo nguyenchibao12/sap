@@ -3,6 +3,29 @@
 *&---------------------------------------------------------------------*
 
 *&---------------------------------------------------------------------*
+*& Module F4_TABNAME INPUT  (value request — màn 0100)
+*&---------------------------------------------------------------------*
+MODULE f4_tabname INPUT.
+  DATA: lt_return TYPE TABLE OF ddshretval.
+
+  CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
+    EXPORTING
+      searchhelp    = 'ZSP26_SH_TABLES'
+      dynpprog      = sy-repid
+      dynpnr        = sy-dynnr
+      dynprofield   = 'GV_TABNAME'
+    TABLES
+      return_tab    = lt_return
+    EXCEPTIONS
+      OTHERS        = 1.
+
+  READ TABLE lt_return INTO DATA(ls_ret) INDEX 1.
+  IF sy-subrc = 0.
+    gv_tabname = CONV tabname( ls_ret-fieldval ).
+  ENDIF.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
 *& Module USER_COMMAND_0100 INPUT
 *&---------------------------------------------------------------------*
 MODULE user_command_0100 INPUT.
@@ -10,11 +33,8 @@ MODULE user_command_0100 INPUT.
   lv_cmd = ok_code.
   CLEAR ok_code.
 
-  " GV_OBJECT là field trên screen 0100 — copy sang gv_tabname để dùng trong FORMs
-  IF gv_object IS NOT INITIAL.
-    gv_tabname = gv_object.
-    TRANSLATE gv_tabname TO UPPER CASE.
-  ENDIF.
+  CONDENSE gv_tabname.
+  TRANSLATE gv_tabname TO UPPER CASE.
 
   CASE lv_cmd.
     WHEN 'BACK' OR 'EXIT' OR 'CANC'.
