@@ -25,7 +25,7 @@ FORM do_archive_write.
     WHERE table_name = @gv_tabname AND is_active = 'X'.
 
   IF sy-subrc <> 0.
-    MESSAGE |Chưa có config cho '{ gv_tabname }'. Chạy BT_CONFIG để tạo.| TYPE 'S'
+    MESSAGE |Chưa có config cho '{ gv_tabname }'. Dùng Config hoặc ZSP26_LOAD_SAMPLE_DATA.| TYPE 'S'
             DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
@@ -178,7 +178,7 @@ ENDFORM.
 FORM do_restore_via_adk.
   SUBMIT z_arch_ekk_read
     WITH p_table = gv_tabname
-    WITH p_rest  = ' '
+    WITH p_rest  = 'X'
     AND RETURN.
 ENDFORM.
 
