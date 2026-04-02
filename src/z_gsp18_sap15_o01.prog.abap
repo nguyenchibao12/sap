@@ -29,6 +29,9 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 MODULE init_fields_0300 OUTPUT.
   " Giá trị mặc định cho màn hình Write Job
+  IF gv_object IS INITIAL.
+    gv_object = 'Z_ARCH_EKK'.
+  ENDIF.
   IF gv_test_mode IS INITIAL.
     gv_test_mode = 'X'.
   ENDIF.

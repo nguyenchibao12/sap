@@ -106,7 +106,18 @@ START-OF-SELECTION.
   IF p_rest = 'X'.
     DATA: lv_ok  TYPE i VALUE 0,
           lv_err TYPE i VALUE 0,
-          gr_rec TYPE REF TO data.
+          gr_rec TYPE REF TO data,
+          lv_any_sel TYPE abap_bool VALUE abap_false.
+
+    LOOP AT lt_disp TRANSPORTING NO FIELDS WHERE sel = 'X'.
+      lv_any_sel = abap_true.
+      EXIT.
+    ENDLOOP.
+    IF lv_any_sel = abap_false.
+      LOOP AT lt_disp ASSIGNING FIELD-SYMBOL(<ls_row>).
+        <ls_row>-sel = 'X'.
+      ENDLOOP.
+    ENDIF.
 
     LOOP AT lt_disp INTO ls_disp WHERE sel = 'X'.
       CREATE DATA gr_rec TYPE (ls_disp-table_name).
