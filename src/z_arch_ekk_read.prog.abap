@@ -106,27 +106,18 @@ START-OF-SELECTION.
 
   " Restore selected records if checkbox ticked
   IF p_rest = 'X'.
-    DATA: lv_ok  TYPE i VALUE 0,
-          lv_err TYPE i VALUE 0,
-          gr_rec TYPE REF TO data,
-          lv_any_sel TYPE abap_bool VALUE abap_false.
-
-    LOOP AT lt_disp TRANSPORTING NO FIELDS WHERE sel = 'X'.
-      lv_any_sel = abap_true.
-      EXIT.
-    ENDLOOP.
-    IF lv_any_sel = abap_false.
-      LOOP AT lt_disp ASSIGNING FIELD-SYMBOL(<ls_row>).
-        <ls_row>-sel = 'X'.
-      ENDLOOP.
-    ENDIF.
+    DATA: lv_ok   TYPE i VALUE 0,
+          lv_err  TYPE i VALUE 0,
+          gr_rec  TYPE REF TO data,
+          lv_json TYPE string.
 
     LOOP AT lt_disp INTO ls_disp WHERE sel = 'X'.
       CREATE DATA gr_rec TYPE (ls_disp-table_name).
       ASSIGN gr_rec->* TO FIELD-SYMBOL(<rec>).
       TRY.
+        lv_json = ls_disp-data_json.  " TYPE c → string (bắt buộc cho /ui2/cl_json)
         /ui2/cl_json=>deserialize(
-          EXPORTING json = ls_disp-data_json
+          EXPORTING json = lv_json
           CHANGING  data = <rec> ).
         INSERT (ls_disp-table_name) FROM <rec>.
         IF sy-subrc = 0. ADD 1 TO lv_ok. ELSE. ADD 1 TO lv_err. ENDIF.
