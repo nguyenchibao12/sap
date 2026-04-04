@@ -2,6 +2,7 @@
 *& Include Z_GSP18_SAP15_F01
 *& Subroutines + Class Implementation
 *&---------------------------------------------------------------------*
+INCLUDE z_gsp18_apply_rules.
 
 "----------------------------------------------------------------------
 " Class Implementation (moved from TOP — TOP allows definitions only)
@@ -9,8 +10,14 @@
 CLASS lcl_handler IMPLEMENTATION.
   METHOD on_cmd.
     CASE e_salv_function.
-      WHEN 'ARCH_NOW'. PERFORM do_archive_via_adk.
-      WHEN 'RESTORE'.  PERFORM do_restore_via_adk.
+      WHEN 'ARCH_NOW'.
+        DATA: lv_dep_ok TYPE abap_bool.
+        PERFORM check_dependencies CHANGING lv_dep_ok.
+        IF lv_dep_ok = abap_true.
+          PERFORM do_archive_via_adk.
+        ENDIF.
+      WHEN 'RESTORE'.
+        PERFORM do_restore_via_adk.
     ENDCASE.
   ENDMETHOD.
 ENDCLASS.
@@ -76,6 +83,9 @@ FORM show_archive_preview.
   ENDLOOP.
 
   " Phân loại từng record
+  DATA: lv_rule_pass TYPE abap_bool,
+        lv_fail_cnt  TYPE i VALUE 0.
+
   LOOP AT <lt_all> ASSIGNING FIELD-SYMBOL(<row>).
     CLEAR ls_prev.
 
@@ -88,7 +98,17 @@ FORM show_archive_preview.
       ls_prev-age_days = sy-datum - ls_prev-date_val.
     ENDIF.
 
-    IF ls_prev-age_days >= gs_cfg-retention.
+    " Check archive rules first
+    PERFORM apply_archive_rules
+      USING <row> gs_cfg-config_id
+      CHANGING lv_rule_pass.
+
+    IF lv_rule_pass = abap_false.
+      ls_prev-status = 'RULE FAIL'.
+      ls_prev-detail = 'Does not meet archive criteria'.
+      ADD 1 TO lv_fail_cnt.
+      ADD 1 TO gv_skp_cnt.
+    ELSEIF ls_prev-age_days >= gs_cfg-retention.
       ls_prev-status = 'READY'.
       ls_prev-detail = |Eligible: { ls_prev-age_days } days ≥ { gs_cfg-retention }d|.
       ADD 1 TO gv_rdy_cnt.
@@ -123,7 +143,7 @@ FORM show_archive_preview.
           name     = 'ARCH_NOW'
           icon     = '@2L@'
           text     = 'Archive Now'
-          tooltip  = |Move { gv_rdy_cnt } READY records → ZSP26_ARCH_DATA|
+          tooltip  = |ADK: archive { gv_rdy_cnt } READY rows to .ARC (Z_ARCH_EKK)|
           position = if_salv_c_function_position=>right_of_salv_functions ).
       CATCH cx_salv_method_not_supported.
       ENDTRY.
@@ -150,7 +170,7 @@ FORM show_archive_preview.
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(
       |PREVIEW — { gv_tabname }  [ Total: { lines( lt_prev ) } | &&
-      |  READY: { gv_rdy_cnt }  TOO NEW: { gv_skp_cnt } | &&
+      |  READY: { gv_rdy_cnt }  TOO NEW: { gv_skp_cnt - lv_fail_cnt }  RULE FAIL: { lv_fail_cnt } | &&
       |/ Retention: { gs_cfg-retention }d / Field: { gs_cfg-data_field } ]| ).
 
     lo_alv->display( ).
@@ -370,83 +390,118 @@ FORM do_restore_now.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_MONITOR — Phase 5: Thống kê Archive
+*& FORM DO_MONITOR — Storage Analysis & Monitoring (Feature 3)
+*& Scans all active configs → counts live+archive stats → ARCH_STAT
 *&---------------------------------------------------------------------*
 FORM do_monitor.
-  DATA: lt_sum   TYPE TABLE OF ty_arch_stat,
-        lt_det   TYPE TABLE OF ty_log_det,
-        lv_cnt   TYPE i,
-        lv_tn    TYPE tabname.
+  TYPES: BEGIN OF ty_stat_disp,
+           table_name  TYPE tabname,
+           live_recs   TYPE i,
+           arch_runs   TYPE i,
+           rest_runs   TYPE i,
+           del_runs    TYPE i,
+           last_action TYPE char10,
+           last_date   TYPE d,
+           last_user   TYPE xubname,
+           retention   TYPE i,
+           is_active   TYPE char1,
+         END OF ty_stat_disp.
 
-  " Lấy danh sách bảng đã có log
-  SELECT DISTINCT table_name FROM zsp26_arch_log
-    INTO TABLE @DATA(lt_tabs).
+  DATA: lt_disp TYPE TABLE OF ty_stat_disp,
+        ls_disp TYPE ty_stat_disp,
+        lt_cfg  TYPE TABLE OF zsp26_arch_cfg,
+        lv_cnt  TYPE i.
 
-  IF lt_tabs IS INITIAL.
-    MESSAGE 'Chưa có log archive nào' TYPE 'S' DISPLAY LIKE 'W'.
+  SELECT * FROM zsp26_arch_cfg INTO TABLE @lt_cfg ORDER BY table_name.
+  IF lt_cfg IS INITIAL.
+    MESSAGE 'Chưa có config nào. Chạy ZSP26_LOAD_SAMPLE_DATA.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  LOOP AT lt_tabs INTO DATA(ls_t).
-    lv_tn = ls_t-table_name.
-    APPEND INITIAL LINE TO lt_sum ASSIGNING FIELD-SYMBOL(<s>).
-    <s>-table_name = lv_tn.
+  LOOP AT lt_cfg INTO DATA(ls_cfg).
+    CLEAR ls_disp.
+    ls_disp-table_name = ls_cfg-table_name.
+    ls_disp-retention  = ls_cfg-retention.
+    ls_disp-is_active  = ls_cfg-is_active.
+
+    " Live records in source table
+    TRY.
+      SELECT COUNT(*) FROM (ls_cfg-table_name) INTO @lv_cnt.
+      ls_disp-live_recs = lv_cnt.
+    CATCH cx_sy_dynamic_osql_error.
+      ls_disp-live_recs = -1.
+    ENDTRY.
+
+    " Archive/Restore/Delete runs from log
+    SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_cnt
+      WHERE table_name = @ls_cfg-table_name AND action = 'ARCHIVE'.
+    ls_disp-arch_runs = lv_cnt.
 
     SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_cnt
-      WHERE table_name = @lv_tn AND action = 'ARCHIVE'.
-    <s>-cnt_archived = lv_cnt.
+      WHERE table_name = @ls_cfg-table_name AND action = 'RESTORE'.
+    ls_disp-rest_runs = lv_cnt.
 
     SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_cnt
-      WHERE table_name = @lv_tn AND action = 'RESTORE'.
-    <s>-cnt_restored = lv_cnt.
+      WHERE table_name = @ls_cfg-table_name AND action = 'DELETE'.
+    ls_disp-del_runs = lv_cnt.
 
-    SELECT COUNT(*) FROM zsp26_arch_data INTO @lv_cnt
-      WHERE table_name = @lv_tn AND arch_status = 'A'.
-    <s>-cnt_active = lv_cnt.
-
+    " Last activity
     SELECT exec_date, exec_user, action FROM zsp26_arch_log
-      INTO (@<s>-last_arch_on, @<s>-last_arch_by, @<s>-last_action)
-      WHERE table_name = @lv_tn ORDER BY exec_date DESCENDING.
+      INTO (@ls_disp-last_date, @ls_disp-last_user, @ls_disp-last_action)
+      WHERE table_name = @ls_cfg-table_name
+      ORDER BY exec_date DESCENDING.
       EXIT.
     ENDSELECT.
+
+    APPEND ls_disp TO lt_disp.
+
+    " Write snapshot to ZSP26_ARCH_STAT
+    DATA: ls_stat TYPE zsp26_arch_stat.
+    CLEAR ls_stat.
+    TRY. ls_stat-stat_id = cl_system_uuid=>create_uuid_x16_static( ).
+    CATCH cx_uuid_error. ENDTRY.
+    ls_stat-table_name = ls_cfg-table_name.
+    ls_stat-stat_date  = sy-datum.
+    ls_stat-total_recs = ls_disp-live_recs.
+    ls_stat-arch_recs  = ls_disp-arch_runs.
+    ls_stat-rest_recs  = ls_disp-rest_runs.
+    ls_stat-del_recs   = ls_disp-del_runs.
+    ls_stat-last_user  = ls_disp-last_user.
+    INSERT zsp26_arch_stat FROM ls_stat.
   ENDLOOP.
 
-  DATA: lo_alv   TYPE REF TO cl_salv_table,
-        lo_funcs TYPE REF TO cl_salv_functions,
-        lo_cols  TYPE REF TO cl_salv_columns_table,
-        lo_col   TYPE REF TO cl_salv_column_table,
-        lo_disp  TYPE REF TO cl_salv_display_settings.
+  COMMIT WORK.
+
+  " SALV Display
+  DATA: lo_alv  TYPE REF TO cl_salv_table,
+        lo_cols TYPE REF TO cl_salv_columns_table,
+        lo_col  TYPE REF TO cl_salv_column_table,
+        lo_disp TYPE REF TO cl_salv_display_settings.
 
   TRY.
     cl_salv_table=>factory(
       IMPORTING r_salv_table = lo_alv
-      CHANGING  t_table      = lt_sum ).
-
-    lo_funcs = lo_alv->get_functions( ).
-    lo_funcs->set_all( abap_true ).
+      CHANGING  t_table      = lt_disp ).
+    lo_alv->get_functions( )->set_all( abap_true ).
     lo_cols = lo_alv->get_columns( ).
     lo_cols->set_optimize( abap_true ).
 
     TRY.
-      lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
-      lo_col->set_long_text( 'Table Name' ).
-      lo_col ?= lo_cols->get_column( 'CNT_ARCHIVED' ).
-      lo_col->set_long_text( 'Total Archived' ).
-      lo_col ?= lo_cols->get_column( 'CNT_RESTORED' ).
-      lo_col->set_long_text( 'Total Restored' ).
-      lo_col ?= lo_cols->get_column( 'CNT_ACTIVE' ).
-      lo_col->set_long_text( 'Active in Archive' ).
-      lo_col ?= lo_cols->get_column( 'LAST_ARCH_ON' ).
-      lo_col->set_long_text( 'Last Activity Date' ).
-      lo_col ?= lo_cols->get_column( 'LAST_ARCH_BY' ).
-      lo_col->set_long_text( 'Last By' ).
-      lo_col ?= lo_cols->get_column( 'LAST_ACTION' ).
-      lo_col->set_long_text( 'Last Action' ).
-    CATCH cx_salv_not_found.
-    ENDTRY.
+      lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( 'Table Name' ).
+      lo_col ?= lo_cols->get_column( 'LIVE_RECS' ).   lo_col->set_long_text( 'Live Records' ).
+      lo_col ?= lo_cols->get_column( 'ARCH_RUNS' ).   lo_col->set_long_text( 'Archive Runs' ).
+      lo_col ?= lo_cols->get_column( 'REST_RUNS' ).   lo_col->set_long_text( 'Restore Runs' ).
+      lo_col ?= lo_cols->get_column( 'DEL_RUNS' ).    lo_col->set_long_text( 'Delete Runs' ).
+      lo_col ?= lo_cols->get_column( 'LAST_ACTION' ). lo_col->set_long_text( 'Last Action' ).
+      lo_col ?= lo_cols->get_column( 'LAST_DATE' ).   lo_col->set_long_text( 'Last Date' ).
+      lo_col ?= lo_cols->get_column( 'LAST_USER' ).   lo_col->set_long_text( 'Last User' ).
+      lo_col ?= lo_cols->get_column( 'RETENTION' ).   lo_col->set_long_text( 'Retention (days)' ).
+      lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).   lo_col->set_long_text( 'Active' ).
+    CATCH cx_salv_not_found. ENDTRY.
 
     lo_disp = lo_alv->get_display_settings( ).
-    lo_disp->set_list_header( |ARCHIVE MONITOR — { lines( lt_sum ) } tables| ).
+    lo_disp->set_list_header(
+      |STORAGE ANALYSIS & MONITORING — { lines( lt_disp ) } tables — { sy-datum }| ).
     lo_alv->display( ).
 
   CATCH cx_salv_msg INTO DATA(lx).
@@ -638,5 +693,69 @@ FORM maintenance_start_date.
   IF sy-subrc = 0.
     gv_start_date = 'X'.
     MESSAGE 'Đã thiết lập thời gian bắt đầu' TYPE 'S'.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM CHECK_DEPENDENCIES — Feature 2: Dependency Check
+*& Reads ZSP26_ARCH_DEP for the current table, counts child records,
+*& and shows a confirmation popup if dependent data exists.
+*& cv_ok = abap_false if the user cancels → archive is skipped.
+*&---------------------------------------------------------------------*
+FORM check_dependencies
+  CHANGING cv_ok TYPE abap_bool.
+
+  cv_ok = abap_true.
+
+  DATA: lt_dep       TYPE TABLE OF zsp26_arch_dep,
+        ls_dep       TYPE zsp26_arch_dep,
+        lv_child_cnt TYPE i,
+        lv_total     TYPE i VALUE 0,
+        lv_dep_info  TYPE string,
+        lv_answer    TYPE c.
+
+  SELECT * FROM zsp26_arch_dep INTO TABLE @lt_dep
+    WHERE parent_table = @gv_tabname.
+
+  IF lt_dep IS INITIAL.
+    RETURN.     " no dependencies configured → always proceed
+  ENDIF.
+
+  LOOP AT lt_dep INTO ls_dep.
+    CLEAR lv_child_cnt.
+    TRY.
+      SELECT COUNT(*) FROM (ls_dep-child_table) INTO @lv_child_cnt.
+      IF lv_child_cnt > 0.
+        ADD lv_child_cnt TO lv_total.
+        lv_dep_info &&= |{ ls_dep-child_table }: { lv_child_cnt } records  |.
+      ENDIF.
+    CATCH cx_sy_dynamic_osql_error.
+      " Child table may not exist in this system — skip
+    ENDTRY.
+  ENDLOOP.
+
+  IF lv_total = 0.
+    RETURN.     " no child records → safe to proceed
+  ENDIF.
+
+  " Warn user — let them decide
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar       = 'Dependency Check Warning'
+      text_question  = |{ gv_tabname } has dependent child records ({ lv_total } total). Archive anyway?|
+      text_button_1  = 'Yes, Archive'
+      text_button_2  = 'Cancel'
+      default_button = '2'
+      icon_button_1  = 'ICON_OKAY'
+      icon_button_2  = 'ICON_CANCEL'
+    IMPORTING
+      answer         = lv_answer
+    EXCEPTIONS
+      OTHERS         = 1.
+
+  IF lv_answer <> '1'.
+    cv_ok = abap_false.
+    MESSAGE |Archive cancelled. Dependent records exist: { lv_dep_info }|
+            TYPE 'S' DISPLAY LIKE 'W'.
   ENDIF.
 ENDFORM.

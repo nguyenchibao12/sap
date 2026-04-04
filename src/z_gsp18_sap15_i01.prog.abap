@@ -3,7 +3,7 @@
 *&---------------------------------------------------------------------*
 
 *&---------------------------------------------------------------------*
-*& Module F4_TABNAME INPUT  (value request — màn 0100)
+*& Module F4_TABNAME INPUT — màn 0100 (search help ZSP26_SH_TABLES)
 *&---------------------------------------------------------------------*
 MODULE f4_tabname INPUT.
   DATA: lt_return TYPE TABLE OF ddshretval.
@@ -42,14 +42,15 @@ MODULE user_command_0100 INPUT.
 
     WHEN 'BT_WRITE'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Vui lòng nhập Table Name' TYPE 'E'.
+        " TYPE S + DISPLAY LIKE E: cảnh báo giống lỗi nhưng không 'khóa' dynpro như MESSAGE E
+        MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM do_archive_write.
       ENDIF.
 
     WHEN 'BT_DELETE'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Vui lòng nhập Table Name' TYPE 'E'.
+        MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM do_restore_preview.
       ENDIF.
