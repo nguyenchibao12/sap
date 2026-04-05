@@ -3,6 +3,7 @@
 *& Subroutines + Class Implementation
 *&---------------------------------------------------------------------*
 INCLUDE z_gsp18_apply_rules.
+INCLUDE z_gsp18_arch_dyn.
 
 "----------------------------------------------------------------------
 " Class Implementation (moved from TOP — TOP allows definitions only)
@@ -27,19 +28,13 @@ ENDCLASS.
 *& Đọc config → dynamic SELECT → SALV Preview → Archive Now
 *&---------------------------------------------------------------------*
 FORM do_archive_write.
-  " 1. Đọc config
-  SELECT SINGLE * FROM zsp26_arch_cfg INTO @gs_cfg
-    WHERE table_name = @gv_tabname AND is_active = 'X'.
-
-  IF sy-subrc <> 0.
-    MESSAGE |Chưa có config cho '{ gv_tabname }'. Dùng Config hoặc ZSP26_LOAD_SAMPLE_DATA.| TYPE 'S'
-            DISPLAY LIKE 'E'.
-    RETURN.
-  ENDIF.
-
-  IF gs_cfg-data_field IS INITIAL.
-    MESSAGE |Config cho { gv_tabname } chưa có Date Field| TYPE 'S'
-            DISPLAY LIKE 'E'.
+  " 1. Kiểm tra bảng nhập vs ZSP26_ARCH_CFG + DDIC (FIELDINFO + DATA_FIELD tồn tại)
+  DATA: lv_cfg_ok TYPE abap_bool.
+  PERFORM validate_table_against_cfg
+    USING gv_tabname CHANGING gs_cfg lv_cfg_ok.
+  IF lv_cfg_ok = abap_false.
+    MESSAGE |Bảng '{ gv_tabname }' không hợp lệ: không có dòng active ZSP26_ARCH_CFG hoặc DATA_FIELD không có trong DDIC.|
+            TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 

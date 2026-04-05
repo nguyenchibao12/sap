@@ -1,21 +1,16 @@
 *&---------------------------------------------------------------------*
 *& Report  Z_ARCH_EKK_WRITE
-*& ADK Write Program — Archive Object Z_ARCH_EKK
-*& Generic: archives any ZSP26_* table configured in ZSP26_ARCH_CFG
+*& ADK Write — Archive Object Z_ARCH_EKK
+*& Dynamic: any transparent table with active row in ZSP26_ARCH_CFG
+*& Flow: OPEN_FOR_WRITE → IMPORT archive_handle → ARCHIVE_REGISTER_STRUCTURES
+*&       (DDIC name = target table) → ARCHIVE_NEW_OBJECT → ARCHIVE_PUT_TABLE
+*& CREATE DATA + ASSIGN → dynamic SELECT with WHERE from CFG (+ optional RULE EQ)
+*& Log ZSP26_ARCH_LOG after ARCHIVE_CLOSE_OBJECT (CONFIG_ID, timestamps)
 *&---------------------------------------------------------------------*
 REPORT z_arch_ekk_write.
 
 INCLUDE z_gsp18_apply_rules.
-
-"----------------------------------------------------------------------
-" Archive record structure written to ADK file — fixed length, no string
-"----------------------------------------------------------------------
-TYPES: BEGIN OF ty_arch_rec,
-         rec_type   TYPE c LENGTH 1,     " 'D' = data record
-         table_name TYPE c LENGTH 30,
-         key_vals   TYPE c LENGTH 255,
-         data_json  TYPE c LENGTH 4990,
-       END OF ty_arch_rec.
+INCLUDE z_gsp18_arch_dyn.
 
 TYPES: BEGIN OF ty_cfg_disp,
          table_name  TYPE tabname,
@@ -27,30 +22,30 @@ TYPES: BEGIN OF ty_cfg_disp,
        END OF ty_cfg_disp.
 
 DATA: gs_cfg    TYPE zsp26_arch_cfg,
-      ls_arec   TYPE ty_arch_rec,
       gr_src    TYPE REF TO data,
       lt_dd     TYPE TABLE OF dfies,
       lv_cutoff TYPE d,
       lv_cnt    TYPE i VALUE 0,
-      lv_err    TYPE i VALUE 0.
+      lv_err    TYPE i VALUE 0,
+      lv_arch_h TYPE syst-tabix,
+      lv_cfg_ok TYPE abap_bool,
+      lv_ts_s   TYPE timestampl,
+      lv_ts_e   TYPE timestampl.
 
 FIELD-SYMBOLS: <lt_src> TYPE INDEX TABLE,
                <row>    TYPE any.
 
 " g_scr_h0 / g_scr_h1: do COMMENT /1(79) tự khai báo — không thêm DATA (trùng trên ADT/bản mới)
 
-"----------------------------------------------------------------------
-" Selection Screen — demo-friendly: hints + F4 on P_TABLE (ZSP26_ARCH_CFG)
-"----------------------------------------------------------------------
 SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME.
 SELECTION-SCREEN COMMENT /1(79) g_scr_h0.
 PARAMETERS: p_table TYPE tabname OBLIGATORY DEFAULT 'ZSP26_EKKO'.
 SELECTION-SCREEN END OF BLOCK b0.
 
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME.
-SELECTION-SCREEN COMMENT /1(79) g_scr_h1.
-SELECT-OPTIONS: s_date FOR sy-datum.   " Date range (maps to config date field)
-PARAMETERS:     p_keyf TYPE char50,    " Key value filter (e.g. PO#, Doc#)
+SELECTION-SCREEN COMMENT /1(72) g_scr_h1.
+SELECT-OPTIONS: s_date FOR sy-datum.
+PARAMETERS:     p_keyf TYPE char50,
                 p_test TYPE c AS CHECKBOX DEFAULT ' '.
 SELECTION-SCREEN END OF BLOCK b1.
 
@@ -62,8 +57,8 @@ SELECTION-SCREEN END OF LINE.
 *----------------------------------------------------------------------*
 INITIALIZATION.
 *----------------------------------------------------------------------*
-  g_scr_h0 = 'P_TABLE F4 = ZSP26_ARCH_CFG. Uncheck P_TEST for real ADK write to .ARC.'.
-  g_scr_h1 = 'Date/key optional. Buttons Show Tables / Show Data = preview for P_TABLE.'.
+  g_scr_h0 = 'Table: F4 = ZSP26_ARCH_CFG. Uncheck P_TEST for ADK PUT_TABLE (Z_ARCH_EKK).'.
+  g_scr_h1 = 'WHERE = DATA_FIELD/RETENTION (+ EQ rules w/o OR). Rules also in ABAP (apply_archive_rules).'.
   bt_tbls = 'Show All Tables'.
   bt_data = 'Show Eligible Data'.
 
@@ -78,13 +73,13 @@ AT SELECTION-SCREEN.
   CASE sy-ucomm.
 
     WHEN 'SHOW_TBLS'.
-      " Show all configured tables with eligible record counts
       DATA: lt_cfg    TYPE TABLE OF ty_cfg_disp,
             ls_cfg    TYPE ty_cfg_disp,
             lt_cfgraw TYPE TABLE OF zsp26_arch_cfg,
             ls_cfgraw TYPE zsp26_arch_cfg,
             lv_wh     TYPE string,
-            lv_cnt2   TYPE i.
+            lv_cnt2   TYPE i,
+            lv_co_pop TYPE d.
 
       REFRESH: lt_cfg, lt_cfgraw.
       SELECT * FROM zsp26_arch_cfg INTO TABLE @lt_cfgraw WHERE is_active = 'X'.
@@ -95,11 +90,14 @@ AT SELECTION-SCREEN.
         ls_cfg-data_field  = ls_cfgraw-data_field.
         ls_cfg-retention   = ls_cfgraw-retention.
         ls_cfg-is_active   = ls_cfgraw-is_active.
-        ls_cfg-cutoff_date = sy-datum - ls_cfgraw-retention.
+        lv_co_pop = COND #( WHEN s_date-high IS NOT INITIAL THEN s_date-high
+                            ELSE sy-datum - ls_cfgraw-retention ).
+        ls_cfg-cutoff_date = lv_co_pop.
 
-        " Count eligible records dynamically
         CLEAR: lv_cnt2, lv_wh.
-        lv_wh = |{ ls_cfgraw-data_field } LE '{ ls_cfg-cutoff_date }'|.
+        PERFORM build_where_from_arch_cfg
+          USING ls_cfgraw s_date-low lv_co_pop
+          CHANGING lv_wh.
         SELECT COUNT(*) FROM (ls_cfgraw-table_name) INTO @lv_cnt2
           WHERE (lv_wh).
         ls_cfg-eligible = lv_cnt2.
@@ -107,7 +105,6 @@ AT SELECTION-SCREEN.
         APPEND ls_cfg TO lt_cfg.
       ENDLOOP.
 
-      " Display via SALV popup
       DATA: lo_alv  TYPE REF TO cl_salv_table,
             lo_col  TYPE REF TO cl_salv_column.
       TRY.
@@ -117,7 +114,6 @@ AT SELECTION-SCREEN.
         lo_alv->get_functions( )->set_all( abap_true ).
         lo_alv->get_columns( )->set_optimize( abap_true ).
 
-        " Set column headers manually
         DATA(lo_cols) = lo_alv->get_columns( ).
         TRY. lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
              lo_col->set_long_text( 'Table Name' ). CATCH cx_salv_not_found. ENDTRY.
@@ -138,11 +134,10 @@ AT SELECTION-SCREEN.
       CATCH cx_salv_msg. ENDTRY.
 
     WHEN 'SHOW_DATA'.
-      " Show eligible records for selected p_table
-      SELECT SINGLE * FROM zsp26_arch_cfg INTO @gs_cfg
-        WHERE table_name = @p_table AND is_active = 'X'.
-      IF sy-subrc <> 0.
-        MESSAGE |No active config for '{ p_table }'| TYPE 'S' DISPLAY LIKE 'E'.
+      PERFORM validate_table_against_cfg
+        USING p_table CHANGING gs_cfg lv_cfg_ok.
+      IF lv_cfg_ok = abap_false.
+        MESSAGE |No active ZSP26_ARCH_CFG / invalid DDIC for '{ p_table }'| TYPE 'S' DISPLAY LIKE 'E'.
         RETURN.
       ENDIF.
 
@@ -153,11 +148,10 @@ AT SELECTION-SCREEN.
 
       CREATE DATA gr_src TYPE TABLE OF (p_table).
       ASSIGN gr_src->* TO <lt_src>.
-      IF s_date-low IS NOT INITIAL.
-        lv_w2 = |{ gs_cfg-data_field } GE '{ s_date-low }' AND { gs_cfg-data_field } LE '{ lv_co }'|.
-      ELSE.
-        lv_w2 = |{ gs_cfg-data_field } LE '{ lv_co }'|.
-      ENDIF.
+      PERFORM build_where_from_arch_cfg
+        USING gs_cfg s_date-low lv_co
+        CHANGING lv_w2.
+      PERFORM append_rules_eq_to_where USING gs_cfg-config_id p_table CHANGING lv_w2.
       SELECT * FROM (p_table) INTO TABLE <lt_src> WHERE (lv_w2).
 
       PERFORM apply_rules_to_src.
@@ -175,7 +169,7 @@ AT SELECTION-SCREEN.
         lo_alv2->get_functions( )->set_all( abap_true ).
         lo_alv2->get_columns( )->set_optimize( abap_true ).
         lo_alv2->get_display_settings( )->set_list_header(
-          |[PREVIEW] { p_table } — { s_date-low } to { lv_co } — { lines( <lt_src> ) } records| ).
+          |[PREVIEW] { p_table } — { lines( <lt_src> ) } rows (dynamic line type)| ).
         lo_alv2->display( ).
       CATCH cx_salv_msg. ENDTRY.
 
@@ -186,22 +180,19 @@ START-OF-SELECTION.
 *----------------------------------------------------------------------*
   CLEAR: lv_cnt, lv_err.
 
-  " 1. Read archive config
-  SELECT SINGLE * FROM zsp26_arch_cfg INTO @gs_cfg
-    WHERE table_name = @p_table AND is_active = 'X'.
-  IF sy-subrc <> 0.
-    MESSAGE |Chưa có config active cho '{ p_table }'.| TYPE 'A'.
-  ENDIF.
-  IF gs_cfg-data_field IS INITIAL.
-    MESSAGE |Config cho '{ p_table }' thiếu Date Field.| TYPE 'A'.
+  PERFORM validate_table_against_cfg
+    USING p_table CHANGING gs_cfg lv_cfg_ok.
+  IF lv_cfg_ok = abap_false.
+    MESSAGE |Invalid archive target '{ p_table }': no active ZSP26_ARCH_CFG or DATA_FIELD not in DDIC.|
+            TYPE 'A'.
   ENDIF.
 
-  " 2. Cutoff date (Date To)
   lv_cutoff = COND #( WHEN s_date-high IS NOT INITIAL THEN s_date-high
                       ELSE sy-datum - gs_cfg-retention ).
 
   WRITE: /.
-  WRITE: / |=== ADK Write: { p_table } ===|.
+  WRITE: / |=== ADK Write (PUT_TABLE): { p_table } | Object Z_ARCH_EKK ===|.
+  WRITE: / |CONFIG_ID  : { gs_cfg-config_id }|.
   WRITE: / |Date Field : { gs_cfg-data_field }|.
   WRITE: / |Retention  : { gs_cfg-retention } days|.
   IF s_date-low IS NOT INITIAL.
@@ -213,43 +204,27 @@ START-OF-SELECTION.
   IF p_keyf IS NOT INITIAL.
     WRITE: / |Key Filter : { p_keyf }|.
   ENDIF.
-  IF p_test = 'X'. WRITE: / '*** TEST MODE — no data written to archive ***'. ENDIF.
+  IF p_test = 'X'. WRITE: / '*** TEST MODE — no archive I/O ***'. ENDIF.
   WRITE: /.
 
-  " 3. Open archive for write (skip in test mode)
-  IF p_test = ' '.
-    CALL FUNCTION 'ARCHIVE_OPEN_FOR_WRITE'
-      EXPORTING
-        archiv_obj = 'Z_ARCH_EKK'
-      EXCEPTIONS
-        open_error = 1
-        OTHERS     = 2.
-    IF sy-subrc <> 0.
-      MESSAGE 'Cannot open archive Z_ARCH_EKK. Check AOBJ/SARA config.' TYPE 'A'.
-    ENDIF.
-  ENDIF.
+  DATA: lv_where TYPE string.
+  PERFORM build_where_from_arch_cfg
+    USING gs_cfg s_date-low lv_cutoff
+    CHANGING lv_where.
+  PERFORM append_rules_eq_to_where USING gs_cfg-config_id p_table CHANGING lv_where.
 
-  " 4. Get key fields from DDIC
-  CALL FUNCTION 'DDIF_FIELDINFO_GET'
-    EXPORTING  tabname   = p_table
-    TABLES     dfies_tab = lt_dd
-    EXCEPTIONS OTHERS    = 1.
-
-  " 5. Dynamic SELECT — only eligible records
+  " Runtime memory for target rows: CREATE DATA creates heap data; ASSIGN binds field-symbol
   CREATE DATA gr_src TYPE TABLE OF (p_table).
   ASSIGN gr_src->* TO <lt_src>.
-  DATA: lv_where TYPE string.
-  IF s_date-low IS NOT INITIAL.
-    lv_where = |{ gs_cfg-data_field } GE '{ s_date-low }' AND { gs_cfg-data_field } LE '{ lv_cutoff }'|.
-  ELSE.
-    lv_where = |{ gs_cfg-data_field } LE '{ lv_cutoff }'|.
-  ENDIF.
   SELECT * FROM (p_table) INTO TABLE <lt_src> WHERE (lv_where).
 
   PERFORM apply_rules_to_src.
 
-  " Apply key value filter if specified (post-select filter on key_vals string)
   IF p_keyf IS NOT INITIAL.
+    CALL FUNCTION 'DDIF_FIELDINFO_GET'
+      EXPORTING  tabname   = p_table
+      TABLES     dfies_tab = lt_dd
+      EXCEPTIONS OTHERS    = 1.
     LOOP AT <lt_src> ASSIGNING FIELD-SYMBOL(<frow>).
       DATA: lv_kcheck TYPE char255.
       CLEAR lv_kcheck.
@@ -266,99 +241,118 @@ START-OF-SELECTION.
   WRITE: / |Records eligible: { lines( <lt_src> ) }|.
 
   IF <lt_src> IS INITIAL.
-    WRITE: / 'Không có records đủ điều kiện.'.
-    IF p_test = ' '.
-      CALL FUNCTION 'ARCHIVE_CLOSE_OBJECT'
-        EXPORTING object_count = 0
-        EXCEPTIONS OTHERS      = 1.
-    ENDIF.
+    WRITE: / 'No eligible rows — nothing to archive.'.
     RETURN.
   ENDIF.
 
-  " 6. Write each record to archive file
-  LOOP AT <lt_src> ASSIGNING <row>.
-    " Build key string: FIELD1=VAL1|FIELD2=VAL2
-    DATA: lv_kv TYPE char255.
-    CLEAR lv_kv.
-    LOOP AT lt_dd INTO DATA(ls_dd) WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
-      ASSIGN COMPONENT ls_dd-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<fv>).
-      IF <fv> IS ASSIGNED.
-        IF lv_kv IS NOT INITIAL. lv_kv &&= '|'. ENDIF.
-        lv_kv &&= ls_dd-fieldname && '=' && <fv>.
-      ENDIF.
-    ENDLOOP.
+  IF p_test = ' '.
+    GET TIME STAMP FIELD lv_ts_s.
 
-    " Serialize to JSON
-    DATA: lv_json TYPE string,
-          lv_jc   TYPE c LENGTH 4990.
-    CLEAR: lv_json, lv_jc.
-    TRY.
-      lv_json = /ui2/cl_json=>serialize( data = <row> ).
-    CATCH cx_root.
-      lv_json = lv_kv.
-    ENDTRY.
-    lv_jc = lv_json.
-
-    " Build archive record
-    CLEAR ls_arec.
-    ls_arec-rec_type   = 'D'.
-    ls_arec-table_name = p_table.
-    ls_arec-key_vals   = lv_kv.
-    ls_arec-data_json  = lv_jc.
-
-    IF p_test = ' '.
-      CALL FUNCTION 'ARCHIVE_WRITE_RECORD'
-        EXPORTING  record        = ls_arec
-        EXCEPTIONS end_of_object = 1
-                   OTHERS        = 2.
-      IF sy-subrc <> 0.
-        ADD 1 TO lv_err.
-        WRITE: / |  ERROR: { lv_kv }|.
-        CONTINUE.
-      ENDIF.
-    ELSE.
-      WRITE: / |  [TEST] { lv_kv }|.
+    CALL FUNCTION 'ARCHIVE_OPEN_FOR_WRITE'
+      EXPORTING
+        object              = 'Z_ARCH_EKK'
+        create_archive_file = 'X'
+      IMPORTING
+        archive_handle      = lv_arch_h
+      EXCEPTIONS
+        internal_error                = 1
+        object_not_found              = 2
+        open_error                    = 3
+        not_authorized                = 4
+        archiving_standard_violation  = 5
+        OTHERS                        = 6.
+    IF sy-subrc <> 0.
+      MESSAGE 'ARCHIVE_OPEN_FOR_WRITE failed. Check AOBJ Z_ARCH_EKK / authorizations.' TYPE 'A'.
     ENDIF.
 
-    ADD 1 TO lv_cnt.
-  ENDLOOP.
+    " Position: immediately after OPEN — register DDIC line type of target table (TABNAME = structure)
+    DATA: lt_reg TYPE TABLE OF arch_ddic,
+          ls_reg TYPE arch_ddic.
+    CLEAR ls_reg.
+    ls_reg-name = p_table.
+    APPEND ls_reg TO lt_reg.
 
-  " 7. Close archive object
-  IF p_test = ' '.
+    CALL FUNCTION 'ARCHIVE_REGISTER_STRUCTURES'
+      EXPORTING
+        archive_handle = lv_arch_h
+      TABLES
+        record_structures = lt_reg
+      EXCEPTIONS
+        no_new_structures_permitted = 1
+        wrong_access_to_archive     = 2
+        OTHERS                      = 3.
+    IF sy-subrc <> 0.
+      WRITE: / |WARN: ARCHIVE_REGISTER_STRUCTURES RC={ sy-subrc } (check ADK / DDIC)|.
+    ENDIF.
+
+    CALL FUNCTION 'ARCHIVE_NEW_OBJECT'
+      EXPORTING
+        archive_handle = lv_arch_h
+      EXCEPTIONS
+        internal_error            = 1
+        wrong_access_to_archive   = 2
+        OTHERS                    = 3.
+    IF sy-subrc <> 0.
+      MESSAGE 'ARCHIVE_NEW_OBJECT failed.' TYPE 'A'.
+    ENDIF.
+
+    CALL FUNCTION 'ARCHIVE_PUT_TABLE'
+      EXPORTING
+        archive_handle   = lv_arch_h
+        record_structure = p_table
+      TABLES
+        table            = <lt_src>
+      EXCEPTIONS
+        internal_error            = 1
+        wrong_access_to_archive   = 2
+        invalid_record_structure  = 3
+        OTHERS                    = 4.
+    IF sy-subrc <> 0.
+      lv_err = lv_err + 1.
+      WRITE: / |ERROR: ARCHIVE_PUT_TABLE RC={ sy-subrc }|.
+      CALL FUNCTION 'ARCHIVE_CLOSE_OBJECT'
+        EXPORTING object_count = 0
+        EXCEPTIONS OTHERS      = 1.
+      MESSAGE 'Archive write failed (PUT_TABLE).' TYPE 'A'.
+    ENDIF.
+
+    lv_cnt = lines( <lt_src> ).
+
     CALL FUNCTION 'ARCHIVE_CLOSE_OBJECT'
-      EXPORTING  object_count = lv_cnt
-      EXCEPTIONS OTHERS       = 1.
-  ENDIF.
+      EXPORTING
+        object_count = lv_cnt
+      EXCEPTIONS
+        OTHERS       = 1.
 
-  " 8. Log to ZSP26_ARCH_LOG
-  IF p_test = ' '.
+    GET TIME STAMP FIELD lv_ts_e.
+
     DATA: ls_log TYPE zsp26_arch_log.
     TRY. ls_log-log_id = cl_system_uuid=>create_uuid_x16_static( ).
     CATCH cx_uuid_error. ENDTRY.
-    ls_log-table_name = p_table.
-    ls_log-action     = 'ARCHIVE'.
-    ls_log-rec_count  = lv_cnt.
-    ls_log-status     = COND #( WHEN lv_err = 0 THEN 'S' ELSE 'W' ).
-    ls_log-exec_user  = sy-uname.
-    ls_log-exec_date  = sy-datum.
-    ls_log-message    = |ADK Archive: { lv_cnt } records written. Cutoff: { lv_cutoff }. Errors: { lv_err }|.
+    ls_log-config_id   = gs_cfg-config_id.
+    ls_log-table_name  = p_table.
+    ls_log-action      = 'ARCHIVE'.
+    ls_log-rec_count   = lv_cnt.
+    ls_log-status      = COND #( WHEN lv_err = 0 THEN 'S' ELSE 'W' ).
+    ls_log-start_time  = lv_ts_s.
+    ls_log-end_time    = lv_ts_e.
+    ls_log-exec_user   = sy-uname.
+    ls_log-exec_date   = sy-datum.
+    ls_log-message     = |ADK PUT_TABLE { lv_cnt } rows. Cutoff { lv_cutoff }. HANDLE={ lv_arch_h }|.
     INSERT zsp26_arch_log FROM ls_log.
     COMMIT WORK.
   ENDIF.
 
-  " 9. Summary
   WRITE: /.
   WRITE: / '=== Summary ==='.
-  WRITE: / |Written to archive: { lv_cnt } records|.
-  WRITE: / |Errors            : { lv_err }|.
+  WRITE: / |Rows in selection: { lines( <lt_src> ) }|.
   IF p_test = ' '.
-    WRITE: / 'Next step: run Z_ARCH_EKK_DELETE via SARA to remove from DB.'.
+    WRITE: / |Archived (PUT_TABLE): { lv_cnt }|.
+    WRITE: / 'Next: Z_ARCH_EKK_DELETE via SARA (uncheck P_JSON if using this PUT_TABLE format).'.
   ELSE.
-    WRITE: / 'Uncheck Test Mode and re-run to actually archive.'.
+    WRITE: / 'Uncheck Test Mode to run OPEN → REGISTER_STRUCTURES → NEW_OBJECT → PUT_TABLE → CLOSE.'.
   ENDIF.
 
-*&---------------------------------------------------------------------*
-*& Remove rows that fail ZSP26_ARCH_RULE (same logic as main preview)
 *&---------------------------------------------------------------------*
 FORM apply_rules_to_src.
   DATA: lv_ix TYPE i,
@@ -382,8 +376,6 @@ FORM apply_rules_to_src.
   ENDWHILE.
 ENDFORM.
 
-*&---------------------------------------------------------------------*
-*& F4: ZSP26_SH_TABLES (không dùng help_value — component không cố định theo bản SAP)
 *&---------------------------------------------------------------------*
 FORM f4_arch_cfg_table.
   DATA: lt_return TYPE TABLE OF ddshretval.
