@@ -1,3 +1,4 @@
+REPORT z_arch_ekk_read.
 *&---------------------------------------------------------------------*
 *& Report  Z_ARCH_EKK_READ
 *& ADK Read / Restore — Archive Object Z_ARCH_EKK
@@ -6,7 +7,6 @@
 *& Restore: INSERT (tab) FROM TABLE <dyn> + ZSP26_ARCH_LOG
 *& P_JSON: legacy ty_arch_rec + GET_NEXT_RECORD + SALV on flat ty_disp
 *&---------------------------------------------------------------------*
-REPORT z_arch_ekk_read.
 
 TYPES: BEGIN OF ty_arch_rec,
          rec_type   TYPE c LENGTH 1,
@@ -207,25 +207,48 @@ FORM run_read_legacy_json.
 
   CLEAR lt_disp.
   DO.
-    CLEAR ls_arec.
-    CALL FUNCTION 'ARCHIVE_GET_NEXT_RECORD'
-      IMPORTING  record      = ls_arec
-      EXCEPTIONS end_of_file = 1
-                 OTHERS      = 2.
-    IF sy-subrc = 1. EXIT.
-    ELSEIF sy-subrc > 1. CONTINUE. ENDIF.
+    CALL FUNCTION 'ARCHIVE_GET_NEXT_OBJECT'
+      EXPORTING
+        archive_handle = gv_arch_handle
+      EXCEPTIONS
+        end_of_file    = 1
+        OTHERS         = 2.
+    IF sy-subrc <> 0.
+      EXIT.
+    ENDIF.
 
-    CHECK ls_arec-rec_type = 'D'.
-    IF p_table IS NOT INITIAL AND ls_arec-table_name <> p_table. CONTINUE. ENDIF.
+    DO.
+      CLEAR ls_arec.
+      CALL FUNCTION 'ARCHIVE_GET_NEXT_RECORD'
+        EXPORTING
+          archive_handle = gv_arch_handle
+        IMPORTING
+          record         = ls_arec
+        EXCEPTIONS
+          end_of_object  = 1
+          OTHERS         = 2.
+      IF sy-subrc <> 0.
+        EXIT.
+      ENDIF.
 
-    CLEAR ls_disp.
-    ls_disp-table_name = ls_arec-table_name.
-    ls_disp-key_vals   = ls_arec-key_vals.
-    ls_disp-data_json  = ls_arec-data_json.
-    APPEND ls_disp TO lt_disp.
+      CHECK ls_arec-rec_type = 'D'.
+      IF p_table IS NOT INITIAL AND ls_arec-table_name <> p_table.
+        CONTINUE.
+      ENDIF.
+
+      CLEAR ls_disp.
+      ls_disp-table_name = ls_arec-table_name.
+      ls_disp-key_vals   = ls_arec-key_vals.
+      ls_disp-data_json  = ls_arec-data_json.
+      APPEND ls_disp TO lt_disp.
+    ENDDO.
   ENDDO.
 
-  CALL FUNCTION 'ARCHIVE_CLOSE_OBJECT' EXCEPTIONS OTHERS = 1.
+  CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+    EXPORTING
+      archive_handle = gv_arch_handle
+    EXCEPTIONS
+      OTHERS         = 1.
 
   IF lt_disp IS INITIAL.
     MESSAGE |No legacy JSON records for '{ p_table }'| TYPE 'S' DISPLAY LIKE 'W'.
@@ -326,29 +349,25 @@ ENDFORM.
 
 *&---------------------------------------------------------------------*
 FORM f4_arch_cfg_table.
-  DATA: lt_val TYPE TABLE OF help_value,
-        ls_val TYPE help_value.
+  " Dùng search help ZSP26_SH_TABLES (giống MAIN) — tránh help_value (tên component khác theo bản SAP)
+  DATA: lt_return TYPE TABLE OF ddshretval.
 
-  SELECT DISTINCT table_name FROM zsp26_arch_cfg
-    INTO TABLE @DATA(lt_names)
-    WHERE is_active = 'X'
-    ORDER BY table_name.
-
-  LOOP AT lt_names INTO DATA(ls_nm).
-    CLEAR ls_val.
-    ls_val-value = ls_nm-table_name.
-    APPEND ls_val TO lt_val.
-  ENDLOOP.
-
-  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+  CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
     EXPORTING
-      retfield        = 'VALUE'
-      dynpprog        = sy-repid
-      dynpnr          = sy-dynnr
-      dynprofield     = 'P_TABLE'
-      value_org       = 'S'
+      searchhelp    = 'ZSP26_SH_TABLES'
+      tabname       = 'ZSP26_ARCH_CFG'
+      fieldname     = 'TABLE_NAME'
+      shlpparam     = 'TABLE_NAME'
+      dynpprog      = sy-repid
+      dynpnr        = sy-dynnr
+      dynprofield   = 'P_TABLE'
     TABLES
-      value_tab       = lt_val
+      return_tab    = lt_return
     EXCEPTIONS
-      OTHERS          = 2.
+      OTHERS        = 1.
+
+  READ TABLE lt_return INTO DATA(ls_ret) INDEX 1.
+  IF sy-subrc = 0.
+    p_table = CONV tabname( ls_ret-fieldval ).
+  ENDIF.
 ENDFORM.
