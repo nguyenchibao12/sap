@@ -1,9 +1,8 @@
+REPORT z_arch_ekk_read.
 *&---------------------------------------------------------------------*
 *& Report  Z_ARCH_EKK_READ
-*& ADK Read/Restore Program — Archive Object Z_ARCH_EKK
-*& Reads archive file → displays records, optionally restores to DB
+*& ADK Read/Restore — Archive Object Z_ARCH_EKK
 *&---------------------------------------------------------------------*
-REPORT z_arch_ekk_read.
 
 TYPES: BEGIN OF ty_arch_rec,
          rec_type   TYPE c LENGTH 1,
@@ -18,13 +17,17 @@ TYPES: BEGIN OF ty_disp,
          data_json  TYPE c LENGTH 4990,
        END OF ty_disp.
 
+" rd_hint: chỉ khai báo qua SELECTION-SCREEN COMMENT bên dưới (≤8 ký tự), không thêm DATA — tránh duplicate
+
 DATA: ls_arec  TYPE ty_arch_rec,
       lt_disp  TYPE TABLE OF ty_disp,
       ls_disp  TYPE ty_disp,
-      g_scr_r0(72) TYPE c.
+      gv_arch_handle TYPE sy-tabix,
+      lt_arch_files  TYPE STANDARD TABLE OF rng_archiv WITH DEFAULT KEY,
+      lt_sel_files   TYPE STANDARD TABLE OF admi_files WITH DEFAULT KEY.
 
 SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME.
-SELECTION-SCREEN COMMENT /1(72) g_scr_r0.
+SELECTION-SCREEN COMMENT /1(72) rd_hint.
 PARAMETERS: p_table TYPE tabname DEFAULT 'ZSP26_EKKO',
             p_rest  TYPE c       AS CHECKBOX DEFAULT ' '.
 SELECTION-SCREEN END OF BLOCK b0.
@@ -32,7 +35,7 @@ SELECTION-SCREEN END OF BLOCK b0.
 *----------------------------------------------------------------------*
 INITIALIZATION.
 *----------------------------------------------------------------------*
-  g_scr_r0 = 'F4 = tables in ZSP26_ARCH_CFG. P_REST = restore all filtered rows to DB after list.'.
+  rd_hint = 'F4 = tables in ZSP26_ARCH_CFG. P_REST = restore all filtered rows to DB after list.'.
 
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
@@ -43,37 +46,70 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
 START-OF-SELECTION.
 *----------------------------------------------------------------------*
 
-  " Open archive for read
+  " ADK Read: TABLES + handle (thiếu TABLES thường gây CALL_FUNCTION_PARM_MISSING)
+  CLEAR: gv_arch_handle, lt_arch_files, lt_sel_files.
   CALL FUNCTION 'ARCHIVE_OPEN_FOR_READ'
-    EXPORTING  archiv_obj = 'Z_ARCH_EKK'
-    EXCEPTIONS OTHERS     = 1.
+    EXPORTING
+      object           = 'Z_ARCH_EKK'
+      archive_document = '000000'
+      maintain_index   = space
+    IMPORTING
+      archive_handle = gv_arch_handle
+    TABLES
+      archive_files  = lt_arch_files
+      selected_files = lt_sel_files
+    EXCEPTIONS
+      OTHERS         = 1.
   IF sy-subrc <> 0.
-    MESSAGE 'Không mở được archive Z_ARCH_EKK. Chưa có file archive — hãy chạy Write trước qua SARA.'
+    MESSAGE 'Không mở được archive Z_ARCH_EKK. Chạy Write trước; từ MAIN nên mở Z_ARCH_EKK_READ bằng SE38 để chọn file .ARC nếu có nhiều session.'
             TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
-  " Read all records, filter by table if specified
+  " Chuẩn ADK: GET_NEXT_OBJECT → GET_NEXT_RECORD (giống tài liệu / code mẫu SARC)
   DO.
-    CLEAR ls_arec.
-    CALL FUNCTION 'ARCHIVE_GET_NEXT_RECORD'
-      IMPORTING  record      = ls_arec
-      EXCEPTIONS end_of_file = 1
-                 OTHERS      = 2.
-    IF sy-subrc = 1. EXIT.
-    ELSEIF sy-subrc > 1. CONTINUE. ENDIF.
+    CALL FUNCTION 'ARCHIVE_GET_NEXT_OBJECT'
+      EXPORTING
+        archive_handle = gv_arch_handle
+      EXCEPTIONS
+        end_of_file    = 1
+        OTHERS         = 2.
+    IF sy-subrc <> 0.
+      EXIT.
+    ENDIF.
 
-    CHECK ls_arec-rec_type = 'D'.
-    IF p_table IS NOT INITIAL AND ls_arec-table_name <> p_table. CONTINUE. ENDIF.
+    DO.
+      CLEAR ls_arec.
+      CALL FUNCTION 'ARCHIVE_GET_NEXT_RECORD'
+        EXPORTING
+          archive_handle = gv_arch_handle
+        IMPORTING
+          record         = ls_arec
+        EXCEPTIONS
+          end_of_object  = 1
+          OTHERS         = 2.
+      IF sy-subrc <> 0.
+        EXIT.
+      ENDIF.
 
-    CLEAR ls_disp.
-    ls_disp-table_name = ls_arec-table_name.
-    ls_disp-key_vals   = ls_arec-key_vals.
-    ls_disp-data_json  = ls_arec-data_json.
-    APPEND ls_disp TO lt_disp.
+      CHECK ls_arec-rec_type = 'D'.
+      IF p_table IS NOT INITIAL AND ls_arec-table_name <> p_table.
+        CONTINUE.
+      ENDIF.
+
+      CLEAR ls_disp.
+      ls_disp-table_name = ls_arec-table_name.
+      ls_disp-key_vals   = ls_arec-key_vals.
+      ls_disp-data_json  = ls_arec-data_json.
+      APPEND ls_disp TO lt_disp.
+    ENDDO.
   ENDDO.
 
-  CALL FUNCTION 'ARCHIVE_CLOSE_OBJECT' EXCEPTIONS OTHERS = 1.
+  CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+    EXPORTING
+      archive_handle = gv_arch_handle
+    EXCEPTIONS
+      OTHERS         = 1.
 
   IF lt_disp IS INITIAL.
     MESSAGE |No archived records found for '{ p_table }'| TYPE 'S' DISPLAY LIKE 'W'.
@@ -174,29 +210,25 @@ START-OF-SELECTION.
 
 *&---------------------------------------------------------------------*
 FORM f4_arch_cfg_table.
-  DATA: lt_val TYPE TABLE OF help_value,
-        ls_val TYPE help_value.
+  " Dùng search help ZSP26_SH_TABLES (giống MAIN) — tránh help_value (tên component khác theo bản SAP)
+  DATA: lt_return TYPE TABLE OF ddshretval.
 
-  SELECT DISTINCT table_name FROM zsp26_arch_cfg
-    INTO TABLE @DATA(lt_names)
-    WHERE is_active = 'X'
-    ORDER BY table_name.
-
-  LOOP AT lt_names INTO DATA(ls_nm).
-    CLEAR ls_val.
-    ls_val-value = ls_nm-table_name.
-    APPEND ls_val TO lt_val.
-  ENDLOOP.
-
-  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+  CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
     EXPORTING
-      retfield        = 'VALUE'
-      dynpprog        = sy-repid
-      dynpnr          = sy-dynnr
-      dynprofield     = 'P_TABLE'
-      value_org       = 'S'
+      searchhelp    = 'ZSP26_SH_TABLES'
+      tabname       = 'ZSP26_ARCH_CFG'
+      fieldname     = 'TABLE_NAME'
+      shlpparam     = 'TABLE_NAME'
+      dynpprog      = sy-repid
+      dynpnr        = sy-dynnr
+      dynprofield   = 'P_TABLE'
     TABLES
-      value_tab       = lt_val
+      return_tab    = lt_return
     EXCEPTIONS
-      OTHERS          = 2.
+      OTHERS        = 1.
+
+  READ TABLE lt_return INTO DATA(ls_ret) INDEX 1.
+  IF sy-subrc = 0.
+    p_table = CONV tabname( ls_ret-fieldval ).
+  ENDIF.
 ENDFORM.

@@ -11,6 +11,9 @@ MODULE f4_tabname INPUT.
   CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
     EXPORTING
       searchhelp    = 'ZSP26_SH_TABLES'
+      tabname       = 'ZSP26_ARCH_CFG'
+      fieldname     = 'TABLE_NAME'
+      shlpparam     = 'TABLE_NAME'
       dynpprog      = sy-repid
       dynpnr        = sy-dynnr
       dynprofield   = 'GV_TABNAME'
@@ -127,7 +130,9 @@ MODULE check_variant_0300 INPUT.
         text_button_2         = 'Không'
         display_cancel_button = ' '
       IMPORTING
-        answer                = lv_ans_chk.
+        answer                = lv_ans_chk
+      EXCEPTIONS
+        OTHERS                = 1.
     IF lv_ans_chk = '1'.
       SUBMIT (gv_prog_write) VIA SELECTION-SCREEN AND RETURN.
     ELSE.
@@ -169,7 +174,9 @@ MODULE user_command_0300 INPUT.
               text_button_2         = 'Không'
               display_cancel_button = ' '
             IMPORTING
-              answer                = lv_ans_300.
+              answer                = lv_ans_300
+            EXCEPTIONS
+              OTHERS                = 1.
           IF lv_ans_300 = '1'.
             SUBMIT (gv_prog_write) VIA SELECTION-SCREEN AND RETURN.
           ELSE.

@@ -34,22 +34,21 @@ DATA: gs_cfg    TYPE zsp26_arch_cfg,
       lv_cnt    TYPE i VALUE 0,
       lv_err    TYPE i VALUE 0.
 
-FIELD-SYMBOLS: <lt_src> TYPE ANY TABLE,
+FIELD-SYMBOLS: <lt_src> TYPE INDEX TABLE,
                <row>    TYPE any.
 
-DATA: g_scr_h0(72) TYPE c,
-      g_scr_h1(72) TYPE c.
+" g_scr_h0 / g_scr_h1: do COMMENT /1(79) tự khai báo — không thêm DATA (trùng trên ADT/bản mới)
 
 "----------------------------------------------------------------------
 " Selection Screen — demo-friendly: hints + F4 on P_TABLE (ZSP26_ARCH_CFG)
 "----------------------------------------------------------------------
 SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME.
-SELECTION-SCREEN COMMENT /1(72) g_scr_h0.
+SELECTION-SCREEN COMMENT /1(79) g_scr_h0.
 PARAMETERS: p_table TYPE tabname OBLIGATORY DEFAULT 'ZSP26_EKKO'.
 SELECTION-SCREEN END OF BLOCK b0.
 
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME.
-SELECTION-SCREEN COMMENT /1(72) g_scr_h1.
+SELECTION-SCREEN COMMENT /1(79) g_scr_h1.
 SELECT-OPTIONS: s_date FOR sy-datum.   " Date range (maps to config date field)
 PARAMETERS:     p_keyf TYPE char50,    " Key value filter (e.g. PO#, Doc#)
                 p_test TYPE c AS CHECKBOX DEFAULT ' '.
@@ -63,8 +62,8 @@ SELECTION-SCREEN END OF LINE.
 *----------------------------------------------------------------------*
 INITIALIZATION.
 *----------------------------------------------------------------------*
-  g_scr_h0 = 'Table: F4 = active ZSP26_ARCH_CFG. Uncheck P_TEST for real ADK write to .ARC.'.
-  g_scr_h1 = 'Date/key optional. Buttons: Show All Tables (counts) | Show Eligible Data for P_TABLE.'.
+  g_scr_h0 = 'P_TABLE F4 = ZSP26_ARCH_CFG. Uncheck P_TEST for real ADK write to .ARC.'.
+  g_scr_h1 = 'Date/key optional. Buttons Show Tables / Show Data = preview for P_TABLE.'.
   bt_tbls = 'Show All Tables'.
   bt_data = 'Show Eligible Data'.
 
@@ -185,6 +184,7 @@ AT SELECTION-SCREEN.
 *----------------------------------------------------------------------*
 START-OF-SELECTION.
 *----------------------------------------------------------------------*
+  CLEAR: lv_cnt, lv_err.
 
   " 1. Read archive config
   SELECT SINGLE * FROM zsp26_arch_cfg INTO @gs_cfg
@@ -383,32 +383,27 @@ FORM apply_rules_to_src.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& F4: list TABLE_NAME from ZSP26_ARCH_CFG (active only)
+*& F4: ZSP26_SH_TABLES (không dùng help_value — component không cố định theo bản SAP)
 *&---------------------------------------------------------------------*
 FORM f4_arch_cfg_table.
-  DATA: lt_val TYPE TABLE OF help_value,
-        ls_val TYPE help_value.
+  DATA: lt_return TYPE TABLE OF ddshretval.
 
-  SELECT DISTINCT table_name FROM zsp26_arch_cfg
-    INTO TABLE @DATA(lt_names)
-    WHERE is_active = 'X'
-    ORDER BY table_name.
-
-  LOOP AT lt_names INTO DATA(ls_nm).
-    CLEAR ls_val.
-    ls_val-value = ls_nm-table_name.
-    APPEND ls_val TO lt_val.
-  ENDLOOP.
-
-  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+  CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
     EXPORTING
-      retfield        = 'VALUE'
-      dynpprog        = sy-repid
-      dynpnr          = sy-dynnr
-      dynprofield     = 'P_TABLE'
-      value_org       = 'S'
+      searchhelp    = 'ZSP26_SH_TABLES'
+      tabname       = 'ZSP26_ARCH_CFG'
+      fieldname     = 'TABLE_NAME'
+      shlpparam     = 'TABLE_NAME'
+      dynpprog      = sy-repid
+      dynpnr        = sy-dynnr
+      dynprofield   = 'P_TABLE'
     TABLES
-      value_tab       = lt_val
+      return_tab    = lt_return
     EXCEPTIONS
-      OTHERS          = 2.
+      OTHERS        = 1.
+
+  READ TABLE lt_return INTO DATA(ls_ret) INDEX 1.
+  IF sy-subrc = 0.
+    p_table = CONV tabname( ls_ret-fieldval ).
+  ENDIF.
 ENDFORM.
