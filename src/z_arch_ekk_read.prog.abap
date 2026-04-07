@@ -349,25 +349,35 @@ ENDFORM.
 
 *&---------------------------------------------------------------------*
 FORM f4_arch_cfg_table.
-  " Dùng search help ZSP26_SH_TABLES (giống MAIN) — tránh help_value (tên component khác theo bản SAP)
-  DATA: lt_return TYPE TABLE OF ddshretval.
+  TYPES: BEGIN OF ty_sht_f4,
+           table_name  TYPE tabname,
+           description TYPE char80,
+         END OF ty_sht_f4.
+  DATA lt_sht TYPE STANDARD TABLE OF ty_sht_f4 WITH DEFAULT KEY.
 
-  CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
-    EXPORTING
-      searchhelp    = 'ZSP26_SH_TABLES'
-      tabname       = 'ZSP26_ARCH_CFG'
-      fieldname     = 'TABLE_NAME'
-      shlpparam     = 'TABLE_NAME'
-      dynpprog      = sy-repid
-      dynpnr        = sy-dynnr
-      dynprofield   = 'P_TABLE'
-    TABLES
-      return_tab    = lt_return
-    EXCEPTIONS
-      OTHERS        = 1.
-
-  READ TABLE lt_return INTO DATA(ls_ret) INDEX 1.
-  IF sy-subrc = 0.
-    p_table = CONV tabname( ls_ret-fieldval ).
+  SELECT table_name, description
+    FROM zsp26_arch_cfg
+    WHERE is_active = 'X'
+    INTO CORRESPONDING FIELDS OF TABLE @lt_sht
+    UP TO 999 ROWS.
+  IF lt_sht IS INITIAL.
+    SELECT table_name, description
+      FROM zsp26_arch_cfg
+      INTO CORRESPONDING FIELDS OF TABLE @lt_sht
+      UP TO 999 ROWS.
   ENDIF.
+  SORT lt_sht BY table_name.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'TABLE_NAME'
+      window_title = 'Tables in ZSP26_ARCH_CFG'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'P_TABLE'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_sht
+    EXCEPTIONS
+      OTHERS       = 0.
 ENDFORM.

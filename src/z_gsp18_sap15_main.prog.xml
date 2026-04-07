@@ -34,7 +34,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_STEP1</NAME>
-       <TEXT>Step_1:_Enter_table_name_(F4)</TEXT>
+       <TEXT>Step_1:_Enter_table_(F4=list)</TEXT>
        <LINE>003</LINE>
        <COLUMN>013</COLUMN>
        <LENGTH>035</LENGTH>
@@ -49,7 +49,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_TABNAME</NAME>
-       <TEXT>Table_Name_(F4)___________</TEXT>
+       <TEXT>Table_name_(F4)___________</TEXT>
        <LINE>005</LINE>
        <COLUMN>013</COLUMN>
        <LENGTH>026</LENGTH>

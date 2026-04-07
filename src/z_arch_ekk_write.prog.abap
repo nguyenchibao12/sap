@@ -32,7 +32,7 @@ DATA: gs_cfg    TYPE zsp26_arch_cfg,
       lv_ts_s   TYPE timestampl,
       lv_ts_e   TYPE timestampl.
 
-FIELD-SYMBOLS: <lt_src> TYPE INDEX TABLE,
+FIELD-SYMBOLS: <lt_src> TYPE STANDARD TABLE,
                <row>    TYPE any.
 
 " g_scr_h0 / g_scr_h1: do COMMENT /1(79) tự khai báo — không thêm DATA (trùng trên ADT/bản mới)
@@ -191,7 +191,7 @@ START-OF-SELECTION.
                       ELSE sy-datum - gs_cfg-retention ).
 
   WRITE: /.
-  WRITE: / |=== ADK Write (PUT_TABLE): { p_table } | Object Z_ARCH_EKK ===|.
+  WRITE: / |=== ADK Write (PUT_TABLE): { p_table } - Object Z_ARCH_EKK ===|.
   WRITE: / |CONFIG_ID  : { gs_cfg-config_id }|.
   WRITE: / |Date Field : { gs_cfg-data_field }|.
   WRITE: / |Retention  : { gs_cfg-retention } days|.
@@ -378,24 +378,35 @@ ENDFORM.
 
 *&---------------------------------------------------------------------*
 FORM f4_arch_cfg_table.
-  DATA: lt_return TYPE TABLE OF ddshretval.
+  TYPES: BEGIN OF ty_sht_f4,
+           table_name  TYPE tabname,
+           description TYPE char80,
+         END OF ty_sht_f4.
+  DATA lt_sht TYPE STANDARD TABLE OF ty_sht_f4 WITH DEFAULT KEY.
 
-  CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
-    EXPORTING
-      searchhelp    = 'ZSP26_SH_TABLES'
-      tabname       = 'ZSP26_ARCH_CFG'
-      fieldname     = 'TABLE_NAME'
-      shlpparam     = 'TABLE_NAME'
-      dynpprog      = sy-repid
-      dynpnr        = sy-dynnr
-      dynprofield   = 'P_TABLE'
-    TABLES
-      return_tab    = lt_return
-    EXCEPTIONS
-      OTHERS        = 1.
-
-  READ TABLE lt_return INTO DATA(ls_ret) INDEX 1.
-  IF sy-subrc = 0.
-    p_table = CONV tabname( ls_ret-fieldval ).
+  SELECT table_name, description
+    FROM zsp26_arch_cfg
+    WHERE is_active = 'X'
+    INTO CORRESPONDING FIELDS OF TABLE @lt_sht
+    UP TO 999 ROWS.
+  IF lt_sht IS INITIAL.
+    SELECT table_name, description
+      FROM zsp26_arch_cfg
+      INTO CORRESPONDING FIELDS OF TABLE @lt_sht
+      UP TO 999 ROWS.
   ENDIF.
+  SORT lt_sht BY table_name.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'TABLE_NAME'
+      window_title = 'Tables in ZSP26_ARCH_CFG'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'P_TABLE'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_sht
+    EXCEPTIONS
+      OTHERS       = 0.
 ENDFORM.
