@@ -675,28 +675,95 @@ ENDFORM.
 
 *&---------------------------------------------------------------------*
 *& FORM MAINTENANCE_SPOOL_PARAMS
+*&  (ARCHIVE_ADMIN_SET_PRINT_PARAMS không tồn tại trên hầu hết hệ thống)
+*&  Dùng GET_PRINT_PARAMETERS (SAPLSPRI) — hộp thoại spool + archive list.
 *&---------------------------------------------------------------------*
 FORM maintenance_spool_params.
-  CALL FUNCTION 'ARCHIVE_ADMIN_SET_PRINT_PARAMS'
-    EXPORTING object = gv_object
-    EXCEPTIONS OTHERS = 2.
-  IF sy-subrc = 0.
+  DATA: ls_pri   TYPE pri_params,
+        ls_arc   TYPE arc_params,
+        lv_valid TYPE char1,
+        lv_rep   TYPE programm.
+
+  lv_rep = COND #( WHEN gv_prog_write IS NOT INITIAL THEN gv_prog_write ELSE sy-repid ).
+
+  CALL FUNCTION 'GET_PRINT_PARAMETERS'
+    EXPORTING
+      report    = lv_rep
+      ar_object = gv_object
+    IMPORTING
+      out_parameters         = ls_pri
+      out_archive_parameters = ls_arc
+      valid                  = lv_valid
+    EXCEPTIONS
+      archive_info_not_found = 1
+      OTHERS                 = 2.
+
+  IF sy-subrc <> 0.
+    CLEAR: ls_pri, ls_arc, lv_valid.
+    CALL FUNCTION 'GET_PRINT_PARAMETERS'
+      EXPORTING
+        report = lv_rep
+      IMPORTING
+        out_parameters = ls_pri
+        valid            = lv_valid
+      EXCEPTIONS
+        OTHERS = 2.
+  ENDIF.
+
+  IF sy-subrc = 0 AND lv_valid = 'X'.
     gv_spool_set = 'X'.
     MESSAGE 'Đã thiết lập tham số máy in (Spool)' TYPE 'S'.
+  ELSEIF sy-subrc = 0.
+    MESSAGE 'Đã hủy hoặc tham số spool không hợp lệ' TYPE 'S' DISPLAY LIKE 'W'.
+  ELSE.
+    MESSAGE 'Không gọi được GET_PRINT_PARAMETERS' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
 *& FORM MAINTENANCE_START_DATE
+*&  (ARCHIVE_ADMIN_SET_START_TIME không tồn tại trên hầu hết hệ thống)
+*&  POPUP_GET_VALUES — nhập ngày/giờ bắt đầu (trạng thái màn hình SARA-style).
 *&---------------------------------------------------------------------*
 FORM maintenance_start_date.
-  CALL FUNCTION 'ARCHIVE_ADMIN_SET_START_TIME'
-    EXPORTING object = gv_object
-    EXCEPTIONS OTHERS = 2.
-  IF sy-subrc = 0.
-    gv_start_date = 'X'.
-    MESSAGE 'Đã thiết lập thời gian bắt đầu' TYPE 'S'.
+  DATA: lv_ret TYPE char1,
+        lt_f   TYPE TABLE OF sval,
+        ls_f   TYPE sval.
+
+  CLEAR ls_f.
+  ls_f-fieldtext  = 'Start date'.
+  ls_f-value      = |{ sy-datum DATE = USER }|.
+  ls_f-datatype   = 'DATS'.
+  ls_f-obligatory = 'X'.
+  APPEND ls_f TO lt_f.
+
+  CLEAR ls_f.
+  ls_f-fieldtext  = 'Start time (HHMMSS)'.
+  ls_f-value      = '060000'.
+  ls_f-datatype   = 'TIMS'.
+  ls_f-obligatory = 'X'.
+  APPEND ls_f TO lt_f.
+
+  CALL FUNCTION 'POPUP_GET_VALUES'
+    EXPORTING
+      popup_title = 'Maintain start date / time'
+    IMPORTING
+      returncode  = lv_ret
+    TABLES
+      fields      = lt_f
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  IF sy-subrc <> 0.
+    MESSAGE 'Không mở được hộp thoại ngày/giờ' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
   ENDIF.
+  IF lv_ret = 'A'.
+    RETURN.
+  ENDIF.
+
+  gv_start_date = 'X'.
+  MESSAGE 'Đã thiết lập thời gian bắt đầu' TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
