@@ -16,8 +16,6 @@ MODULE user_command_0400 INPUT.
   CASE lv_cmd_400.
     WHEN 'BACK' OR 'EXIT' OR 'CANC'.
       LEAVE PROGRAM.
-    WHEN 'BT_F4_TABLE'.
-      PERFORM f4_pick_archive_table.
     WHEN 'BT_CONTINUE'.
       IF gv_tabname IS INITIAL.
         MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.

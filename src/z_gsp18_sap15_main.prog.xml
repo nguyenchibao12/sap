@@ -79,21 +79,6 @@
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
-       <NAME>F4_TABLE_BTN</NAME>
-       <TEXT>Cfg_tables____</TEXT>
-       <LINE>005</LINE>
-       <COLUMN>071</COLUMN>
-       <LENGTH>014</LENGTH>
-       <VISLENGTH>014</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <PUSH_FCODE>BT_F4_TABLE</PUSH_FCODE>
-       <FORMAT>CHAR</FORMAT>
-       <REQU_ENTRY>N</REQU_ENTRY>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>PUSH</TYPE>
        <NAME>CONTINUE_BTN</NAME>
        <TEXT>Continue___________________________</TEXT>
        <LINE>008</LINE>
@@ -752,15 +737,6 @@
       <INFO_TEXT>Go to main actions (screen 0100)</INFO_TEXT>
      </RSMPE_FUNT>
      <RSMPE_FUNT>
-      <CODE>BT_F4_TABLE</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <TEXT_NAME>ICON_SEARCH</TEXT_NAME>
-      <ICON_ID>@16@</ICON_ID>
-      <FUN_TEXT>Pick table</FUN_TEXT>
-      <INFO_TEXT>List tables from ZSP26_ARCH_CFG (same as F4)</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
       <CODE>BT_CHG_TAB</CODE>
       <TEXTNO>001</TEXTNO>
       <TEXT_TYPE>S</TEXT_TYPE>
@@ -871,10 +847,6 @@
      <RSMPE_STAF>
       <STATUS>STATUS_100</STATUS>
       <FUNCTION>BT_CONTINUE</FUNCTION>
-     </RSMPE_STAF>
-     <RSMPE_STAF>
-      <STATUS>STATUS_100</STATUS>
-      <FUNCTION>BT_F4_TABLE</FUNCTION>
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STATUS_100</STATUS>
