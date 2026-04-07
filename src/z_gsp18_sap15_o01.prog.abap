@@ -1,6 +1,11 @@
 *&---------------------------------------------------------------------*
 *& Include Z_GSP18_SAP15_O01
 *&---------------------------------------------------------------------*
+MODULE status_0400 OUTPUT.
+  SET PF-STATUS 'STATUS_100'.
+  SET TITLEBAR 'TITLE_100'.
+ENDMODULE.
+
 MODULE status_0100 OUTPUT.
   SET PF-STATUS 'STATUS_100'.
   SET TITLEBAR 'TITLE_100'.

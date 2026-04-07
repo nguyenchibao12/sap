@@ -3,7 +3,7 @@
 *&---------------------------------------------------------------------*
 
 *&---------------------------------------------------------------------*
-*& Module F4_TABNAME INPUT — màn 0100 (search help ZSP26_SH_TABLES)
+*& Module F4_TABNAME INPUT — màn 0400 (search help ZSP26_SH_TABLES)
 *&---------------------------------------------------------------------*
 MODULE f4_tabname INPUT.
   DATA: lt_return TYPE TABLE OF ddshretval.
@@ -29,6 +29,30 @@ MODULE f4_tabname INPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
+*& Module USER_COMMAND_0400 INPUT — chọn bảng → Continue → 0100
+*&---------------------------------------------------------------------*
+MODULE user_command_0400 INPUT.
+  DATA: lv_cmd_400 TYPE sy-ucomm.
+  lv_cmd_400 = ok_code.
+  CLEAR ok_code.
+
+  CONDENSE gv_tabname.
+  TRANSLATE gv_tabname TO UPPER CASE.
+
+  CASE lv_cmd_400.
+    WHEN 'BACK' OR 'EXIT' OR 'CANC'.
+      LEAVE PROGRAM.
+    WHEN 'BT_CONTINUE'.
+      IF gv_tabname IS INITIAL.
+        MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSE.
+        SET SCREEN 0100.
+        LEAVE SCREEN.
+      ENDIF.
+  ENDCASE.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
 *& Module USER_COMMAND_0100 INPUT
 *&---------------------------------------------------------------------*
 MODULE user_command_0100 INPUT.
@@ -40,8 +64,15 @@ MODULE user_command_0100 INPUT.
   TRANSLATE gv_tabname TO UPPER CASE.
 
   CASE lv_cmd.
-    WHEN 'BACK' OR 'EXIT' OR 'CANC'.
+    WHEN 'BACK'.
+      SET SCREEN 0400.
+      LEAVE SCREEN.
+    WHEN 'EXIT' OR 'CANC'.
       LEAVE PROGRAM.
+
+    WHEN 'BT_CHG_TAB'.
+      SET SCREEN 0400.
+      LEAVE SCREEN.
 
     WHEN 'BT_WRITE'.
       IF gv_tabname IS INITIAL.
@@ -153,7 +184,7 @@ MODULE user_command_0300 INPUT.
   CLEAR ok_code.
 
   CASE lv_ucomm.
-    WHEN 'EDIT_BTN'.
+    WHEN 'BT_EDIT' OR 'EDIT_BTN'.
       IF gv_variant IS NOT INITIAL.
         CALL FUNCTION 'RS_VARIANT_EXISTS'
           EXPORTING
@@ -187,9 +218,9 @@ MODULE user_command_0300 INPUT.
         MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
       ENDIF.
 
-    WHEN 'START_BTN'.
+    WHEN 'BT_START' OR 'START_BTN'.
       PERFORM maintenance_start_date.
-    WHEN 'SPOOL_BTN'.
+    WHEN 'BT_SPOOL' OR 'SPOOL_BTN'.
       PERFORM maintenance_spool_params.
     WHEN 'BACK'.
       SET SCREEN 0100. LEAVE SCREEN.
