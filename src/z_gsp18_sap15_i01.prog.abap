@@ -243,8 +243,7 @@ MODULE f4_gv_variant INPUT.
   CHECK gv_prog_write IS NOT INITIAL.
 
   SELECT variant FROM varid
-    WHERE mandt = @sy-mandt
-      AND report = @gv_prog_write
+    WHERE report = @gv_prog_write
     INTO TABLE @lt_vf4
     UP TO 500 ROWS.
 
