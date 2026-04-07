@@ -729,15 +729,21 @@ FORM maintenance_start_date.
         lt_f   TYPE TABLE OF sval,
         ls_f   TYPE sval.
 
+  " POPUP_GET_VALUES cần TABNAME + FIELDNAME (DDIC) — nếu thiếu, FM thường
+  " trả sy-subrc <> 0 và không mở được popup (lỗi "Không mở được hộp thoại...").
   CLEAR ls_f.
+  ls_f-tabname   = 'SYST'.
+  ls_f-fieldname = 'DATUM'.
   ls_f-fieldtext = 'Start date'.
   ls_f-value     = |{ sy-datum DATE = USER }|.
   ls_f-field_obl = 'X'.
   APPEND ls_f TO lt_f.
 
   CLEAR ls_f.
+  ls_f-tabname   = 'SYST'.
+  ls_f-fieldname = 'UZEIT'.
   ls_f-fieldtext = 'Start time (HHMMSS)'.
-  ls_f-value     = '060000'.
+  ls_f-value     = sy-uzeit.
   ls_f-field_obl = 'X'.
   APPEND ls_f TO lt_f.
 
