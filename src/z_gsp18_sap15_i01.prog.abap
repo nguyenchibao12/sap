@@ -46,6 +46,7 @@ MODULE user_command_0400 INPUT.
       IF gv_tabname IS INITIAL.
         MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
+        gv_hub_allowed = abap_true.
         SET SCREEN 0100.
         LEAVE SCREEN.
       ENDIF.
@@ -65,12 +66,14 @@ MODULE user_command_0100 INPUT.
 
   CASE lv_cmd.
     WHEN 'BACK'.
+      gv_hub_allowed = abap_false.
       SET SCREEN 0400.
       LEAVE SCREEN.
     WHEN 'EXIT' OR 'CANC'.
       LEAVE PROGRAM.
 
     WHEN 'BT_CHG_TAB'.
+      gv_hub_allowed = abap_false.
       SET SCREEN 0400.
       LEAVE SCREEN.
 
