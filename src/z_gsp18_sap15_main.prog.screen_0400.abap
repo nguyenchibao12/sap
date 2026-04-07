@@ -2,5 +2,4 @@ PROCESS BEFORE OUTPUT.
   MODULE status_0400.
 
 PROCESS AFTER INPUT.
-  FIELD gv_tabname MODULE f4_tabname ON REQUEST.
   MODULE user_command_0400.

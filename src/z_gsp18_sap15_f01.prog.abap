@@ -62,7 +62,7 @@ FORM sync_gv_tabname_from_dynp.
 
   READ TABLE lt_df INTO ls_df INDEX 1.
   IF sy-subrc = 0 AND ls_df-fieldvalue IS NOT INITIAL.
-    gv_tabname = CONV tabname( ls_df-fieldvalue ).
+    gv_tabname = CONV zsp26_de_tabname( ls_df-fieldvalue ).
     CONDENSE gv_tabname.
     TRANSLATE gv_tabname TO UPPER CASE.
   ENDIF.

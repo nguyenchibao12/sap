@@ -17,6 +17,8 @@
     <SCRTEXT_L>Table Name for Archiving</SCRTEXT_L>
     <DTELMASTER>E</DTELMASTER>
     <REFKIND>D</REFKIND>
+    <SHLPNAME>ZSP26_SH_TABLES</SHLPNAME>
+    <SHLPFIELD>TABLE_NAME</SHLPFIELD>
    </DD04V>
   </asx:values>
  </asx:abap>

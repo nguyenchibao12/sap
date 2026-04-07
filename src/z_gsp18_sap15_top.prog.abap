@@ -59,7 +59,7 @@ TYPES: BEGIN OF ty_log_det,
 "----------------------------------------------------------------------
 
 " Screen 0100 — input chính
-DATA: gv_tabname TYPE tabname.        " Bảng ZSP26_* đang thao tác
+DATA: gv_tabname TYPE zsp26_de_tabname. " Khớp DDIC màn 0400 (ROLLNAME) + F4 Search Help chuẩn
 " Chỉ cho phép vào hub 0100 sau khi user Continue từ 0400 (tránh TSTC sai DYPNO mở thẳng 0100)
 DATA: gv_hub_allowed TYPE abap_bool VALUE abap_false.
 
