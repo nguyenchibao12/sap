@@ -3,40 +3,10 @@
 *&---------------------------------------------------------------------*
 
 *&---------------------------------------------------------------------*
-*& Module F4_TABNAME INPUT — F4: danh sách từ ZSP26_ARCH_CFG (1 popup, chọn/double-click)
+*& Module F4_TABNAME INPUT — phím F4 (cùng logic với nút BT_F4_TABLE)
 *&---------------------------------------------------------------------*
 MODULE f4_tabname INPUT.
-  TYPES: BEGIN OF ty_sht_f4,
-           table_name  TYPE tabname,
-           description TYPE char80,
-         END OF ty_sht_f4.
-  DATA lt_sht TYPE STANDARD TABLE OF ty_sht_f4 WITH DEFAULT KEY.
-
-  SELECT table_name, description
-    FROM zsp26_arch_cfg
-    WHERE is_active = 'X'
-    INTO CORRESPONDING FIELDS OF TABLE @lt_sht
-    UP TO 999 ROWS.
-  IF lt_sht IS INITIAL.
-    SELECT table_name, description
-      FROM zsp26_arch_cfg
-      INTO CORRESPONDING FIELDS OF TABLE @lt_sht
-      UP TO 999 ROWS.
-  ENDIF.
-  SORT lt_sht BY table_name.
-
-  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
-    EXPORTING
-      retfield     = 'TABLE_NAME'
-      window_title = 'Tables in ZSP26_ARCH_CFG'
-      dynpprog     = sy-repid
-      dynpnr       = sy-dynnr
-      dynprofield  = 'GV_TABNAME'
-      value_org    = 'S'
-    TABLES
-      value_tab    = lt_sht
-    EXCEPTIONS
-      OTHERS       = 0.
+  PERFORM f4_pick_archive_table.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
@@ -53,6 +23,8 @@ MODULE user_command_0400 INPUT.
   CASE lv_cmd_400.
     WHEN 'BACK' OR 'EXIT' OR 'CANC'.
       LEAVE PROGRAM.
+    WHEN 'BT_F4_TABLE'.
+      PERFORM f4_pick_archive_table.
     WHEN 'BT_CONTINUE'.
       IF gv_tabname IS INITIAL.
         MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.

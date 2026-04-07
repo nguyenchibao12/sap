@@ -5,6 +5,69 @@
 INCLUDE z_gsp18_apply_rules.
 INCLUDE z_gsp18_arch_dyn.
 
+*&---------------------------------------------------------------------*
+*& F4 / chọn bảng từ ZSP26_ARCH_CFG — dùng cho màn 0400 (F4 + nút)
+*&---------------------------------------------------------------------*
+FORM f4_pick_archive_table.
+  TYPES: BEGIN OF ty_sht_f4,
+           table_name  TYPE tabname,
+           description TYPE char80,
+         END OF ty_sht_f4.
+  DATA lt_sht TYPE STANDARD TABLE OF ty_sht_f4 WITH DEFAULT KEY.
+
+  SELECT table_name, description
+    FROM zsp26_arch_cfg
+    WHERE is_active = 'X'
+    INTO CORRESPONDING FIELDS OF TABLE @lt_sht
+    UP TO 999 ROWS.
+  IF lt_sht IS INITIAL.
+    SELECT table_name, description
+      FROM zsp26_arch_cfg
+      INTO CORRESPONDING FIELDS OF TABLE @lt_sht
+      UP TO 999 ROWS.
+  ENDIF.
+  SORT lt_sht BY table_name.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'TABLE_NAME'
+      window_title = 'Tables in ZSP26_ARCH_CFG'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'GV_TABNAME'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_sht
+    EXCEPTIONS
+      OTHERS       = 0.
+
+  PERFORM sync_gv_tabname_from_dynp.
+ENDFORM.
+
+FORM sync_gv_tabname_from_dynp.
+  DATA: lt_df TYPE TABLE OF dynpread,
+        ls_df TYPE dynpread.
+  CLEAR lt_df.
+  ls_df-fieldname = 'GV_TABNAME'.
+  APPEND ls_df TO lt_df.
+
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname     = sy-repid
+      dynumb     = sy-dynnr
+    TABLES
+      dynpfields = lt_df
+    EXCEPTIONS
+      OTHERS     = 1.
+
+  READ TABLE lt_df INTO ls_df INDEX 1.
+  IF sy-subrc = 0 AND ls_df-fieldvalue IS NOT INITIAL.
+    gv_tabname = CONV tabname( ls_df-fieldvalue ).
+    CONDENSE gv_tabname.
+    TRANSLATE gv_tabname TO UPPER CASE.
+  ENDIF.
+ENDFORM.
+
 "----------------------------------------------------------------------
 " Class Implementation (moved from TOP — TOP allows definitions only)
 "----------------------------------------------------------------------

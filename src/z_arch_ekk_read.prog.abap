@@ -380,4 +380,24 @@ FORM f4_arch_cfg_table.
       value_tab    = lt_sht
     EXCEPTIONS
       OTHERS       = 0.
+
+  DATA: lt_df TYPE TABLE OF dynpread,
+        ls_df TYPE dynpread.
+  CLEAR lt_df.
+  ls_df-fieldname = 'P_TABLE'.
+  APPEND ls_df TO lt_df.
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname     = sy-repid
+      dynumb     = sy-dynnr
+    TABLES
+      dynpfields = lt_df
+    EXCEPTIONS
+      OTHERS     = 1.
+  READ TABLE lt_df INTO ls_df INDEX 1.
+  IF sy-subrc = 0 AND ls_df-fieldvalue IS NOT INITIAL.
+    p_table = CONV tabname( ls_df-fieldvalue ).
+    CONDENSE p_table.
+    TRANSLATE p_table TO UPPER CASE.
+  ENDIF.
 ENDFORM.
