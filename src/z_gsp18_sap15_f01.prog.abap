@@ -181,10 +181,18 @@ ENDFORM.
 *& FORM DO_ARCHIVE_VIA_ADK — gọi ADK Write Program (từ lcl_handler)
 *&---------------------------------------------------------------------*
 FORM do_archive_via_adk.
-  SUBMIT z_arch_ekk_write
-    WITH p_table = gv_tabname
-    WITH p_test  = ' '
-    AND RETURN.
+  IF gv_variant IS NOT INITIAL.
+    SUBMIT z_arch_ekk_write
+      WITH p_table = gv_tabname
+      WITH p_test  = ' '
+      USING SELECTION-SET gv_variant
+      AND RETURN.
+  ELSE.
+    SUBMIT z_arch_ekk_write
+      WITH p_table = gv_tabname
+      WITH p_test  = ' '
+      AND RETURN.
+  ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

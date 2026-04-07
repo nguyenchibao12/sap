@@ -82,7 +82,7 @@ DATA: gt_arch_stat TYPE TABLE OF ty_arch_stat,
       go_cont_200  TYPE REF TO cl_gui_custom_container,
       gt_fcat_200  TYPE lvc_t_fcat.
 
-" Screen 0300 — SARA scheduler (giữ để tương thích)
+" Screen 0300 / 0500 — SARA scheduler (variant, start, spool)
 DATA: gv_object     TYPE arch_obj-object,
       gv_variant    TYPE variant,
       gv_prog_write TYPE programm,
@@ -91,6 +91,12 @@ DATA: gv_object     TYPE arch_obj-object,
       gv_spool_set  TYPE char1,
       gv_test_mode  TYPE char1 VALUE 'X',
       gv_det_log    TYPE char1 VALUE 'X'.
+
+" Screen 0500 — hiển thị giống SARA Create archive file
+DATA: gv_disp_mandt    TYPE mandt,
+      gv_disp_uname    TYPE syuname,
+      gv_stat_start_tx TYPE char20,
+      gv_stat_spool_tx TYPE char20.
 
 DATA: go_alv_grid    TYPE REF TO cl_gui_alv_grid,
       go_custom_cont TYPE REF TO cl_gui_custom_container,

@@ -52,3 +52,36 @@ MODULE status_0300 OUTPUT.
   SET PF-STATUS 'STATUS_300'.
   SET TITLEBAR 'TITLE_300'.
 ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module INIT_FIELDS_0500 OUTPUT — Client / User / trạng thái Start & Spool
+*&---------------------------------------------------------------------*
+MODULE init_fields_0500 OUTPUT.
+  IF gv_object IS INITIAL.
+    gv_object = 'Z_ARCH_EKK'.
+  ENDIF.
+  IF gv_test_mode IS INITIAL.
+    gv_test_mode = 'X'.
+  ENDIF.
+  IF gv_det_log IS INITIAL.
+    gv_det_log = 'X'.
+  ENDIF.
+
+  gv_disp_mandt = sy-mandt.
+  gv_disp_uname = sy-uname.
+
+  gv_stat_start_tx = COND #( WHEN gv_start_date = 'X' THEN 'Defined' ELSE 'Not Defined' ).
+  gv_stat_spool_tx = COND #( WHEN gv_spool_set = 'X' THEN 'Defined' ELSE 'Not Defined' ).
+
+  IF gv_prog_write IS INITIAL.
+    PERFORM get_archive_programs.
+  ENDIF.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module STATUS_0500 OUTPUT
+*&---------------------------------------------------------------------*
+MODULE status_0500 OUTPUT.
+  SET PF-STATUS 'STATUS_300'.
+  SET TITLEBAR 'TITLE_300'.
+ENDMODULE.

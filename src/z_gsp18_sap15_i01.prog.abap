@@ -79,7 +79,8 @@ MODULE user_command_0100 INPUT.
         " TYPE S + DISPLAY LIKE E: cảnh báo giống lỗi nhưng không 'khóa' dynpro như MESSAGE E
         MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
-        PERFORM do_archive_write.
+        SET SCREEN 0500.
+        LEAVE SCREEN.
       ENDIF.
 
     WHEN 'BT_DELETE'.
@@ -224,5 +225,110 @@ MODULE user_command_0300 INPUT.
       PERFORM maintenance_spool_params.
     WHEN 'BACK'.
       SET SCREEN 0100. LEAVE SCREEN.
+  ENDCASE.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module F4_GV_VARIANT INPUT — F4 variant theo report write (AOBJ)
+*&---------------------------------------------------------------------*
+MODULE f4_gv_variant INPUT.
+  TYPES: BEGIN OF ty_vf4,
+           variant TYPE rvari,
+         END OF ty_vf4.
+  DATA: lt_vf4 TYPE TABLE OF ty_vf4.
+
+  IF gv_prog_write IS INITIAL.
+    PERFORM get_archive_programs.
+  ENDIF.
+  CHECK gv_prog_write IS NOT INITIAL.
+
+  SELECT variant FROM varid
+    WHERE mandt = @sy-mandt
+      AND report = @gv_prog_write
+    INTO TABLE @lt_vf4
+    UP TO 500 ROWS.
+
+  IF lt_vf4 IS INITIAL.
+    MESSAGE 'No saved variants for this archive write program' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'VARIANT'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'GV_VARIANT'
+      window_title = 'Variants'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_vf4
+    EXCEPTIONS
+      OTHERS       = 0.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module USER_COMMAND_0500 INPUT — SARA-style Create archive file
+*&---------------------------------------------------------------------*
+MODULE user_command_0500 INPUT.
+  DATA: lv_rc_500  TYPE sy-subrc,
+        lv_ans_500 TYPE char1,
+        lv_u5      TYPE sy-ucomm.
+
+  lv_u5 = ok_code.
+  CLEAR ok_code.
+
+  CASE lv_u5.
+    WHEN 'BT_EDIT' OR 'EDIT_BTN'.
+      IF gv_variant IS NOT INITIAL.
+        CALL FUNCTION 'RS_VARIANT_EXISTS'
+          EXPORTING
+            report  = gv_prog_write
+            variant = gv_variant
+          IMPORTING
+            r_c     = lv_rc_500.
+
+        IF lv_rc_500 = 0.
+          SUBMIT (gv_prog_write) VIA SELECTION-SCREEN
+            USING SELECTION-SET gv_variant AND RETURN.
+        ELSE.
+          CALL FUNCTION 'POPUP_TO_CONFIRM'
+            EXPORTING
+              titlebar              = 'Thông báo'
+              text_question         = 'Variant chưa tồn tại. Tạo mới?'
+              text_button_1         = 'Có'
+              text_button_2         = 'Không'
+              display_cancel_button = ' '
+            IMPORTING
+              answer                = lv_ans_500
+            EXCEPTIONS
+              OTHERS                = 1.
+          IF lv_ans_500 = '1'.
+            SUBMIT (gv_prog_write) VIA SELECTION-SCREEN AND RETURN.
+          ELSE.
+            CLEAR gv_variant.
+          ENDIF.
+        ENDIF.
+      ELSE.
+        MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
+      ENDIF.
+
+    WHEN 'BT_START' OR 'START_BTN'.
+      PERFORM maintenance_start_date.
+    WHEN 'BT_SPOOL' OR 'SPOOL_BTN'.
+      PERFORM maintenance_spool_params.
+
+    WHEN 'BT_PREVIEW'.
+      IF gv_tabname IS INITIAL.
+        MESSAGE 'Vui lòng nhập Table Name ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSE.
+        PERFORM do_archive_write.
+        SET SCREEN 0100.
+        LEAVE SCREEN.
+      ENDIF.
+
+    WHEN 'BACK'.
+      SET SCREEN 0100.
+      LEAVE SCREEN.
   ENDCASE.
 ENDMODULE.
