@@ -731,17 +731,15 @@ FORM maintenance_start_date.
         ls_f   TYPE sval.
 
   CLEAR ls_f.
-  ls_f-fieldtext  = 'Start date'.
-  ls_f-value      = |{ sy-datum DATE = USER }|.
-  ls_f-datatype   = 'DATS'.
-  ls_f-obligatory = 'X'.
+  ls_f-fieldtext = 'Start date'.
+  ls_f-value     = |{ sy-datum DATE = USER }|.
+  ls_f-field_obl = 'X'.
   APPEND ls_f TO lt_f.
 
   CLEAR ls_f.
-  ls_f-fieldtext  = 'Start time (HHMMSS)'.
-  ls_f-value      = '060000'.
-  ls_f-datatype   = 'TIMS'.
-  ls_f-obligatory = 'X'.
+  ls_f-fieldtext = 'Start time (HHMMSS)'.
+  ls_f-value     = '060000'.
+  ls_f-field_obl = 'X'.
   APPEND ls_f TO lt_f.
 
   CALL FUNCTION 'POPUP_GET_VALUES'
