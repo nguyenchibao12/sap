@@ -721,52 +721,36 @@ ENDFORM.
 
 *&---------------------------------------------------------------------*
 *& FORM MAINTENANCE_START_DATE
-*&  (ARCHIVE_ADMIN_SET_START_TIME không tồn tại trên hầu hết hệ thống)
-*&  POPUP_GET_VALUES — nhập ngày/giờ bắt đầu (trạng thái màn hình SARA-style).
+*&  Chuẩn SAP: BP_START_DATE_EDITOR — cùng hộp thoại "Start Time" như
+*&  SARA (lập lịch job: Immediate / Date/Time / After job / Event / …).
+*&  Không dùng POPUP_GET_VALUES + SYST-DATUM (dễ hỏng format F4 / hiển thị).
 *&---------------------------------------------------------------------*
 FORM maintenance_start_date.
-  DATA: lv_ret TYPE char1,
-        lt_f   TYPE TABLE OF sval,
-        ls_f   TYPE sval.
+  CONSTANTS:
+    gc_btc_yes            TYPE c LENGTH 1 VALUE 'Y', " BTC_YES
+    gc_btc_edit_startdate TYPE i VALUE 14.           " BTC_EDIT_STARTDATE (SE37 / type pool BTC)
 
-  " POPUP_GET_VALUES cần TABNAME + FIELDNAME (DDIC) — nếu thiếu, FM thường
-  " trả sy-subrc <> 0 và không mở được popup (lỗi "Không mở được hộp thoại...").
-  CLEAR ls_f.
-  ls_f-tabname   = 'SYST'.
-  ls_f-fieldname = 'DATUM'.
-  ls_f-fieldtext = 'Start date'.
-  ls_f-value     = |{ sy-datum DATE = USER }|.
-  ls_f-field_obl = 'X'.
-  APPEND ls_f TO lt_f.
+  DATA: lv_mod TYPE i.
 
-  CLEAR ls_f.
-  ls_f-tabname   = 'SYST'.
-  ls_f-fieldname = 'UZEIT'.
-  ls_f-fieldtext = 'Start time (HHMMSS)'.
-  ls_f-value     = sy-uzeit.
-  ls_f-field_obl = 'X'.
-  APPEND ls_f TO lt_f.
-
-  CALL FUNCTION 'POPUP_GET_VALUES'
+  CALL FUNCTION 'BP_START_DATE_EDITOR'
     EXPORTING
-      popup_title = 'Maintain start date / time'
+      stdt_dialog = gc_btc_yes
+      stdt_opcode = gc_btc_edit_startdate
+      stdt_input  = gs_btc_start
+      stdt_title  = 'Start Time'
     IMPORTING
-      returncode  = lv_ret
-    TABLES
-      fields      = lt_f
+      stdt_output      = gs_btc_start
+      stdt_modify_type = lv_mod
     EXCEPTIONS
-      OTHERS      = 1.
+      OTHERS           = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE 'Không mở được hộp thoại ngày/giờ' TYPE 'S' DISPLAY LIKE 'E'.
-    RETURN.
-  ENDIF.
-  IF lv_ret = 'A'.
+    MESSAGE 'Không mở được hộp thoại Start Time (BP_START_DATE_EDITOR).' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   gv_start_date = 'X'.
-  MESSAGE 'Đã thiết lập thời gian bắt đầu' TYPE 'S'.
+  MESSAGE 'Đã thiết lập thời gian bắt đầu (chuẩn lập lịch job)' TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

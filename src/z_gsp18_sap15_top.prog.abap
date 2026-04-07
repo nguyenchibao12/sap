@@ -90,6 +90,7 @@ DATA: gv_object     TYPE arch_obj-object,
       gv_prog_write TYPE programm,
       gv_prog_del   TYPE programm,
       gv_start_date TYPE char1,
+      gs_btc_start  TYPE tbtcstrt, " BP_START_DATE_EDITOR (Start Time — như SARA/SM37)
       gv_spool_set  TYPE char1,
       gv_test_mode  TYPE char1 VALUE 'X',
       gv_det_log    TYPE char1 VALUE 'X'.
