@@ -2,7 +2,6 @@
 *& Include Z_GSP18_SAP15_F01
 *& Subroutines + Class Implementation
 *&---------------------------------------------------------------------*
-INCLUDE z_gsp18_apply_rules.
 INCLUDE z_gsp18_arch_dyn.
 
 "----------------------------------------------------------------------
