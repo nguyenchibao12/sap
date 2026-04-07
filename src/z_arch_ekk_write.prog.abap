@@ -9,7 +9,6 @@
 *&---------------------------------------------------------------------*
 REPORT z_arch_ekk_write.
 
-INCLUDE z_gsp18_apply_rules.
 INCLUDE z_gsp18_arch_dyn.
 
 TYPES: BEGIN OF ty_cfg_disp,
