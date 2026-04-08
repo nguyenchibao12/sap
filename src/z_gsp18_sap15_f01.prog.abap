@@ -177,14 +177,138 @@ FORM show_archive_preview.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& Variant Z_ARCH_EKK_WRITE — tách theo bảng (SAP chỉ có report+variant)
+*& Tên lưu VARID: {tab_prefix}_{logical} ≤14 ký tự, vd BKPF_VAR_01 / EKKO_VAR_01
+*&---------------------------------------------------------------------*
+FORM arch_variant_tab_prefix
+  USING    iv_tabname TYPE tabname
+  CHANGING cv_prefix TYPE string.
+
+  cv_prefix = iv_tabname.
+  TRANSLATE cv_prefix TO UPPER CASE.
+  CONDENSE cv_prefix NO-GAPS.
+
+  IF strlen( cv_prefix ) >= 6 AND cv_prefix(6) = 'ZSP26_'.
+    SHIFT cv_prefix BY 6 PLACES LEFT.
+  ENDIF.
+
+  IF strlen( cv_prefix ) > 8.
+    cv_prefix = cv_prefix(8).
+  ENDIF.
+ENDFORM.
+
+FORM arch_build_write_variant_technical
+  USING    iv_tabname TYPE tabname
+           iv_logical TYPE variant
+  CHANGING cv_technical TYPE variant
+           cv_ok       TYPE abap_bool.
+
+  DATA: lv_pfx  TYPE string,
+        lv_log  TYPE string,
+        lv_full TYPE string,
+        lv_ml   TYPE i,
+        lv_mxp  TYPE i.
+
+  CLEAR: cv_technical, cv_ok.
+  cv_ok = abap_false.
+
+  IF iv_tabname IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lv_log = iv_logical.
+  TRANSLATE lv_log TO UPPER CASE.
+  CONDENSE lv_log NO-GAPS.
+  IF lv_log IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  PERFORM arch_variant_tab_prefix USING iv_tabname CHANGING lv_pfx.
+  IF lv_pfx IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lv_ml = strlen( lv_log ).
+  lv_mxp = 14 - 1 - lv_ml.
+  IF lv_mxp < 1.
+    RETURN.
+  ENDIF.
+
+  IF strlen( lv_pfx ) > lv_mxp.
+    lv_pfx = lv_pfx(lv_mxp).
+  ENDIF.
+
+  lv_full = |{ lv_pfx }_{ lv_log }|.
+  IF strlen( lv_full ) > 14.
+    RETURN.
+  ENDIF.
+
+  cv_technical = lv_full.
+  TRANSLATE cv_technical TO UPPER CASE.
+  cv_ok = abap_true.
+ENDFORM.
+
+FORM arch_logical_from_write_variant_technical
+  USING    iv_tabname TYPE tabname
+           iv_technical TYPE variant
+  CHANGING cv_logical TYPE variant
+           cv_ok      TYPE abap_bool.
+
+  DATA: lv_pfx TYPE string,
+        lv_t   TYPE string,
+        lv_len TYPE i.
+
+  CLEAR: cv_logical, cv_ok.
+  cv_ok = abap_false.
+
+  IF iv_tabname IS INITIAL OR iv_technical IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lv_t = iv_technical.
+  TRANSLATE lv_t TO UPPER CASE.
+
+  PERFORM arch_variant_tab_prefix USING iv_tabname CHANGING lv_pfx.
+  IF lv_pfx IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lv_len = strlen( lv_pfx ).
+  IF strlen( lv_t ) <= lv_len + 1.
+    RETURN.
+  ENDIF.
+
+  TRY.
+    IF substring( val = lv_t len = 1 off = lv_len ) <> '_'.
+      RETURN.
+    ENDIF.
+    CATCH cx_sy_range_out_of_bounds.
+      RETURN.
+  ENDTRY.
+
+  cv_logical = substring( val = lv_t off = lv_len + 1 ).
+  cv_ok = abap_true.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& FORM DO_ARCHIVE_VIA_ADK — gọi ADK Write Program (từ lcl_handler)
 *&---------------------------------------------------------------------*
 FORM do_archive_via_adk.
+  DATA: lv_vtech TYPE variant,
+        lv_vok   TYPE abap_bool.
+
   IF gv_variant IS NOT INITIAL.
+    PERFORM arch_build_write_variant_technical
+      USING gv_tabname gv_variant
+      CHANGING lv_vtech lv_vok.
+    IF lv_vok = abap_false.
+      MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
     SUBMIT z_arch_ekk_write
       WITH p_table = gv_tabname
       WITH p_test  = ' '
-      USING SELECTION-SET gv_variant
+      USING SELECTION-SET lv_vtech
       AND RETURN.
   ELSE.
     SUBMIT z_arch_ekk_write
