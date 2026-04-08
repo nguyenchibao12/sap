@@ -448,7 +448,7 @@ MODULE user_command_0500 INPUT.
     WHEN 'BT_SPOOL' OR 'SPOOL_BTN'.
       PERFORM maintenance_spool_params.
 
-    WHEN 'BT_PREVIEW' OR 'ONLI'.
+    WHEN 'BT_PREVIEW'.
       IF gv_tabname IS INITIAL.
         MESSAGE 'Vui lòng nhập Table Name ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_start_date <> 'X'.
@@ -457,6 +457,17 @@ MODULE user_command_0500 INPUT.
         MESSAGE 'Chưa maintain Spool Parameters. Vào Spool Parameters trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM do_archive_write.
+      ENDIF.
+
+    WHEN 'ONLI'.
+      IF gv_tabname IS INITIAL.
+        MESSAGE 'Vui lòng nhập Table Name ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSEIF gv_start_date <> 'X'.
+        MESSAGE 'Chưa maintain Start Date. Vào Start Date để khai báo trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSEIF gv_spool_set <> 'X'.
+        MESSAGE 'Chưa maintain Spool Parameters. Vào Spool Parameters trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSE.
+        PERFORM do_archive_via_adk.
         SET SCREEN 0100.
         LEAVE SCREEN.
       ENDIF.
