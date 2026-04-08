@@ -732,12 +732,12 @@ FORM maintenance_start_date.
 
   DATA: lv_mod TYPE i.
 
+  " STDT_TITLE không có trên một số bản kernel / FM — gây CALL_FUNCTION_PARM_UNKNOWN.
   CALL FUNCTION 'BP_START_DATE_EDITOR'
     EXPORTING
       stdt_dialog = gc_btc_yes
       stdt_opcode = gc_btc_edit_startdate
       stdt_input  = gs_btc_start
-      stdt_title  = 'Start Time'
     IMPORTING
       stdt_output      = gs_btc_start
       stdt_modify_type = lv_mod
