@@ -253,12 +253,14 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 MODULE f4_gv_variant INPUT.
   TYPES: BEGIN OF ty_vf4,
-           variant TYPE rvari,
+           variant TYPE variant,
          END OF ty_vf4.
   DATA: lt_vf4    TYPE TABLE OF ty_vf4,
         lt_raw    TYPE TABLE OF rvari,
         ls_vf4    TYPE ty_vf4,
-        lv_tech   TYPE rvari,
+        lv_r      TYPE rvari,
+        lv_s      TYPE string,
+        lv_tab_s  TYPE string,
         lv_log    TYPE variant,
         lv_ok     TYPE abap_bool,
         lv_pfx    TYPE string,
@@ -294,24 +296,29 @@ MODULE f4_gv_variant INPUT.
   lv_pat = |{ lv_pfx }_*|.
   lv_tab_up = gv_tabname.
   TRANSLATE lv_tab_up TO UPPER CASE.
+  lv_tab_s = CONV string( lv_tab_up ).
+  CONDENSE lv_tab_s NO-GAPS.
 
-  LOOP AT lt_raw INTO lv_tech.
+  LOOP AT lt_raw INTO lv_r.
     CLEAR ls_vf4.
-    IF lv_tech = lv_tab_up.
-      ls_vf4-variant = lv_tech.
+    lv_s = CONV string( lv_r ).
+    CONDENSE lv_s NO-GAPS.
+
+    IF lv_s = lv_tab_s.
+      ls_vf4-variant = CONV variant( lv_s ).
       APPEND ls_vf4 TO lt_vf4.
       CONTINUE.
     ENDIF.
-    IF NOT lv_tech CP lv_pat.
+    IF NOT lv_s CP lv_pat.
       CONTINUE.
     ENDIF.
     PERFORM arch_log_from_write_var
-      USING gv_tabname lv_tech
+      USING gv_tabname lv_s
       CHANGING lv_log lv_ok.
     IF lv_ok = abap_true.
       ls_vf4-variant = lv_log.
     ELSE.
-      ls_vf4-variant = lv_tech.
+      ls_vf4-variant = CONV variant( lv_s ).
     ENDIF.
     APPEND ls_vf4 TO lt_vf4.
   ENDLOOP.
