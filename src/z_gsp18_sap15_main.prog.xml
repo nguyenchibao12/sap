@@ -952,6 +952,15 @@
       <INFO_TEXT>Maintain Start Date</INFO_TEXT>
      </RSMPE_FUNT>
      <RSMPE_FUNT>
+      <CODE>ONLI</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <TEXT_NAME>ICON_EXECUTE_OBJECT</TEXT_NAME>
+      <ICON_ID>@8N@</ICON_ID>
+      <FUN_TEXT>Execute</FUN_TEXT>
+      <INFO_TEXT>Execute (F8)</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
       <CODE>BT_WRITE</CODE>
       <TEXTNO>001</TEXTNO>
       <TEXT_TYPE>S</TEXT_TYPE>
@@ -1099,6 +1108,12 @@
       <FUNCODE>SPOOL_BTN</FUNCODE>
       <FUNNO>001</FUNNO>
      </RSMPE_PFK>
+     <RSMPE_PFK>
+      <CODE>000002</CODE>
+      <PFNO>08</PFNO>
+      <FUNCODE>ONLI</FUNCODE>
+      <FUNNO>001</FUNNO>
+     </RSMPE_PFK>
     </PFK>
     <SET>
      <RSMPE_STAF>
@@ -1152,6 +1167,10 @@
      <RSMPE_STAF>
       <STATUS>STATUS_300</STATUS>
       <FUNCTION>BT_PREVIEW</FUNCTION>
+     </RSMPE_STAF>
+     <RSMPE_STAF>
+      <STATUS>STATUS_300</STATUS>
+      <FUNCTION>ONLI</FUNCTION>
      </RSMPE_STAF>
     </SET>
     <DOC>

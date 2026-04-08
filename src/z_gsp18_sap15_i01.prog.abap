@@ -206,6 +206,9 @@ MODULE user_command_0300 INPUT.
   CLEAR ok_code.
 
   CASE lv_ucomm.
+    WHEN 'ONLI'.
+      MESSAGE 'Execute (F8) chỉ dùng ở màn Write.' TYPE 'S' DISPLAY LIKE 'W'.
+
     WHEN 'BT_EDIT' OR 'EDIT_BTN'.
       IF gv_variant IS NOT INITIAL.
         IF gv_tabname IS INITIAL.
