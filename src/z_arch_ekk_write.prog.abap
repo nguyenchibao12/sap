@@ -5,7 +5,7 @@
 *& Flow: OPEN_FOR_WRITE → IMPORT archive_handle → ARCHIVE_REGISTER_STRUCTURES
 *&       (DDIC name = target table) → ARCHIVE_NEW_OBJECT → ARCHIVE_PUT_TABLE
 *& CREATE DATA + ASSIGN → dynamic SELECT with WHERE from CFG (+ optional RULE EQ)
-*& Log ZSP26_ARCH_LOG after ARCHIVE_CLOSE_OBJECT (CONFIG_ID, timestamps)
+*& Log ZSP26_ARCH_LOG after ARCHIVE_CLOSE_FILE (CONFIG_ID, timestamps)
 *&---------------------------------------------------------------------*
 REPORT z_arch_ekk_write.
 
@@ -319,19 +319,21 @@ START-OF-SELECTION.
     IF sy-subrc <> 0.
       lv_err = lv_err + 1.
       WRITE: / |ERROR: ARCHIVE_PUT_TABLE RC={ sy-subrc }|.
-      CALL FUNCTION 'ARCHIVE_CLOSE_OBJECT'
-        EXPORTING object_count = 0
-        EXCEPTIONS OTHERS      = 1.
+      CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+        EXPORTING
+          archive_handle = lv_arch_h
+        EXCEPTIONS
+          OTHERS         = 1.
       MESSAGE 'Archive write failed (PUT_TABLE).' TYPE 'A'.
     ENDIF.
 
     lv_cnt = lines( <lt_src> ).
 
-    CALL FUNCTION 'ARCHIVE_CLOSE_OBJECT'
+    CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
       EXPORTING
-        object_count = lv_cnt
+        archive_handle = lv_arch_h
       EXCEPTIONS
-        OTHERS       = 1.
+        OTHERS         = 1.
 
     GET TIME STAMP FIELD lv_ts_e.
 

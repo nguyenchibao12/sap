@@ -416,11 +416,7 @@ MODULE user_command_0500 INPUT.
                 r_c     = lv_rc_500.
 
             IF lv_rc_500 = 0.
-              SUBMIT (gv_prog_write)
-                WITH p_table = gv_tabname
-                USING SELECTION-SET lv_vtech_500
-                VIA SELECTION-SCREEN
-                AND RETURN.
+              MESSAGE |Variant SAP "{ lv_vtech_500 }" đã tồn tại.| TYPE 'S'.
             ELSE.
               PERFORM arch_ensure_write_variant
                 USING gv_prog_write lv_vtech_500 gv_tabname
@@ -431,11 +427,6 @@ MODULE user_command_0500 INPUT.
                 RETURN.
               ENDIF.
               MESSAGE |Đã tự tạo variant SAP "{ lv_vtech_500 }".| TYPE 'S'.
-              SUBMIT (gv_prog_write)
-                WITH p_table = gv_tabname
-                USING SELECTION-SET lv_vtech_500
-                VIA SELECTION-SCREEN
-                AND RETURN.
             ENDIF.
           ENDIF.
         ENDIF.
