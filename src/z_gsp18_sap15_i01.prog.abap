@@ -139,7 +139,7 @@ MODULE check_variant_0300 INPUT.
   ENDIF.
   IF gv_prog_write IS INITIAL. PERFORM get_archive_programs. ENDIF.
 
-  PERFORM arch_build_write_variant_technical
+  PERFORM arch_build_write_var_tech
     USING gv_tabname gv_variant
     CHANGING lv_vtech_c lv_vok_c.
   IF lv_vok_c = abap_false.
@@ -198,7 +198,7 @@ MODULE user_command_0300 INPUT.
           IF gv_prog_write IS INITIAL.
             PERFORM get_archive_programs.
           ENDIF.
-          PERFORM arch_build_write_variant_technical
+          PERFORM arch_build_write_var_tech
             USING gv_tabname gv_variant
             CHANGING lv_vtech_300 lv_vok_300.
           IF lv_vok_300 = abap_false.
@@ -308,7 +308,7 @@ MODULE f4_gv_variant INPUT.
     IF NOT lv_tech CP lv_pat.
       CONTINUE.
     ENDIF.
-    PERFORM arch_logical_from_write_variant_technical
+    PERFORM arch_log_from_write_var
       USING gv_tabname lv_tech
       CHANGING lv_log lv_ok.
     IF lv_ok = abap_true.
@@ -365,7 +365,7 @@ MODULE user_command_0500 INPUT.
           IF gv_prog_write IS INITIAL.
             PERFORM get_archive_programs.
           ENDIF.
-          PERFORM arch_build_write_variant_technical
+          PERFORM arch_build_write_var_tech
             USING gv_tabname gv_variant
             CHANGING lv_vtech_500 lv_vok_500.
           IF lv_vok_500 = abap_false.
