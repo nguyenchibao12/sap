@@ -40,7 +40,7 @@ PARAMETERS: p_json  TYPE c AS CHECKBOX DEFAULT ' '.
 START-OF-SELECTION.
 *----------------------------------------------------------------------*
 
-  WRITE: / |=== ADK Delete: Z_ARCH_EKK | TABLE={ p_table } | JSON_LEGACY={ p_json } ===|.
+  WRITE: / |=== ADK Delete: Z_ARCH_EKK | tbl={ p_table } | json_legacy={ p_json } ===|.
   IF p_test = 'X'. WRITE: / '*** TEST MODE — no DB delete ***'. ENDIF.
   WRITE: /.
 
@@ -84,7 +84,7 @@ START-OF-SELECTION.
       wrong_access_to_archive = 2
       OTHERS                  = 3.
 
-  WRITE: / |GET_INFORMATION: OBJECT={ lv_obj } ARCHIVE={ lv_arch_name } DOC={ lv_doc } RC={ sy-subrc }|.
+  WRITE: / |GET_INFORMATION: obj={ lv_obj } arch={ lv_arch_name } doc={ lv_doc } rc={ sy-subrc }|.
   LOOP AT lt_used INTO ls_used.
     WRITE: / |  REGISTERED_DDIC_NAME: { ls_used-name }|.
   ENDLOOP.
@@ -219,12 +219,12 @@ FORM process_one_arch_table
       ENDDO.
     ELSE.
       cv_err = cv_err + 1.
-      WRITE: / |  ERR: DELETE FROM TABLE { pv_tab } RC={ sy-subrc }|.
+      WRITE: / |  ERR: DB delete failed, tab { pv_tab }, rc { sy-subrc }|.
     ENDIF.
   ELSE.
     DATA(lv_t) = lines( <lt> ).
     cv_cnt = cv_cnt + lv_t.
-    WRITE: / |  [TEST] Would delete { lv_t } rows from { pv_tab }|.
+    WRITE: / |  [TEST] Would delete { lv_t } rows, tab { pv_tab }|.
   ENDIF.
 ENDFORM.
 
@@ -269,7 +269,7 @@ FORM flush_arch_log_delete
       ls_log-end_time   = lv_ts.
       ls_log-exec_user  = sy-uname.
       ls_log-exec_date  = sy-datum.
-      ls_log-message    = |ADK DELETE (GET_TABLE): { ls_a-cnt } rows from { ls_a-table_name }. Err={ pv_err }|.
+      ls_log-message    = |ADK DELETE (GET_TABLE): { ls_a-cnt } rows, tab { ls_a-table_name }. err={ pv_err }|.
       INSERT zsp26_arch_log FROM ls_log.
     ENDLOOP.
   ELSEIF pv_err > 0.
