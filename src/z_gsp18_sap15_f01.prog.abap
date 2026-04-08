@@ -199,7 +199,7 @@ ENDFORM.
 
 FORM arch_build_write_var_tech
   USING    iv_tabname TYPE tabname
-           iv_logical TYPE variant
+           iv_logical TYPE clike
   CHANGING cv_technical TYPE variant
            cv_ok       TYPE abap_bool.
 
@@ -216,7 +216,7 @@ FORM arch_build_write_var_tech
     RETURN.
   ENDIF.
 
-  lv_log = iv_logical.
+  lv_log = CONV string( iv_logical ).
   TRANSLATE lv_log TO UPPER CASE.
   CONDENSE lv_log NO-GAPS.
   IF lv_log IS INITIAL.
@@ -243,14 +243,14 @@ FORM arch_build_write_var_tech
     RETURN.
   ENDIF.
 
-  cv_technical = lv_full.
+  cv_technical = CONV variant( lv_full ).
   TRANSLATE cv_technical TO UPPER CASE.
   cv_ok = abap_true.
 ENDFORM.
 
 FORM arch_log_from_write_var
   USING    iv_tabname TYPE tabname
-           iv_technical TYPE variant
+           iv_technical TYPE clike
   CHANGING cv_logical TYPE variant
            cv_ok      TYPE abap_bool.
 
@@ -265,7 +265,7 @@ FORM arch_log_from_write_var
     RETURN.
   ENDIF.
 
-  lv_t = iv_technical.
+  lv_t = CONV string( iv_technical ).
   TRANSLATE lv_t TO UPPER CASE.
 
   PERFORM arch_variant_tab_prefix USING iv_tabname CHANGING lv_pfx.
@@ -286,7 +286,7 @@ FORM arch_log_from_write_var
       RETURN.
   ENDTRY.
 
-  cv_logical = substring( val = lv_t off = lv_len + 1 ).
+  cv_logical = CONV variant( substring( val = lv_t off = lv_len + 1 ) ).
   cv_ok = abap_true.
 ENDFORM.
 
