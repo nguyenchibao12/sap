@@ -255,17 +255,16 @@ MODULE f4_gv_variant INPUT.
   TYPES: BEGIN OF ty_vf4,
            variant TYPE rvari,
          END OF ty_vf4.
-  DATA: lt_vf4      TYPE TABLE OF ty_vf4,
-        lt_raw      TYPE TABLE OF rvari,
-        ls_vf4      TYPE ty_vf4,
-        lv_tech     TYPE rvari,
-        lv_log      TYPE variant,
-        lv_ok       TYPE abap_bool,
-        lv_pfx      TYPE string,
-        lv_pat      TYPE string,
-        lv_tab_up   TYPE tabname.
-  DATA: lt_vf4 TYPE TABLE OF ty_vf4,
-        lv_rep TYPE programm.
+  DATA: lt_vf4    TYPE TABLE OF ty_vf4,
+        lt_raw    TYPE TABLE OF rvari,
+        ls_vf4    TYPE ty_vf4,
+        lv_tech   TYPE rvari,
+        lv_log    TYPE variant,
+        lv_ok     TYPE abap_bool,
+        lv_pfx    TYPE string,
+        lv_pat    TYPE string,
+        lv_tab_up TYPE tabname,
+        lv_rep    TYPE programm.
 
   IF sy-dynnr = '0600'.
     IF gv_prog_del IS INITIAL.
@@ -286,10 +285,8 @@ MODULE f4_gv_variant INPUT.
   ENDIF.
 
   SELECT variant FROM varid
-    WHERE report = @gv_prog_write
-    INTO TABLE @lt_raw
     WHERE report = @lv_rep
-    INTO TABLE @lt_vf4
+    INTO TABLE @lt_raw
     UP TO 500 ROWS.
 
   PERFORM arch_variant_tab_prefix USING gv_tabname CHANGING lv_pfx.
@@ -323,8 +320,7 @@ MODULE f4_gv_variant INPUT.
   DELETE ADJACENT DUPLICATES FROM lt_vf4 COMPARING variant.
 
   IF lt_vf4 IS INITIAL.
-    MESSAGE 'Chưa có variant cho bảng này (định dạng PREFIX_ID trên VARID)' TYPE 'S' DISPLAY LIKE 'W'.
-    MESSAGE 'No saved variants for this report' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'Chưa có variant cho bảng này (PREFIX_ID trên VARID) hoặc chưa có cho report' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
