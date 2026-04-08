@@ -59,7 +59,7 @@ START-OF-SELECTION.
     lv_open_obj = ls_hub_admi-object.
     SELECT SINGLE archiv_key
       FROM admi_files
-      WHERE mandt = @sy-mandt
+      WHERE client = @sy-mandt
         AND object = @ls_hub_admi-object
         AND document = @ls_hub_admi-document
       INTO @lv_arch_key.

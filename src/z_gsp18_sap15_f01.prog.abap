@@ -260,7 +260,7 @@ FORM arch_del_pick_session_popup.
   CLEAR: gv_f4_sess, gv_del_sess_def, gs_del_admi.
 
   SELECT * FROM admi_run
-    WHERE mandt = @sy-mandt
+    WHERE client = @sy-mandt
       AND object = @lv_obj
     INTO TABLE @lt_run
     UP TO 500 ROWS.
@@ -319,7 +319,7 @@ FORM arch_del_pick_session_popup.
   ENDIF.
 
   READ TABLE lt_run INTO gs_del_admi
-    WITH KEY mandt = sy-mandt object = lv_obj document = gv_f4_sess.
+    WITH KEY client = sy-mandt object = lv_obj document = gv_f4_sess.
   IF sy-subrc <> 0.
     CLEAR gs_del_admi.
     MESSAGE 'Không khớp session đã chọn với ADMI_RUN.' TYPE 'S' DISPLAY LIKE 'W'.
