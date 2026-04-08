@@ -292,6 +292,8 @@ ENDFORM.
 
 *&---------------------------------------------------------------------*
 *& Ensure write variant exists (auto-create for first edit)
+*& RS_CREATE_VARIANT: vari_desc = VARID (không phải chuỗi) — tránh
+*& CALL_FUNCTION_CONFLICT_LENG trên một số release với RS_CHANGE_CREATED_VARIANT
 *&---------------------------------------------------------------------*
 FORM arch_ensure_write_variant
   USING    iv_report  TYPE programm
@@ -299,25 +301,76 @@ FORM arch_ensure_write_variant
            iv_tabname TYPE tabname
   CHANGING cv_ok      TYPE abap_bool.
 
+  DATA: ls_varid  TYPE varid,
+        lt_varit  TYPE TABLE OF varit,
+        ls_varit  TYPE varit,
+        lt_params TYPE TABLE OF rsparams,
+        ls_param  TYPE rsparams,
+        lv_rep    TYPE syrepid.
+
   cv_ok = abap_false.
   IF iv_report IS INITIAL OR iv_vtech IS INITIAL OR iv_tabname IS INITIAL.
     RETURN.
   ENDIF.
 
-  CALL FUNCTION 'RS_CHANGE_CREATED_VARIANT'
+  lv_rep = iv_report.
+
+  CLEAR ls_varid.
+  ls_varid-mandt      = sy-mandt.
+  ls_varid-report     = lv_rep.
+  ls_varid-variant    = iv_vtech.
+  ls_varid-environmnt = 'A'.
+  ls_varid-aedat      = sy-datum.
+  ls_varid-aetime     = sy-uzeit.
+
+  CLEAR ls_varit.
+  ls_varit-mandt   = sy-mandt.
+  ls_varit-langu   = sy-langu.
+  ls_varit-report  = lv_rep.
+  ls_varit-variant = iv_vtech.
+  ls_varit-vtext   = iv_tabname.
+  APPEND ls_varit TO lt_varit.
+
+  CLEAR ls_param.
+  ls_param-selname = 'P_TABLE'.
+  ls_param-kind    = 'P'.
+  ls_param-sign    = 'I'.
+  ls_param-option  = 'EQ'.
+  ls_param-low     = iv_tabname.
+  APPEND ls_param TO lt_params.
+
+  CLEAR ls_param.
+  ls_param-selname = 'P_TEST'.
+  ls_param-kind    = 'P'.
+  ls_param-sign    = 'I'.
+  ls_param-option  = 'EQ'.
+  IF gv_test_mode = 'X'.
+    ls_param-low = 'X'.
+  ELSE.
+    CLEAR ls_param-low.
+  ENDIF.
+  APPEND ls_param TO lt_params.
+
+  CALL FUNCTION 'RS_CREATE_VARIANT'
     EXPORTING
-      curr_report              = iv_report
-      curr_variant             = iv_vtech
-      vari_desc                = iv_tabname
+      curr_report               = lv_rep
+      curr_variant              = iv_vtech
+      vari_desc                 = ls_varid
+    TABLES
+      vari_contents             = lt_params
+      vari_text                 = lt_varit
     EXCEPTIONS
       illegal_report_or_variant = 1
       illegal_variantname       = 2
       not_authorized            = 3
       not_executed              = 4
       report_not_existent       = 5
-      OTHERS                    = 6.
+      report_not_supplied       = 6
+      variant_exists            = 7
+      variant_locked            = 8
+      OTHERS                    = 9.
 
-  IF sy-subrc = 0.
+  IF sy-subrc = 0 OR sy-subrc = 7.
     cv_ok = abap_true.
   ENDIF.
 ENDFORM.
