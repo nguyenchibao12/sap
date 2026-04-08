@@ -53,7 +53,14 @@ ENDMODULE.
 *& Module STATUS_0300 OUTPUT
 *&---------------------------------------------------------------------*
 MODULE status_0300 OUTPUT.
-  SET PF-STATUS 'STATUS_300'.
+  DATA: lt_excl_300 TYPE TABLE OF sy-ucomm,
+        lv_excl_300 TYPE sy-ucomm.
+
+  " Màn Edit Variant: không cho Execute/F8 và không hiện action Preview
+  lv_excl_300 = 'ONLI'.       APPEND lv_excl_300 TO lt_excl_300.
+  lv_excl_300 = 'BT_PREVIEW'. APPEND lv_excl_300 TO lt_excl_300.
+
+  SET PF-STATUS 'STATUS_300' EXCLUDING lt_excl_300.
   SET TITLEBAR 'TITLE_300'.
 ENDMODULE.
 
