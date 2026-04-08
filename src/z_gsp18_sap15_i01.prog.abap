@@ -252,13 +252,14 @@ ENDMODULE.
 *& Module F4_GV_VARIANT INPUT — F4 variant theo report write (AOBJ)
 *&---------------------------------------------------------------------*
 MODULE f4_gv_variant INPUT.
-  TYPES: BEGIN OF ty_vf4,
+  TYPES: ty_varid_name TYPE c LENGTH 14, " VARID-VARIANT / RVARI độ dài chuẩn
+         BEGIN OF ty_vf4,
            variant TYPE variant,
          END OF ty_vf4.
   DATA: lt_vf4    TYPE TABLE OF ty_vf4,
-        lt_raw    TYPE TABLE OF rvari,
+        lt_raw    TYPE TABLE OF ty_varid_name,
         ls_vf4    TYPE ty_vf4,
-        lv_r      TYPE rvari,
+        lv_r      TYPE ty_varid_name,
         lv_s      TYPE string,
         lv_tab_s  TYPE string,
         lv_log    TYPE variant,
@@ -301,7 +302,7 @@ MODULE f4_gv_variant INPUT.
 
   LOOP AT lt_raw INTO lv_r.
     CLEAR ls_vf4.
-    lv_s = CONV string( lv_r ).
+    lv_s = lv_r.
     CONDENSE lv_s NO-GAPS.
 
     IF lv_s = lv_tab_s.

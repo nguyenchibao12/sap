@@ -286,7 +286,7 @@ FORM arch_log_from_write_var
       RETURN.
   ENDTRY.
 
-  cv_logical = CONV variant( substring( val = lv_t off = lv_len + 1 ) ).
+  cv_logical = substring( val = lv_t off = lv_len + 1 ).
   cv_ok = abap_true.
 ENDFORM.
 
