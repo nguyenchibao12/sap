@@ -618,13 +618,13 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>PREVIEW_BTN_C5</NAME>
-       <TEXT>Preview___Archive___</TEXT>
+       <TEXT>Execute_____________</TEXT>
        <LINE>010</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>038</LENGTH>
        <VISLENGTH>038</VISLENGTH>
        <HEIGHT>001</HEIGHT>
-       <PUSH_FCODE>BT_PREVIEW</PUSH_FCODE>
+       <PUSH_FCODE>ONLI</PUSH_FCODE>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>

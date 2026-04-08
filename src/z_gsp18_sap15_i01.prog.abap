@@ -385,12 +385,10 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 MODULE user_command_0500 INPUT.
   DATA: lv_rc_500    TYPE sy-subrc,
-        lv_ans_500   TYPE char1,
         lv_u5        TYPE sy-ucomm,
         lv_vtech_500 TYPE variant,
         lv_vok_500   TYPE abap_bool,
-        lv_ok_500    TYPE abap_bool,
-        lv_q_500     TYPE string.
+        lv_ok_500    TYPE abap_bool.
 
   lv_u5 = ok_code.
   CLEAR ok_code.
@@ -424,35 +422,20 @@ MODULE user_command_0500 INPUT.
                 VIA SELECTION-SCREEN
                 AND RETURN.
             ELSE.
-              lv_q_500 = |Variant chưa tồn tại. Ô Variant giữ "{ gv_variant }". Tên trong SAP: { lv_vtech_500 } (chỉ tham khảo). Tạo mới?|.
-              CALL FUNCTION 'POPUP_TO_CONFIRM'
-                EXPORTING
-                  titlebar              = 'Thông báo'
-                  text_question         = lv_q_500
-                  text_button_1         = 'Có'
-                  text_button_2         = 'Không'
-                  display_cancel_button = ' '
-                IMPORTING
-                  answer                = lv_ans_500
-                EXCEPTIONS
-                  OTHERS                = 1.
-              IF lv_ans_500 = '1'.
-                PERFORM arch_ensure_write_variant
-                  USING gv_prog_write lv_vtech_500 gv_tabname
-                  CHANGING lv_ok_500.
-                IF lv_ok_500 = abap_false.
-                  MESSAGE |Không tạo được variant SAP "{ lv_vtech_500 }". Kiểm tra quyền variant.|
-                    TYPE 'S' DISPLAY LIKE 'E'.
-                  RETURN.
-                ENDIF.
-                SUBMIT (gv_prog_write)
-                  WITH p_table = gv_tabname
-                  USING SELECTION-SET lv_vtech_500
-                  VIA SELECTION-SCREEN
-                  AND RETURN.
-              ELSE.
-                CLEAR gv_variant.
+              PERFORM arch_ensure_write_variant
+                USING gv_prog_write lv_vtech_500 gv_tabname
+                CHANGING lv_ok_500.
+              IF lv_ok_500 = abap_false.
+                MESSAGE |Không tạo được variant SAP "{ lv_vtech_500 }". Kiểm tra quyền variant.|
+                  TYPE 'S' DISPLAY LIKE 'E'.
+                RETURN.
               ENDIF.
+              MESSAGE |Đã tự tạo variant SAP "{ lv_vtech_500 }".| TYPE 'S'.
+              SUBMIT (gv_prog_write)
+                WITH p_table = gv_tabname
+                USING SELECTION-SET lv_vtech_500
+                VIA SELECTION-SCREEN
+                AND RETURN.
             ENDIF.
           ENDIF.
         ENDIF.
