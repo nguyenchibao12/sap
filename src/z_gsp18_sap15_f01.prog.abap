@@ -228,6 +228,21 @@ FORM arch_build_write_var_tech
     RETURN.
   ENDIF.
 
+  " Nếu user nhập trùng tiền tố bảng (vd EKKO_VAR_02) thì tách thành logical VAR_02
+  " để tên VARID = EKKO_VAR_02, tránh EK_EKKO_VAR_02 do giới hạn 14 ký tự.
+  DATA(lv_plen) TYPE i.
+  lv_plen = strlen( lv_pfx ).
+  IF lv_plen > 0 AND strlen( lv_log ) >= lv_plen + 2.
+    IF substring( val = lv_log len = lv_plen ) = lv_pfx AND
+       substring( val = lv_log len = 1 off = lv_plen ) = '_'.
+      lv_log = substring( val = lv_log off = lv_plen + 1 ).
+      CONDENSE lv_log NO-GAPS.
+    ENDIF.
+  ENDIF.
+  IF lv_log IS INITIAL.
+    RETURN.
+  ENDIF.
+
   lv_ml = strlen( lv_log ).
   lv_mxp = 14 - 1 - lv_ml.
   IF lv_mxp < 1.
@@ -370,7 +385,10 @@ FORM arch_ensure_write_variant
       variant_locked            = 8
       OTHERS                    = 9.
 
-  IF sy-subrc = 0 OR sy-subrc = 7.
+  IF sy-subrc = 0.
+    COMMIT WORK AND WAIT.
+    cv_ok = abap_true.
+  ELSEIF sy-subrc = 7.
     cv_ok = abap_true.
   ENDIF.
 ENDFORM.
