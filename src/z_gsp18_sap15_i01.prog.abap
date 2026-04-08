@@ -21,6 +21,8 @@ MODULE user_command_0400 INPUT.
         MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         gv_hub_allowed = abap_true.
+        " Đồng bộ P_TABLE khi mở Z_ARCH_EKK_WRITE (SE38/SARA hoặc SUBMIT chưa truyền WITH)
+        EXPORT arch_tabname = gv_tabname TO MEMORY ID 'Z_GSP18_ARCH_TAB'.
         SET SCREEN 0100.
         LEAVE SCREEN.
       ENDIF.
@@ -168,7 +170,9 @@ MODULE check_variant_0300 INPUT.
       EXCEPTIONS
         OTHERS                = 1.
     IF lv_ans_chk = '1'.
-      SUBMIT (gv_prog_write) VIA SELECTION-SCREEN AND RETURN.
+      SUBMIT (gv_prog_write)
+        WITH p_table = gv_tabname
+        VIA SELECTION-SCREEN AND RETURN.
     ELSE.
       CLEAR gv_variant.
     ENDIF.
@@ -212,7 +216,9 @@ MODULE user_command_0300 INPUT.
                 r_c     = lv_rc_300.
 
             IF lv_rc_300 = 0.
-              SUBMIT (gv_prog_write) VIA SELECTION-SCREEN
+              SUBMIT (gv_prog_write)
+                WITH p_table = gv_tabname
+                VIA SELECTION-SCREEN
                 USING SELECTION-SET lv_vtech_300 AND RETURN.
             ELSE.
               lv_q_300 = |Variant SAP "{ lv_vtech_300 }" chưa tồn tại. Tạo mới? (Lưu đúng tên { lv_vtech_300 })|.
@@ -228,7 +234,9 @@ MODULE user_command_0300 INPUT.
                 EXCEPTIONS
                   OTHERS                = 1.
               IF lv_ans_300 = '1'.
-                SUBMIT (gv_prog_write) VIA SELECTION-SCREEN AND RETURN.
+                SUBMIT (gv_prog_write)
+                  WITH p_table = gv_tabname
+                  VIA SELECTION-SCREEN AND RETURN.
               ELSE.
                 CLEAR gv_variant.
               ENDIF.
@@ -383,7 +391,9 @@ MODULE user_command_0500 INPUT.
                 r_c     = lv_rc_500.
 
             IF lv_rc_500 = 0.
-              SUBMIT (gv_prog_write) VIA SELECTION-SCREEN
+              SUBMIT (gv_prog_write)
+                WITH p_table = gv_tabname
+                VIA SELECTION-SCREEN
                 USING SELECTION-SET lv_vtech_500 AND RETURN.
             ELSE.
               lv_q_500 = |Variant SAP "{ lv_vtech_500 }" chưa tồn tại. Tạo mới? (Lưu đúng tên { lv_vtech_500 })|.
@@ -399,7 +409,9 @@ MODULE user_command_0500 INPUT.
                 EXCEPTIONS
                   OTHERS                = 1.
               IF lv_ans_500 = '1'.
-                SUBMIT (gv_prog_write) VIA SELECTION-SCREEN AND RETURN.
+                SUBMIT (gv_prog_write)
+                  WITH p_table = gv_tabname
+                  VIA SELECTION-SCREEN AND RETURN.
               ELSE.
                 CLEAR gv_variant.
               ENDIF.
