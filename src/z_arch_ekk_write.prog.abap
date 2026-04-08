@@ -38,7 +38,7 @@ FIELD-SYMBOLS: <lt_src> TYPE STANDARD TABLE,
 
 SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME.
 SELECTION-SCREEN COMMENT /1(79) g_scr_h0.
-PARAMETERS: p_table TYPE tabname OBLIGATORY DEFAULT 'ZSP26_EKKO'.
+PARAMETERS: p_table TYPE tabname OBLIGATORY.
 SELECTION-SCREEN END OF BLOCK b0.
 
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME.
@@ -56,6 +56,16 @@ SELECTION-SCREEN END OF LINE.
 *----------------------------------------------------------------------*
 INITIALIZATION.
 *----------------------------------------------------------------------*
+  DATA: lv_hub_tab TYPE tabname.
+
+  IMPORT arch_tabname = lv_hub_tab FROM MEMORY ID 'Z_GSP18_ARCH_TAB'.
+  IF sy-subrc = 0.
+    IF p_table IS INITIAL AND lv_hub_tab IS NOT INITIAL.
+      p_table = lv_hub_tab.
+    ENDIF.
+    FREE MEMORY ID 'Z_GSP18_ARCH_TAB'.
+  ENDIF.
+
   g_scr_h0 = 'Table: F4 = ZSP26_ARCH_CFG. Uncheck P_TEST for ADK PUT_TABLE (Z_ARCH_EKK).'.
   g_scr_h1 = 'WHERE = DATA_FIELD/RETENTION (+ EQ rules w/o OR). Rules also in ABAP (apply_archive_rules).'.
   bt_tbls = 'Show All Tables'.
