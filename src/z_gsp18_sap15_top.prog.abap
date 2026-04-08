@@ -88,7 +88,7 @@ DATA: gt_arch_stat TYPE TABLE OF ty_arch_stat,
 " gv_object = AOBJ (transaction SARA, SPA ARC, ARCH_OBJ) — ví dụ Z_ARCH_EKK
 " gv_tabname = bảng DDIC đích (preview/write/delete SQL) — không thay cho AOBJ trên UI SARA
 DATA: gv_object     TYPE arch_obj-object,
-      gv_variant    TYPE variant,
+      gv_variant    TYPE variant, " ID do user nhập (vd VAR_01); tên SAP = {tiền_tố bảng}_{ID}
       gv_prog_write TYPE programm,
       gv_prog_del   TYPE programm,
       gv_start_date TYPE char1,
