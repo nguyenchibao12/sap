@@ -181,8 +181,8 @@ MODULE check_variant_0300 INPUT.
       ENDIF.
       SUBMIT (gv_prog_write)
         WITH p_table = gv_tabname
-        VIA SELECTION-SCREEN
         USING SELECTION-SET lv_vtech_c
+        VIA SELECTION-SCREEN
         AND RETURN.
     ELSE.
       CLEAR gv_variant.
@@ -230,8 +230,9 @@ MODULE user_command_0300 INPUT.
             IF lv_rc_300 = 0.
               SUBMIT (gv_prog_write)
                 WITH p_table = gv_tabname
+                USING SELECTION-SET lv_vtech_300
                 VIA SELECTION-SCREEN
-                USING SELECTION-SET lv_vtech_300 AND RETURN.
+                AND RETURN.
             ELSE.
               lv_q_300 = |Variant SAP "{ lv_vtech_300 }" chưa tồn tại. Tạo mới? (Lưu đúng tên { lv_vtech_300 })|.
               CALL FUNCTION 'POPUP_TO_CONFIRM'
@@ -256,8 +257,8 @@ MODULE user_command_0300 INPUT.
                 ENDIF.
                 SUBMIT (gv_prog_write)
                   WITH p_table = gv_tabname
-                  VIA SELECTION-SCREEN
                   USING SELECTION-SET lv_vtech_300
+                  VIA SELECTION-SCREEN
                   AND RETURN.
               ELSE.
                 CLEAR gv_variant.
@@ -416,8 +417,9 @@ MODULE user_command_0500 INPUT.
             IF lv_rc_500 = 0.
               SUBMIT (gv_prog_write)
                 WITH p_table = gv_tabname
+                USING SELECTION-SET lv_vtech_500
                 VIA SELECTION-SCREEN
-                USING SELECTION-SET lv_vtech_500 AND RETURN.
+                AND RETURN.
             ELSE.
               lv_q_500 = |Variant SAP "{ lv_vtech_500 }" chưa tồn tại. Tạo mới? (Lưu đúng tên { lv_vtech_500 })|.
               CALL FUNCTION 'POPUP_TO_CONFIRM'
@@ -442,8 +444,8 @@ MODULE user_command_0500 INPUT.
                 ENDIF.
                 SUBMIT (gv_prog_write)
                   WITH p_table = gv_tabname
-                  VIA SELECTION-SCREEN
                   USING SELECTION-SET lv_vtech_500
+                  VIA SELECTION-SCREEN
                   AND RETURN.
               ELSE.
                 CLEAR gv_variant.
