@@ -511,6 +511,8 @@ ENDFORM.
 *& FORM DO_ARCHIVE_DELETE_JOB — SUBMIT delete program (ADK delete)
 *&---------------------------------------------------------------------*
 FORM do_archive_delete_job.
+  DATA lv_rc_var TYPE sy-subrc.
+
   IF gv_tabname IS INITIAL.
     MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
@@ -528,12 +530,24 @@ FORM do_archive_delete_job.
   ENDIF.
 
   IF gv_variant IS NOT INITIAL.
+    CALL FUNCTION 'RS_VARIANT_EXISTS'
+      EXPORTING
+        report  = gv_prog_del
+        variant = gv_variant
+      IMPORTING
+        r_c     = lv_rc_var.
+  ENDIF.
+
+  IF gv_variant IS NOT INITIAL AND lv_rc_var = 0.
     SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
       USING SELECTION-SET gv_variant
       AND RETURN.
   ELSE.
+    IF gv_variant IS NOT INITIAL AND lv_rc_var <> 0.
+      MESSAGE |Variant { gv_variant } không tồn tại trên { gv_prog_del } - chạy với default selection.| TYPE 'S' DISPLAY LIKE 'W'.
+    ENDIF.
     SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
@@ -546,7 +560,8 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM do_archive_delete_bg_job.
   DATA: lv_jobname  TYPE tbtcjob-jobname,
-        lv_jobcount TYPE tbtcjob-jobcount.
+        lv_jobcount TYPE tbtcjob-jobcount,
+        lv_rc_var   TYPE sy-subrc.
 
   IF gv_tabname IS INITIAL.
     MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
@@ -562,6 +577,15 @@ FORM do_archive_delete_bg_job.
 
   IF gv_del_sess_def = 'X'.
     EXPORT del_admi = gs_del_admi TO MEMORY ID 'Z_GSP18_ADMI_DEL'.
+  ENDIF.
+
+  IF gv_variant IS NOT INITIAL.
+    CALL FUNCTION 'RS_VARIANT_EXISTS'
+      EXPORTING
+        report  = gv_prog_del
+        variant = gv_variant
+      IMPORTING
+        r_c     = lv_rc_var.
   ENDIF.
 
   lv_jobname = |ZARCH_DEL_{ sy-uname }|.
@@ -581,7 +605,7 @@ FORM do_archive_delete_bg_job.
     RETURN.
   ENDIF.
 
-  IF gv_variant IS NOT INITIAL.
+  IF gv_variant IS NOT INITIAL AND lv_rc_var = 0.
     SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
@@ -589,6 +613,9 @@ FORM do_archive_delete_bg_job.
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   ELSE.
+    IF gv_variant IS NOT INITIAL AND lv_rc_var <> 0.
+      MESSAGE |Variant { gv_variant } không tồn tại trên { gv_prog_del } - schedule job với default selection.| TYPE 'S' DISPLAY LIKE 'W'.
+    ENDIF.
     SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
@@ -639,6 +666,8 @@ FORM arch_del_pick_session_popup.
         lt_run TYPE TABLE OF admi_run,
         lv_obj TYPE arch_obj-object,
         ls_run TYPE admi_run,
+        lt_ret TYPE TABLE OF ddshretval,
+        ls_ret TYPE ddshretval,
         lt_df  TYPE TABLE OF dynpread,
         ls_df  TYPE dynpread.
 
@@ -685,27 +714,33 @@ FORM arch_del_pick_session_popup.
       value_org    = 'S'
     TABLES
       value_tab    = lt_f4
+      return_tab   = lt_ret
     EXCEPTIONS
       OTHERS       = 0.
 
-  CLEAR lt_df.
-  ls_df-fieldname = 'GV_F4_SESS'.
-  APPEND ls_df TO lt_df.
-  CALL FUNCTION 'DYNP_VALUES_READ'
-    EXPORTING
-      dyname     = sy-repid
-      dynumb     = sy-dynnr
-    TABLES
-      dynpfields = lt_df
-    EXCEPTIONS
-      OTHERS     = 1.
-  IF sy-subrc <> 0.
-    RETURN.
-  ENDIF.
-
-  READ TABLE lt_df INTO ls_df INDEX 1.
+  CLEAR gv_f4_sess.
+  READ TABLE lt_ret INTO ls_ret INDEX 1.
   IF sy-subrc = 0.
-    gv_f4_sess = ls_df-fieldvalue.
+    gv_f4_sess = ls_ret-fieldval.
+  ENDIF.
+  IF gv_f4_sess IS INITIAL.
+    CLEAR lt_df.
+    ls_df-fieldname = 'GV_F4_SESS'.
+    APPEND ls_df TO lt_df.
+    CALL FUNCTION 'DYNP_VALUES_READ'
+      EXPORTING
+        dyname     = sy-repid
+        dynumb     = sy-dynnr
+      TABLES
+        dynpfields = lt_df
+      EXCEPTIONS
+        OTHERS     = 1.
+    IF sy-subrc = 0.
+      READ TABLE lt_df INTO ls_df INDEX 1.
+      IF sy-subrc = 0.
+        gv_f4_sess = ls_df-fieldvalue.
+      ENDIF.
+    ENDIF.
   ENDIF.
   CONDENSE gv_f4_sess.
   IF gv_f4_sess IS INITIAL.

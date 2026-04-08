@@ -55,13 +55,37 @@ START-OF-SELECTION.
 
   IMPORT del_admi = ls_hub_admi FROM MEMORY ID 'Z_GSP18_ADMI_DEL'.
   IF sy-subrc = 0.
+    DATA: lt_af_dd   TYPE TABLE OF dfies,
+          ls_af_dd   TYPE dfies,
+          lv_where_af TYPE string.
+
     WRITE: / 'Hub: ADMI session' && ` ` && ls_hub_admi-document && ` AOBJ ` && ls_hub_admi-object.
     lv_open_obj = ls_hub_admi-object.
+
+    CLEAR lt_af_dd.
+    CALL FUNCTION 'DDIF_FIELDINFO_GET'
+      EXPORTING
+        tabname   = 'ADMI_FILES'
+      TABLES
+        dfies_tab = lt_af_dd
+      EXCEPTIONS
+        OTHERS    = 1.
+
+    lv_where_af = |OBJECT = '{ ls_hub_admi-object }' AND DOCUMENT = '{ ls_hub_admi-document }'|.
+
+    READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'MANDT'.
+    IF sy-subrc = 0.
+      lv_where_af = |MANDT = '{ sy-mandt }' AND | && lv_where_af.
+    ELSE.
+      READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'CLIENT'.
+      IF sy-subrc = 0.
+        lv_where_af = |CLIENT = '{ sy-mandt }' AND | && lv_where_af.
+      ENDIF.
+    ENDIF.
+
     SELECT SINGLE archiv_key
       FROM admi_files
-      WHERE mandt = @sy-mandt
-        AND object = @ls_hub_admi-object
-        AND document = @ls_hub_admi-document
+      WHERE (lv_where_af)
       INTO @lv_arch_key.
     IF sy-subrc <> 0.
       FREE MEMORY ID 'Z_GSP18_ADMI_DEL'.
