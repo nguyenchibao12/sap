@@ -457,7 +457,7 @@ MODULE user_command_0500 INPUT.
       ELSEIF gv_spool_set <> 'X'.
         MESSAGE 'Chưa maintain Spool Parameters. Vào Spool Parameters trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
-        PERFORM do_archive_via_adk.
+        PERFORM do_archive_write_bg_job.
         SET SCREEN 0100.
         LEAVE SCREEN.
       ENDIF.
@@ -532,7 +532,7 @@ MODULE user_command_0600 INPUT.
       ELSEIF gv_del_sess_def IS INITIAL AND gv_variant IS INITIAL.
         MESSAGE 'Chưa chọn Archive Selection (session) hoặc Variant cho delete.' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
-        PERFORM do_archive_delete_job.
+        PERFORM do_archive_delete_bg_job.
         SET SCREEN 0100.
         LEAVE SCREEN.
       ENDIF.

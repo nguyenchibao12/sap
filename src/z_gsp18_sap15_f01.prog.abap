@@ -422,6 +422,88 @@ FORM do_archive_via_adk.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& FORM DO_ARCHIVE_WRITE_BG_JOB — schedule ADK Write in SM37
+*&---------------------------------------------------------------------*
+FORM do_archive_write_bg_job.
+  DATA: lv_vtech    TYPE variant,
+        lv_vok      TYPE abap_bool,
+        lv_jobname  TYPE tbtcjob-jobname,
+        lv_jobcount TYPE tbtcjob-jobcount.
+
+  IF gv_tabname IS INITIAL.
+    MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  IF gv_variant IS NOT INITIAL.
+    PERFORM arch_build_write_var_tech
+      USING gv_tabname gv_variant
+      CHANGING lv_vtech lv_vok.
+    IF lv_vok = abap_false.
+      MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  lv_jobname = |ZARCH_WR_{ sy-uname }|.
+
+  CALL FUNCTION 'JOB_OPEN'
+    EXPORTING
+      jobname          = lv_jobname
+    IMPORTING
+      jobcount         = lv_jobcount
+    EXCEPTIONS
+      cant_create_job  = 1
+      invalid_job_data = 2
+      jobname_missing  = 3
+      OTHERS           = 4.
+  IF sy-subrc <> 0.
+    MESSAGE 'Không mở được background job cho Write.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  IF gv_variant IS NOT INITIAL.
+    SUBMIT z_arch_ekk_write
+      WITH p_table = gv_tabname
+      WITH p_test  = ' '
+      USING SELECTION-SET lv_vtech
+      VIA JOB lv_jobname NUMBER lv_jobcount
+      AND RETURN.
+  ELSE.
+    SUBMIT z_arch_ekk_write
+      WITH p_table = gv_tabname
+      WITH p_test  = ' '
+      VIA JOB lv_jobname NUMBER lv_jobcount
+      AND RETURN.
+  ENDIF.
+  IF sy-subrc <> 0.
+    MESSAGE 'Không add được step Write vào background job.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'JOB_CLOSE'
+    EXPORTING
+      jobname              = lv_jobname
+      jobcount             = lv_jobcount
+      strtimmed            = 'X'
+    EXCEPTIONS
+      cant_start_immediate = 1
+      invalid_startdate    = 2
+      jobname_missing      = 3
+      job_close_failed     = 4
+      job_nosteps          = 5
+      job_notex            = 6
+      lock_failed          = 7
+      OTHERS               = 8.
+  IF sy-subrc <> 0.
+    MESSAGE 'Đã tạo job nhưng không close/start được. Kiểm tra SM37/SM21.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  MESSAGE |Đã schedule WRITE job { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S'.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& FORM DO_ARCHIVE_DELETE_JOB — SUBMIT delete program (ADK delete)
 *&---------------------------------------------------------------------*
 FORM do_archive_delete_job.
@@ -453,6 +535,87 @@ FORM do_archive_delete_job.
       WITH p_test  = gv_test_mode
       AND RETURN.
   ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM DO_ARCHIVE_DELETE_BG_JOB — schedule ADK Delete in SM37
+*&---------------------------------------------------------------------*
+FORM do_archive_delete_bg_job.
+  DATA: lv_jobname  TYPE tbtcjob-jobname,
+        lv_jobcount TYPE tbtcjob-jobcount.
+
+  IF gv_tabname IS INITIAL.
+    MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+  IF gv_prog_del IS INITIAL.
+    PERFORM get_archive_programs.
+  ENDIF.
+  IF gv_prog_del IS INITIAL.
+    MESSAGE 'Chưa cấu hình delete program (AOBJ)' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  IF gv_del_sess_def = 'X'.
+    EXPORT del_admi = gs_del_admi TO MEMORY ID 'Z_GSP18_ADMI_DEL'.
+  ENDIF.
+
+  lv_jobname = |ZARCH_DEL_{ sy-uname }|.
+
+  CALL FUNCTION 'JOB_OPEN'
+    EXPORTING
+      jobname          = lv_jobname
+    IMPORTING
+      jobcount         = lv_jobcount
+    EXCEPTIONS
+      cant_create_job  = 1
+      invalid_job_data = 2
+      jobname_missing  = 3
+      OTHERS           = 4.
+  IF sy-subrc <> 0.
+    MESSAGE 'Không mở được background job cho Delete.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  IF gv_variant IS NOT INITIAL.
+    SUBMIT (gv_prog_del)
+      WITH p_table = gv_tabname
+      WITH p_test  = gv_test_mode
+      USING SELECTION-SET gv_variant
+      VIA JOB lv_jobname NUMBER lv_jobcount
+      AND RETURN.
+  ELSE.
+    SUBMIT (gv_prog_del)
+      WITH p_table = gv_tabname
+      WITH p_test  = gv_test_mode
+      VIA JOB lv_jobname NUMBER lv_jobcount
+      AND RETURN.
+  ENDIF.
+  IF sy-subrc <> 0.
+    MESSAGE 'Không add được step Delete vào background job.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'JOB_CLOSE'
+    EXPORTING
+      jobname              = lv_jobname
+      jobcount             = lv_jobcount
+      strtimmed            = 'X'
+    EXCEPTIONS
+      cant_start_immediate = 1
+      invalid_startdate    = 2
+      jobname_missing      = 3
+      job_close_failed     = 4
+      job_nosteps          = 5
+      job_notex            = 6
+      lock_failed          = 7
+      OTHERS               = 8.
+  IF sy-subrc <> 0.
+    MESSAGE 'Đã tạo job nhưng không close/start được. Kiểm tra SM37/SM21.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  MESSAGE |Đã schedule DELETE job { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
