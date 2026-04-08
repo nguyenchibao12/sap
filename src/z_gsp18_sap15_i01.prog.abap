@@ -132,6 +132,7 @@ MODULE check_variant_0300 INPUT.
         lv_ans_chk  TYPE char1,
         lv_vtech_c  TYPE variant,
         lv_vok_c    TYPE abap_bool,
+        lv_ok_c     TYPE abap_bool,
         lv_q_c      TYPE string.
 
   CHECK gv_variant IS NOT INITIAL.
@@ -170,9 +171,19 @@ MODULE check_variant_0300 INPUT.
       EXCEPTIONS
         OTHERS                = 1.
     IF lv_ans_chk = '1'.
+      PERFORM arch_ensure_write_variant
+        USING gv_prog_write lv_vtech_c gv_tabname
+        CHANGING lv_ok_c.
+      IF lv_ok_c = abap_false.
+        MESSAGE |Không tạo được variant SAP "{ lv_vtech_c }". Kiểm tra quyền variant cho report { gv_prog_write }.|
+          TYPE 'S' DISPLAY LIKE 'E'.
+        RETURN.
+      ENDIF.
       SUBMIT (gv_prog_write)
         WITH p_table = gv_tabname
-        VIA SELECTION-SCREEN AND RETURN.
+        VIA SELECTION-SCREEN
+        USING SELECTION-SET lv_vtech_c
+        AND RETURN.
     ELSE.
       CLEAR gv_variant.
     ENDIF.
@@ -188,6 +199,7 @@ MODULE user_command_0300 INPUT.
         lv_ucomm     TYPE sy-ucomm,
         lv_vtech_300 TYPE variant,
         lv_vok_300   TYPE abap_bool,
+        lv_ok_300    TYPE abap_bool,
         lv_q_300     TYPE string.
 
   lv_ucomm = ok_code.
@@ -234,9 +246,19 @@ MODULE user_command_0300 INPUT.
                 EXCEPTIONS
                   OTHERS                = 1.
               IF lv_ans_300 = '1'.
+                PERFORM arch_ensure_write_variant
+                  USING gv_prog_write lv_vtech_300 gv_tabname
+                  CHANGING lv_ok_300.
+                IF lv_ok_300 = abap_false.
+                  MESSAGE |Không tạo được variant SAP "{ lv_vtech_300 }". Kiểm tra quyền variant.|
+                    TYPE 'S' DISPLAY LIKE 'E'.
+                  RETURN.
+                ENDIF.
                 SUBMIT (gv_prog_write)
                   WITH p_table = gv_tabname
-                  VIA SELECTION-SCREEN AND RETURN.
+                  VIA SELECTION-SCREEN
+                  USING SELECTION-SET lv_vtech_300
+                  AND RETURN.
               ELSE.
                 CLEAR gv_variant.
               ENDIF.
@@ -363,6 +385,7 @@ MODULE user_command_0500 INPUT.
         lv_u5        TYPE sy-ucomm,
         lv_vtech_500 TYPE variant,
         lv_vok_500   TYPE abap_bool,
+        lv_ok_500    TYPE abap_bool,
         lv_q_500     TYPE string.
 
   lv_u5 = ok_code.
@@ -409,9 +432,19 @@ MODULE user_command_0500 INPUT.
                 EXCEPTIONS
                   OTHERS                = 1.
               IF lv_ans_500 = '1'.
+                PERFORM arch_ensure_write_variant
+                  USING gv_prog_write lv_vtech_500 gv_tabname
+                  CHANGING lv_ok_500.
+                IF lv_ok_500 = abap_false.
+                  MESSAGE |Không tạo được variant SAP "{ lv_vtech_500 }". Kiểm tra quyền variant.|
+                    TYPE 'S' DISPLAY LIKE 'E'.
+                  RETURN.
+                ENDIF.
                 SUBMIT (gv_prog_write)
                   WITH p_table = gv_tabname
-                  VIA SELECTION-SCREEN AND RETURN.
+                  VIA SELECTION-SCREEN
+                  USING SELECTION-SET lv_vtech_500
+                  AND RETURN.
               ELSE.
                 CLEAR gv_variant.
               ENDIF.
@@ -427,9 +460,13 @@ MODULE user_command_0500 INPUT.
     WHEN 'BT_SPOOL' OR 'SPOOL_BTN'.
       PERFORM maintenance_spool_params.
 
-    WHEN 'BT_PREVIEW'.
+    WHEN 'BT_PREVIEW' OR 'ONLI'.
       IF gv_tabname IS INITIAL.
         MESSAGE 'Vui lòng nhập Table Name ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSEIF gv_start_date <> 'X'.
+        MESSAGE 'Chưa maintain Start Date. Vào Start Date để khai báo trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSEIF gv_spool_set <> 'X'.
+        MESSAGE 'Chưa maintain Spool Parameters. Vào Spool Parameters trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM do_archive_write.
         SET SCREEN 0100.

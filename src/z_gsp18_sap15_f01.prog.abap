@@ -291,6 +291,62 @@ FORM arch_log_from_write_var
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& Ensure write variant exists (auto-create for first edit)
+*&---------------------------------------------------------------------*
+FORM arch_ensure_write_variant
+  USING    iv_report  TYPE programm
+           iv_vtech   TYPE variant
+           iv_tabname TYPE tabname
+  CHANGING cv_ok      TYPE abap_bool.
+
+  DATA: lt_params TYPE TABLE OF rsparams,
+        ls_param  TYPE rsparams.
+
+  cv_ok = abap_false.
+  IF iv_report IS INITIAL OR iv_vtech IS INITIAL OR iv_tabname IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  CLEAR ls_param.
+  ls_param-selname = 'P_TABLE'.
+  ls_param-kind    = 'P'.
+  ls_param-sign    = 'I'.
+  ls_param-option  = 'EQ'.
+  ls_param-low     = iv_tabname.
+  APPEND ls_param TO lt_params.
+
+  CLEAR ls_param.
+  ls_param-selname = 'P_TEST'.
+  ls_param-kind    = 'P'.
+  ls_param-sign    = 'I'.
+  ls_param-option  = 'EQ'.
+  ls_param-low     = gv_test_mode.
+  IF ls_param-low IS INITIAL.
+    ls_param-low = 'X'.
+  ENDIF.
+  APPEND ls_param TO lt_params.
+
+  CALL FUNCTION 'RS_CHANGE_CREATED_VARIANT'
+    EXPORTING
+      curr_report              = iv_report
+      curr_variant             = iv_vtech
+      vari_desc                = |Auto-created for { iv_tabname }|
+    TABLES
+      vari_contents            = lt_params
+    EXCEPTIONS
+      illegal_report_or_variant = 1
+      illegal_variantname       = 2
+      not_authorized            = 3
+      not_executed              = 4
+      report_not_existent       = 5
+      OTHERS                    = 6.
+
+  IF sy-subrc = 0.
+    cv_ok = abap_true.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& FORM DO_ARCHIVE_VIA_ADK — gọi ADK Write Program (từ lcl_handler)
 *&---------------------------------------------------------------------*
 FORM do_archive_via_adk.
