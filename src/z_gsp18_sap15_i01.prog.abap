@@ -387,6 +387,7 @@ MODULE user_command_0500 INPUT.
   DATA: lv_rc_500    TYPE sy-subrc,
         lv_u5        TYPE sy-ucomm,
         lv_vtech_500 TYPE variant,
+        lv_vrun_500  TYPE variant,
         lv_vok_500   TYPE abap_bool.
 
   lv_u5 = ok_code.
@@ -415,8 +416,23 @@ MODULE user_command_0500 INPUT.
                 r_c     = lv_rc_500.
 
             IF lv_rc_500 = 0.
+              lv_vrun_500 = lv_vtech_500.
+            ELSE.
+              CALL FUNCTION 'RS_VARIANT_EXISTS'
+                EXPORTING
+                  report  = gv_prog_write
+                  variant = gv_variant
+                IMPORTING
+                  r_c     = lv_rc_500.
+              IF lv_rc_500 = 0.
+                lv_vrun_500 = gv_variant.
+              ENDIF.
+            ENDIF.
+
+            IF lv_vrun_500 IS NOT INITIAL.
               SUBMIT (gv_prog_write)
                 WITH p_table = gv_tabname
+                USING SELECTION-SET lv_vrun_500
                 VIA SELECTION-SCREEN
                 AND RETURN.
             ELSE.

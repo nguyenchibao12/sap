@@ -407,7 +407,9 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM do_archive_write_bg_job.
   DATA: lv_vtech    TYPE variant,
+        lv_vrun     TYPE variant,
         lv_vok      TYPE abap_bool,
+        lv_rc_var   TYPE sy-subrc,
         lv_jobname  TYPE tbtcjob-jobname,
         lv_jobcount TYPE tbtcjob-jobcount.
 
@@ -423,6 +425,27 @@ FORM do_archive_write_bg_job.
     IF lv_vok = abap_false.
       MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
+    ENDIF.
+
+    CLEAR lv_vrun.
+    CALL FUNCTION 'RS_VARIANT_EXISTS'
+      EXPORTING
+        report  = 'Z_ARCH_EKK_WRITE'
+        variant = lv_vtech
+      IMPORTING
+        r_c     = lv_rc_var.
+    IF lv_rc_var = 0.
+      lv_vrun = lv_vtech.
+    ELSE.
+      CALL FUNCTION 'RS_VARIANT_EXISTS'
+        EXPORTING
+          report  = 'Z_ARCH_EKK_WRITE'
+          variant = gv_variant
+        IMPORTING
+          r_c     = lv_rc_var.
+      IF lv_rc_var = 0.
+        lv_vrun = gv_variant.
+      ENDIF.
     ENDIF.
   ENDIF.
 
@@ -443,11 +466,11 @@ FORM do_archive_write_bg_job.
     RETURN.
   ENDIF.
 
-  IF gv_variant IS NOT INITIAL.
+  IF lv_vrun IS NOT INITIAL.
     SUBMIT z_arch_ekk_write
       WITH p_table = gv_tabname
       WITH p_test  = ' '
-      USING SELECTION-SET lv_vtech
+      USING SELECTION-SET lv_vrun
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   ELSE.
