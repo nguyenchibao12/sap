@@ -210,6 +210,10 @@ FORM do_archive_delete_job.
     RETURN.
   ENDIF.
 
+  IF gv_del_sess_def = 'X'.
+    EXPORT del_admi = gs_del_admi TO MEMORY ID 'Z_GSP18_ADMI_DEL'.
+  ENDIF.
+
   IF gv_variant IS NOT INITIAL.
     SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
@@ -222,6 +226,110 @@ FORM do_archive_delete_job.
       WITH p_test  = gv_test_mode
       AND RETURN.
   ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM ARCH_DEL_PICK_SESSION_POPUP — chọn session/file delete (ADMI_RUN, AOBJ)
+*&  Popup F4 nội bộ — không gọi transaction SARA
+*&---------------------------------------------------------------------*
+FORM arch_del_pick_session_popup.
+  TYPES: BEGIN OF ty_arch_del_f4,
+           document   TYPE admi_run-document,
+           creat_date TYPE admi_run-creat_date,
+           status     TYPE admi_run-status,
+           user_name  TYPE admi_run-user_name,
+         END OF ty_arch_del_f4.
+
+  DATA: lt_f4  TYPE TABLE OF ty_arch_del_f4,
+        ls_f4  TYPE ty_arch_del_f4,
+        lt_run TYPE TABLE OF admi_run,
+        lv_obj TYPE arch_obj-object,
+        ls_run TYPE admi_run,
+        lt_df  TYPE TABLE OF dynpread,
+        ls_df  TYPE dynpread.
+
+  IF gv_object IS INITIAL.
+    gv_object = 'Z_ARCH_EKK'.
+  ENDIF.
+  lv_obj = gv_object.
+
+  IF gv_prog_del IS INITIAL.
+    PERFORM get_archive_programs.
+  ENDIF.
+
+  CLEAR: gv_f4_sess, gv_del_sess_def, gs_del_admi.
+
+  SELECT * FROM admi_run
+    WHERE mandt = @sy-mandt
+      AND object = @lv_obj
+    INTO TABLE @lt_run
+    UP TO 500 ROWS.
+
+  IF lt_run IS INITIAL.
+    MESSAGE 'Không có session trên ADMI_RUN cho AOBJ này (đã archive/write chưa?).' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  SORT lt_run BY creat_date DESCENDING document DESCENDING.
+
+  LOOP AT lt_run INTO ls_run.
+    CLEAR ls_f4.
+    ls_f4-document   = ls_run-document.
+    ls_f4-creat_date = ls_run-creat_date.
+    ls_f4-status     = ls_run-status.
+    ls_f4-user_name  = ls_run-user_name.
+    APPEND ls_f4 TO lt_f4.
+  ENDLOOP.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'DOCUMENT'
+      window_title = 'Archive Administration: Select Files for Delete Program'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'GV_F4_SESS'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_f4
+    EXCEPTIONS
+      OTHERS       = 0.
+
+  CLEAR lt_df.
+  ls_df-fieldname = 'GV_F4_SESS'.
+  APPEND ls_df TO lt_df.
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname     = sy-repid
+      dynumb     = sy-dynnr
+    TABLES
+      dynpfields = lt_df
+    EXCEPTIONS
+      OTHERS     = 1.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  READ TABLE lt_df INTO ls_df INDEX 1.
+  IF sy-subrc = 0.
+    gv_f4_sess = ls_df-fieldvalue.
+  ENDIF.
+  CONDENSE gv_f4_sess.
+  IF gv_f4_sess IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  READ TABLE lt_run INTO gs_del_admi
+    WITH KEY mandt = sy-mandt object = lv_obj document = gv_f4_sess.
+  IF sy-subrc <> 0.
+    CLEAR gs_del_admi.
+    MESSAGE 'Không khớp session đã chọn với ADMI_RUN.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  gv_del_sess_def = 'X'.
+
+  EXPORT del_admi = gs_del_admi TO MEMORY ID 'Z_GSP18_ADMI_DEL'.
+
 ENDFORM.
 
 *&---------------------------------------------------------------------*

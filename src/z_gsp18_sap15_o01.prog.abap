@@ -109,9 +109,10 @@ MODULE init_fields_0600 OUTPUT.
     gv_disp_uname = sy-uname.
   ENDIF.
 
-  gv_scr600_head = |Archive for { gv_tabname }|.
+  gv_scr600_head = |Archive for { gv_object }|.
 
-  gv_stat_arch_tx  = COND #( WHEN gv_variant IS NOT INITIAL THEN 'Defined' ELSE 'Not Defined' ).
+  gv_stat_arch_tx  = COND #( WHEN gv_del_sess_def = 'X' OR gv_variant IS NOT INITIAL
+                             THEN 'Defined' ELSE 'Not Defined' ).
   gv_stat_start_tx = COND #( WHEN gv_start_date = 'X' THEN 'Defined' ELSE 'Not Defined' ).
   gv_stat_spool_tx = COND #( WHEN gv_spool_set = 'X' THEN 'Defined' ELSE 'Not Defined' ).
 
@@ -126,4 +127,16 @@ ENDMODULE.
 MODULE status_0600 OUTPUT.
   SET PF-STATUS 'STATUS_100'.
   SET TITLEBAR 'TITLE_300'.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module HIDE_F4_SESS_0600 OUTPUT — ô GV_F4_SESS cho F4 chọn session ADMI
+*&---------------------------------------------------------------------*
+MODULE hide_f4_sess_0600 OUTPUT.
+  LOOP AT SCREEN.
+    IF screen-name = 'GV_F4_SESS'.
+      screen-invisible = '1'.
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
 ENDMODULE.

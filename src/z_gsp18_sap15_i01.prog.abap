@@ -379,17 +379,7 @@ MODULE user_command_0600 INPUT.
       ENDIF.
 
     WHEN 'BT_ARCH_SEL'.
-      IF gv_prog_del IS INITIAL.
-        PERFORM get_archive_programs.
-      ENDIF.
-      IF gv_prog_del IS INITIAL.
-        MESSAGE 'Chưa cấu hình delete program (AOBJ)' TYPE 'S' DISPLAY LIKE 'E'.
-      ELSEIF gv_variant IS NOT INITIAL.
-        SUBMIT (gv_prog_del) VIA SELECTION-SCREEN
-          USING SELECTION-SET gv_variant AND RETURN.
-      ELSE.
-        SUBMIT (gv_prog_del) VIA SELECTION-SCREEN AND RETURN.
-      ENDIF.
+      PERFORM arch_del_pick_session_popup.
 
     WHEN 'BT_START' OR 'START_BTN'.
       PERFORM maintenance_start_date.

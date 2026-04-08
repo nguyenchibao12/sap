@@ -21,16 +21,22 @@ TYPES: BEGIN OF ty_del_agg,
          table_name TYPE tabname,
          cnt        TYPE i,
        END OF ty_del_agg.
+TYPES ty_del_agg_htab TYPE HASHED TABLE OF ty_del_agg WITH UNIQUE KEY table_name.
 
 DATA: ls_arec      TYPE ty_arch_rec,
       lv_cnt       TYPE i VALUE 0,
       lv_err       TYPE i VALUE 0,
-      lt_del_agg   TYPE HASHED TABLE OF ty_del_agg WITH UNIQUE KEY table_name,
+      lt_del_agg   TYPE ty_del_agg_htab,
       lv_arch_h    TYPE syst-tabix,
       lv_obj       TYPE arch_obj-object VALUE 'Z_ARCH_EKK',
       lv_arch_name TYPE heada-arkey,
       lv_doc       TYPE admi_run-document,
-      gr_dyn       TYPE REF TO data.
+      gr_dyn       TYPE REF TO data,
+      lt_cfg_tabs  TYPE TABLE OF tabname,
+      lv_cfg_tab   TYPE tabname,
+      ls_hub_admi  TYPE admi_run,
+      lv_open_obj  TYPE arch_obj-object,
+      lv_arch_key  TYPE admi_files-archiv_key.
 
 PARAMETERS: p_table TYPE tabname DEFAULT 'ZSP26_EKKO'.
 PARAMETERS: p_test  TYPE c AS CHECKBOX DEFAULT 'X'.
@@ -44,12 +50,39 @@ START-OF-SELECTION.
   IF p_test = 'X'. WRITE: / '*** TEST MODE — no DB delete ***'. ENDIF.
   WRITE: /.
 
+  CLEAR: ls_hub_admi, lv_arch_key.
+  lv_open_obj = lv_obj.
+
+  IMPORT del_admi = ls_hub_admi FROM MEMORY ID 'Z_GSP18_ADMI_DEL'.
+  IF sy-subrc = 0.
+    WRITE: / 'Hub: ADMI session' && ` ` && ls_hub_admi-document && ` AOBJ ` && ls_hub_admi-object.
+    lv_open_obj = ls_hub_admi-object.
+    SELECT SINGLE archiv_key
+      FROM admi_files
+      WHERE mandt = @sy-mandt
+        AND object = @ls_hub_admi-object
+        AND document = @ls_hub_admi-document
+      INTO @lv_arch_key.
+    IF sy-subrc <> 0.
+      FREE MEMORY ID 'Z_GSP18_ADMI_DEL'.
+      MESSAGE 'Không tìm thấy khóa file trong ADMI_FILES cho session đã chọn (OBJECT/DOCUMENT).' TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+    FREE MEMORY ID 'Z_GSP18_ADMI_DEL'.
+  ENDIF.
+  lv_obj = lv_open_obj.
+  WRITE: /.
+
   IF p_json = 'X'.
     PERFORM run_delete_legacy_json.
     EXIT.
   ENDIF.
 
   CALL FUNCTION 'ARCHIVE_OPEN_FOR_DELETE'
+    EXPORTING
+      object       = lv_open_obj
+      archive_name = lv_arch_key
+      test_mode    = p_test
     IMPORTING
       archive_handle = lv_arch_h
     EXCEPTIONS
@@ -63,7 +96,15 @@ START-OF-SELECTION.
       archiving_standard_violation = 8
       OTHERS                = 9.
   IF sy-subrc <> 0.
-    MESSAGE 'Cannot open archive for delete. Run via SARA with a selected file.' TYPE 'A'.
+    CASE sy-subrc.
+      WHEN 4.
+        MESSAGE 'Không có file archive hoặc chưa có session delete phù hợp — không mở được delete.' TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 5.
+        MESSAGE 'Không tìm thấy đối tượng archive (AOBJ) hoặc chưa đăng ký.' TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN OTHERS.
+        MESSAGE 'Không mở được archive cho delete (kiểm tra quyền, file, session).' TYPE 'S' DISPLAY LIKE 'E'.
+    ENDCASE.
+    RETURN.
   ENDIF.
 
   " USED_CLASSES: list of DDIC names (often same shape as ARCH_DDIC-NAME)
@@ -86,14 +127,14 @@ START-OF-SELECTION.
 
   WRITE: / 'GET_INFORMATION: obj ' && lv_obj && ' arch ' && lv_arch_name && ' doc ' && lv_doc && ' rc ' && sy-subrc.
   LOOP AT lt_used INTO ls_used.
-    WRITE: / |  REGISTERED_DDIC_NAME: { ls_used-name }|.
+    WRITE: / '  REGISTERED_DDIC_NAME: ' && ls_used-name.
   ENDLOOP.
   WRITE: /.
 
   DATA: lv_tab_try TYPE tabname,
         lv_got     TYPE abap_bool.
 
-  WHILE abap_true.
+  DO.
     CALL FUNCTION 'ARCHIVE_READ_OBJECT'
       EXPORTING
         archive_handle = lv_arch_h
@@ -118,18 +159,14 @@ START-OF-SELECTION.
 
     " Prefer P_TABLE; else try each DDIC name from GET_INFORMATION rows (ARCH_DDIC / class list)
     IF p_table IS NOT INITIAL.
-      PERFORM process_one_arch_table
-        USING    lv_arch_h p_table p_test
-        CHANGING lv_cnt lv_err lt_del_agg lv_got.
+      PERFORM process_one_arch_table USING lv_arch_h p_table p_test CHANGING lv_cnt lv_err lv_got.
     ENDIF.
 
     IF lv_got = abap_false.
       LOOP AT lt_used INTO ls_used.
         lv_tab_try = ls_used-name.
         CHECK lv_tab_try IS NOT INITIAL.
-        PERFORM process_one_arch_table
-          USING    lv_arch_h lv_tab_try p_test
-          CHANGING lv_cnt lv_err lt_del_agg lv_got.
+        PERFORM process_one_arch_table USING lv_arch_h lv_tab_try p_test CHANGING lv_cnt lv_err lv_got.
         IF lv_got = abap_true.
           EXIT.
         ENDIF.
@@ -137,12 +174,10 @@ START-OF-SELECTION.
     ENDIF.
 
     IF lv_got = abap_false.
-      SELECT table_name FROM zsp26_arch_cfg INTO TABLE @DATA(lt_cfg_tabs)
+      SELECT table_name FROM zsp26_arch_cfg INTO TABLE lt_cfg_tabs
         WHERE is_active = 'X'.
-      LOOP AT lt_cfg_tabs INTO DATA(ls_ct).
-        PERFORM process_one_arch_table
-          USING    lv_arch_h ls_ct-table_name p_test
-          CHANGING lv_cnt lv_err lt_del_agg lv_got.
+      LOOP AT lt_cfg_tabs INTO lv_cfg_tab.
+        PERFORM process_one_arch_table USING lv_arch_h lv_cfg_tab p_test CHANGING lv_cnt lv_err lv_got.
         IF lv_got = abap_true.
           EXIT.
         ENDIF.
@@ -153,7 +188,7 @@ START-OF-SELECTION.
       WRITE: / 'WARN: Could not ARCHIVE_GET_TABLE for this object (set P_TABLE or check registration).'.
       lv_err = lv_err + 1.
     ENDIF.
-  ENDWHILE.
+  ENDDO.
 
   CALL FUNCTION 'ARCHIVE_CLOSE_OBJECT'
     EXCEPTIONS
@@ -174,14 +209,16 @@ FORM process_one_arch_table
            VALUE(pv_test)   TYPE c
   CHANGING cv_cnt TYPE i
            cv_err TYPE i
-           ct_agg TYPE HASHED TABLE OF ty_del_agg WITH UNIQUE KEY table_name
            cv_got TYPE abap_bool.
 
-  FIELD-SYMBOLS: <lt> TYPE ANY TABLE.
+  DATA: lv_lines TYPE i,
+        lv_t     TYPE i.
+
+  FIELD-SYMBOLS <lt> TYPE STANDARD TABLE.
 
   cv_got = abap_false.
   TRY.
-      CREATE DATA gr_dyn TYPE TABLE OF (pv_tab).
+      CREATE DATA gr_dyn TYPE STANDARD TABLE OF (pv_tab).
     CATCH cx_sy_create_data_error.
       RETURN.
   ENDTRY.
@@ -210,36 +247,38 @@ FORM process_one_arch_table
   IF pv_test = ' '.
     DELETE (pv_tab) FROM TABLE <lt>.
     IF sy-subrc = 0 OR sy-subrc = 4.
-      DATA(lv_lines) = lines( <lt> ).
+      lv_lines = lines( <lt> ).
       cv_cnt = cv_cnt + lv_lines.
-      PERFORM del_agg_add USING ct_agg pv_tab lv_lines.
+      PERFORM del_agg_add USING lt_del_agg pv_tab lv_lines.
       DO lv_lines TIMES.
         CALL FUNCTION 'ARCHIVE_DELETE_RECORD'
           EXCEPTIONS OTHERS = 1.
       ENDDO.
     ELSE.
       cv_err = cv_err + 1.
-      WRITE: / |  ERR: DB delete failed, tab { pv_tab }, rc { sy-subrc }|.
+      WRITE: / '  ERR: DB delete failed, tab ' && pv_tab && ', rc ' && sy-subrc.
     ENDIF.
   ELSE.
-    DATA(lv_t) = lines( <lt> ).
+    lv_t = lines( <lt> ).
     cv_cnt = cv_cnt + lv_t.
-    WRITE: / |  [TEST] Would delete { lv_t } rows, tab { pv_tab }|.
+    WRITE: / '  [TEST] Would delete ' && lv_t && ' rows, tab ' && pv_tab.
   ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
 FORM del_agg_add
-  USING    ct_agg TYPE HASHED TABLE OF ty_del_agg WITH UNIQUE KEY table_name
+  USING    ct_agg TYPE ty_del_agg_htab
            VALUE(pv_tab) TYPE tabname
            VALUE(pv_n) TYPE i.
+
+  DATA ls TYPE ty_del_agg.
 
   FIELD-SYMBOLS: <dg> LIKE LINE OF ct_agg.
   READ TABLE ct_agg WITH TABLE KEY table_name = pv_tab ASSIGNING <dg>.
   IF sy-subrc = 0.
     <dg>-cnt = <dg>-cnt + pv_n.
   ELSE.
-    DATA(ls) TYPE ty_del_agg.
+    CLEAR ls.
     ls-table_name = pv_tab.
     ls-cnt        = pv_n.
     INSERT ls INTO TABLE ct_agg.
@@ -248,7 +287,7 @@ ENDFORM.
 
 *&---------------------------------------------------------------------*
 FORM flush_arch_log_delete
-  USING    ct_agg TYPE HASHED TABLE OF ty_del_agg WITH UNIQUE KEY table_name
+  USING    ct_agg TYPE ty_del_agg_htab
            VALUE(pv_err) TYPE i.
 
   DATA: ls_log TYPE zsp26_arch_log,
@@ -300,13 +339,14 @@ FORM run_delete_legacy_json.
         lv_pair_loc   TYPE string,
         lv_kf_loc     TYPE string,
         lv_kv_loc     TYPE string,
-        lt_del_loc    TYPE HASHED TABLE OF ty_del_agg WITH UNIQUE KEY table_name,
+        lt_del_loc    TYPE ty_del_agg_htab,
         ls_del_loc    TYPE ty_del_agg.
 
   CALL FUNCTION 'ARCHIVE_OPEN_FOR_DELETE'
     EXCEPTIONS OTHERS = 1.
   IF sy-subrc <> 0.
-    MESSAGE 'Cannot open archive for delete (legacy).' TYPE 'A'.
+    MESSAGE 'Không mở được archive (legacy / P_JSON).' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
   ENDIF.
 
   DO.
@@ -331,9 +371,9 @@ FORM run_delete_legacy_json.
       IF lv_where_loc IS NOT INITIAL. lv_where_loc &&= ' AND '. ENDIF.
       lv_where_loc &&= lv_kf_loc && ` EQ '` && lv_kv_loc && `'`.
     ENDLOOP.
-    lv_where_loc = |MANDT EQ '{ sy-mandt }' AND | && lv_where_loc.
+    lv_where_loc = 'MANDT EQ ''' && sy-mandt && ''' AND ' && lv_where_loc.
 
-    WRITE: / |  LEGACY { ls_arec_loc-table_name } / { ls_arec_loc-key_vals }|.
+    WRITE: / '  LEGACY ' && ls_arec_loc-table_name && ' / ' && ls_arec_loc-key_vals.
 
     IF p_test = ' '.
       DELETE FROM (ls_arec_loc-table_name) WHERE (lv_where_loc).
@@ -345,7 +385,7 @@ FORM run_delete_legacy_json.
         CALL FUNCTION 'ARCHIVE_DELETE_RECORD' EXCEPTIONS OTHERS = 1.
         ADD 1 TO lv_cnt_loc.
         PERFORM del_agg_bump_legacy USING lt_del_loc ls_arec_loc-table_name.
-        WRITE: / |    INFO: already deleted|.
+        WRITE: / '    INFO: already deleted'.
       ELSE.
         ADD 1 TO lv_err_loc.
       ENDIF.
@@ -362,20 +402,22 @@ FORM run_delete_legacy_json.
     PERFORM flush_arch_log_delete USING lt_del_loc lv_err_loc.
   ENDIF.
 
-  WRITE: / |=== Legacy JSON summary: { lv_cnt_loc } / err { lv_err_loc } ===|.
+  WRITE: / '=== Legacy JSON summary: ' && lv_cnt_loc && ' / err ' && lv_err_loc && ' ==='.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
 FORM del_agg_bump_legacy
-  USING    ct_agg TYPE HASHED TABLE OF ty_del_agg WITH UNIQUE KEY table_name
+  USING    ct_agg TYPE ty_del_agg_htab
            VALUE(pv_tab) TYPE tabname.
+
+  DATA ls TYPE ty_del_agg.
 
   FIELD-SYMBOLS: <dg> LIKE LINE OF ct_agg.
   READ TABLE ct_agg WITH TABLE KEY table_name = pv_tab ASSIGNING <dg>.
   IF sy-subrc = 0.
     <dg>-cnt = <dg>-cnt + 1.
   ELSE.
-    DATA(ls) TYPE ty_del_agg.
+    CLEAR ls.
     ls-table_name = pv_tab.
     ls-cnt        = 1.
     INSERT ls INTO TABLE ct_agg.

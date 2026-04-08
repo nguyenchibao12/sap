@@ -85,6 +85,8 @@ DATA: gt_arch_stat TYPE TABLE OF ty_arch_stat,
       gt_fcat_200  TYPE lvc_t_fcat.
 
 " Screen 0300 / 0500 — SARA scheduler (variant, start, spool)
+" gv_object = AOBJ (transaction SARA, SPA ARC, ARCH_OBJ) — ví dụ Z_ARCH_EKK
+" gv_tabname = bảng DDIC đích (preview/write/delete SQL) — không thay cho AOBJ trên UI SARA
 DATA: gv_object     TYPE arch_obj-object,
       gv_variant    TYPE variant,
       gv_prog_write TYPE programm,
@@ -101,7 +103,10 @@ DATA: gv_disp_mandt    TYPE mandt,
       gv_stat_arch_tx  TYPE char20,
       gv_stat_start_tx TYPE char20,
       gv_stat_spool_tx TYPE char20,
-      gv_scr600_head   TYPE char80.
+      gv_scr600_head   TYPE char80,
+      gv_f4_sess       TYPE admi_run-document,
+      gv_del_sess_def  TYPE char1,
+      gs_del_admi      TYPE admi_run.
 
 DATA: go_alv_grid    TYPE REF TO cl_gui_alv_grid,
       go_custom_cont TYPE REF TO cl_gui_custom_container,

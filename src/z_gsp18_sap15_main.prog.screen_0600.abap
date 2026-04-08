@@ -1,5 +1,6 @@
 PROCESS BEFORE OUTPUT.
   MODULE status_0600.
+  MODULE hide_f4_sess_0600.
   MODULE init_fields_0600.
 
 PROCESS AFTER INPUT.
