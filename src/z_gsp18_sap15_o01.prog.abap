@@ -105,7 +105,11 @@ MODULE init_fields_0600 OUTPUT.
   ENDIF.
 
   gv_disp_mandt = sy-mandt.
-  gv_disp_uname = sy-uname.
+  IF gv_disp_uname IS INITIAL.
+    gv_disp_uname = sy-uname.
+  ENDIF.
+
+  gv_scr600_head = |Archive for { gv_tabname }|.
 
   gv_stat_arch_tx  = COND #( WHEN gv_variant IS NOT INITIAL THEN 'Defined' ELSE 'Not Defined' ).
   gv_stat_start_tx = COND #( WHEN gv_start_date = 'X' THEN 'Defined' ELSE 'Not Defined' ).

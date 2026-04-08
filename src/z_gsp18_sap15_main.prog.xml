@@ -647,7 +647,7 @@
       <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
       <SCREEN>0600</SCREEN>
       <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>Delete archive (SARA-style)</DESCRIPT>
+      <DESCRIPT>Delete archive (compact SARA-style)</DESCRIPT>
       <TYPE>N</TYPE>
       <NEXTSCREEN>0600</NEXTSCREEN>
       <LINES>027</LINES>
@@ -663,10 +663,24 @@
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>TEMPLATE</TYPE>
+       <NAME>GV_SCR600_HEAD</NAME>
+       <TEXT>______________________________________________________________</TEXT>
+       <LINE>001</LINE>
+       <COLUMN>002</COLUMN>
+       <LENGTH>062</LENGTH>
+       <VISLENGTH>062</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <OUTPUT_FLD>X</OUTPUT_FLD>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_C6_CLNT</NAME>
-       <TEXT>Client</TEXT>
-       <LINE>002</LINE>
+       <TEXT>Client:</TEXT>
+       <LINE>003</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>008</LENGTH>
        <VISLENGTH>008</VISLENGTH>
@@ -681,7 +695,7 @@
        <TYPE>TEMPLATE</TYPE>
        <NAME>GV_DISP_MANDT</NAME>
        <TEXT>____</TEXT>
-       <LINE>002</LINE>
+       <LINE>003</LINE>
        <COLUMN>012</COLUMN>
        <LENGTH>004</LENGTH>
        <VISLENGTH>004</VISLENGTH>
@@ -693,87 +707,12 @@
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
-       <NAME>LBL_C6_TAB</NAME>
-       <TEXT>Archive_table</TEXT>
-       <LINE>003</LINE>
-       <COLUMN>002</COLUMN>
-       <LENGTH>013</LENGTH>
-       <VISLENGTH>013</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <FORMAT>CHAR</FORMAT>
-       <REQU_ENTRY>N</REQU_ENTRY>
-       <LABELLEFT>X</LABELLEFT>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>TEMPLATE</TYPE>
-       <NAME>GV_TABNAME</NAME>
-       <TEXT>______________________________</TEXT>
-       <LINE>003</LINE>
-       <COLUMN>017</COLUMN>
-       <LENGTH>030</LENGTH>
-       <VISLENGTH>030</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <FORMAT>CHAR</FORMAT>
-       <OUTPUT_FLD>X</OUTPUT_FLD>
-       <ROLLNAME>ZSP26_DE_TABNAME</ROLLNAME>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>TEXT</TYPE>
-       <NAME>LBL_C6_VAR</NAME>
-       <TEXT>Variant</TEXT>
-       <LINE>004</LINE>
-       <COLUMN>002</COLUMN>
-       <LENGTH>008</LENGTH>
-       <VISLENGTH>008</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <FORMAT>CHAR</FORMAT>
-       <REQU_ENTRY>N</REQU_ENTRY>
-       <LABELLEFT>X</LABELLEFT>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>TEMPLATE</TYPE>
-       <NAME>GV_VARIANT</NAME>
-       <TEXT>______________</TEXT>
-       <LINE>004</LINE>
-       <COLUMN>012</COLUMN>
-       <LENGTH>014</LENGTH>
-       <VISLENGTH>014</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <FORMAT>CHAR</FORMAT>
-       <INPUT_FLD>X</INPUT_FLD>
-       <OUTPUT_FLD>X</OUTPUT_FLD>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>PUSH</TYPE>
-       <NAME>EDIT_BTN_C6</NAME>
-       <TEXT>Edit</TEXT>
-       <LINE>004</LINE>
-       <COLUMN>028</COLUMN>
-       <LENGTH>014</LENGTH>
-       <VISLENGTH>014</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <PUSH_FCODE>EDIT_BTN</PUSH_FCODE>
-       <FORMAT>CHAR</FORMAT>
-       <REQU_ENTRY>N</REQU_ENTRY>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>TEXT</TYPE>
        <NAME>LBL_C6_USR</NAME>
-       <TEXT>User_Name</TEXT>
-       <LINE>005</LINE>
+       <TEXT>User_Name:</TEXT>
+       <LINE>004</LINE>
        <COLUMN>002</COLUMN>
-       <LENGTH>010</LENGTH>
-       <VISLENGTH>010</VISLENGTH>
+       <LENGTH>012</LENGTH>
+       <VISLENGTH>012</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
@@ -784,13 +723,14 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GV_DISP_UNAME</NAME>
-       <TEXT>____________</TEXT>
-       <LINE>005</LINE>
-       <COLUMN>014</COLUMN>
-       <LENGTH>012</LENGTH>
-       <VISLENGTH>012</VISLENGTH>
+       <TEXT>______________</TEXT>
+       <LINE>004</LINE>
+       <COLUMN>016</COLUMN>
+       <LENGTH>014</LENGTH>
+       <VISLENGTH>014</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
+       <INPUT_FLD>X</INPUT_FLD>
        <OUTPUT_FLD>X</OUTPUT_FLD>
       </RPY_DYFATC>
       <RPY_DYFATC>
@@ -799,7 +739,7 @@
        <TYPE>TEMPLATE</TYPE>
        <NAME>GV_TEST_MODE</NAME>
        <TEXT>_</TEXT>
-       <LINE>006</LINE>
+       <LINE>005</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>001</LENGTH>
        <VISLENGTH>001</VISLENGTH>
@@ -814,8 +754,8 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_C6_TM</NAME>
-       <TEXT>Test Mode</TEXT>
-       <LINE>006</LINE>
+       <TEXT>Test_Mode</TEXT>
+       <LINE>005</LINE>
        <COLUMN>004</COLUMN>
        <LENGTH>009</LENGTH>
        <VISLENGTH>009</VISLENGTH>
@@ -831,8 +771,8 @@
        <TEXT>Archive_Selection___</TEXT>
        <LINE>007</LINE>
        <COLUMN>002</COLUMN>
-       <LENGTH>022</LENGTH>
-       <VISLENGTH>022</VISLENGTH>
+       <LENGTH>024</LENGTH>
+       <VISLENGTH>024</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <PUSH_FCODE>BT_ARCH_SEL</PUSH_FCODE>
        <FORMAT>CHAR</FORMAT>
@@ -845,7 +785,7 @@
        <NAME>GV_STAT_ARCH_TX</NAME>
        <TEXT>____________________</TEXT>
        <LINE>007</LINE>
-       <COLUMN>026</COLUMN>
+       <COLUMN>028</COLUMN>
        <LENGTH>020</LENGTH>
        <VISLENGTH>020</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -860,8 +800,8 @@
        <TEXT>Start_Date__________</TEXT>
        <LINE>008</LINE>
        <COLUMN>002</COLUMN>
-       <LENGTH>022</LENGTH>
-       <VISLENGTH>022</VISLENGTH>
+       <LENGTH>024</LENGTH>
+       <VISLENGTH>024</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <PUSH_FCODE>START_BTN</PUSH_FCODE>
        <FORMAT>CHAR</FORMAT>
@@ -874,7 +814,7 @@
        <NAME>GV_STAT_START_TX</NAME>
        <TEXT>____________________</TEXT>
        <LINE>008</LINE>
-       <COLUMN>026</COLUMN>
+       <COLUMN>028</COLUMN>
        <LENGTH>020</LENGTH>
        <VISLENGTH>020</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -889,8 +829,8 @@
        <TEXT>Spool_Parameters____</TEXT>
        <LINE>009</LINE>
        <COLUMN>002</COLUMN>
-       <LENGTH>022</LENGTH>
-       <VISLENGTH>022</VISLENGTH>
+       <LENGTH>024</LENGTH>
+       <VISLENGTH>024</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <PUSH_FCODE>SPOOL_BTN</PUSH_FCODE>
        <FORMAT>CHAR</FORMAT>
@@ -903,27 +843,12 @@
        <NAME>GV_STAT_SPOOL_TX</NAME>
        <TEXT>____________________</TEXT>
        <LINE>009</LINE>
-       <COLUMN>026</COLUMN>
+       <COLUMN>028</COLUMN>
        <LENGTH>020</LENGTH>
        <VISLENGTH>020</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>PUSH</TYPE>
-       <NAME>RUN_DEL_BTN_C6</NAME>
-       <TEXT>Run_delete_program__</TEXT>
-       <LINE>011</LINE>
-       <COLUMN>002</COLUMN>
-       <LENGTH>038</LENGTH>
-       <VISLENGTH>038</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <PUSH_FCODE>BT_RUN_DELETE</PUSH_FCODE>
-       <FORMAT>CHAR</FORMAT>
-       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>

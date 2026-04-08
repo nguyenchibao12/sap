@@ -100,7 +100,8 @@ DATA: gv_disp_mandt    TYPE mandt,
       gv_disp_uname    TYPE syuname,
       gv_stat_arch_tx  TYPE char20,
       gv_stat_start_tx TYPE char20,
-      gv_stat_spool_tx TYPE char20.
+      gv_stat_spool_tx TYPE char20,
+      gv_scr600_head   TYPE char80.
 
 DATA: go_alv_grid    TYPE REF TO cl_gui_alv_grid,
       go_custom_cont TYPE REF TO cl_gui_custom_container,
