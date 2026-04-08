@@ -200,6 +200,7 @@ START-OF-SELECTION.
 
   WRITE: /.
   WRITE: / '=== Summary: processed ' && lv_cnt && ' errors ' && lv_err && ' ==='.
+  WRITE: / 'Lifecycle: DELETE step executed. Source DB rows matched by archive records were processed for deletion.'.
   IF p_test = 'X'. WRITE: / 'Uncheck Test Mode to delete DB rows + log.'. ENDIF.
 
 *&---------------------------------------------------------------------*

@@ -4,6 +4,7 @@
 *& Dynamic: any transparent table with active row in ZSP26_ARCH_CFG
 *& Flow: OPEN_FOR_WRITE → IMPORT archive_handle → ARCHIVE_REGISTER_STRUCTURES
 *&       (DDIC name = target table) → ARCHIVE_NEW_OBJECT → ARCHIVE_PUT_TABLE
+*&       → ARCHIVE_SAVE_OBJECT → ARCHIVE_CLOSE_FILE
 *& CREATE DATA + ASSIGN → dynamic SELECT with WHERE from CFG (+ optional RULE EQ)
 *& Log ZSP26_ARCH_LOG after ARCHIVE_CLOSE_FILE (CONFIG_ID, timestamps)
 *&---------------------------------------------------------------------*
@@ -329,6 +330,25 @@ START-OF-SELECTION.
 
     lv_cnt = lines( <lt_src> ).
 
+    " On this system, ARCHIVE_CLOSE_OBJECT is unavailable.
+    " Persist object explicitly, then close archive file.
+    CALL FUNCTION 'ARCHIVE_SAVE_OBJECT'
+      EXPORTING
+        archive_handle = lv_arch_h
+      EXCEPTIONS
+        internal_error          = 1
+        wrong_access_to_archive = 2
+        OTHERS                  = 3.
+    IF sy-subrc <> 0.
+      lv_err = lv_err + 1.
+      CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+        EXPORTING
+          archive_handle = lv_arch_h
+        EXCEPTIONS
+          OTHERS         = 1.
+      MESSAGE 'ARCHIVE_SAVE_OBJECT failed.' TYPE 'A'.
+    ENDIF.
+
     CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
       EXPORTING
         archive_handle = lv_arch_h
@@ -359,9 +379,11 @@ START-OF-SELECTION.
   WRITE: / |Rows in selection: { lines( <lt_src> ) }|.
   IF p_test = ' '.
     WRITE: / |Archived (PUT_TABLE): { lv_cnt }|.
+    WRITE: / 'Lifecycle: WRITE completed only. DB source rows are NOT deleted yet.'.
+    WRITE: / 'Next mandatory step: run DELETE program to remove source DB records.'.
     WRITE: / 'Next: Z_ARCH_EKK_DELETE via SARA (uncheck P_JSON if using this PUT_TABLE format).'.
   ELSE.
-    WRITE: / 'Uncheck Test Mode to run OPEN → REGISTER_STRUCTURES → NEW_OBJECT → PUT_TABLE → CLOSE.'.
+    WRITE: / 'Uncheck Test Mode to run OPEN → REGISTER_STRUCTURES → NEW_OBJECT → PUT_TABLE → SAVE_OBJECT → CLOSE_FILE.'.
   ENDIF.
 
 *&---------------------------------------------------------------------*

@@ -397,28 +397,9 @@ ENDFORM.
 *& FORM DO_ARCHIVE_VIA_ADK — gọi ADK Write Program (từ lcl_handler)
 *&---------------------------------------------------------------------*
 FORM do_archive_via_adk.
-  DATA: lv_vtech TYPE variant,
-        lv_vok   TYPE abap_bool.
-
-  IF gv_variant IS NOT INITIAL.
-    PERFORM arch_build_write_var_tech
-      USING gv_tabname gv_variant
-      CHANGING lv_vtech lv_vok.
-    IF lv_vok = abap_false.
-      MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
-      RETURN.
-    ENDIF.
-    SUBMIT z_arch_ekk_write
-      WITH p_table = gv_tabname
-      WITH p_test  = ' '
-      USING SELECTION-SET lv_vtech
-      AND RETURN.
-  ELSE.
-    SUBMIT z_arch_ekk_write
-      WITH p_table = gv_tabname
-      WITH p_test  = ' '
-      AND RETURN.
-  ENDIF.
+  " Keep this entry-point for compatibility, but force background scheduling
+  " so every execute path is traceable in SM37.
+  PERFORM do_archive_write_bg_job.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
