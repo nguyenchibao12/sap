@@ -207,7 +207,8 @@ FORM arch_build_write_var_tech
         lv_log  TYPE string,
         lv_full TYPE string,
         lv_ml   TYPE i,
-        lv_mxp  TYPE i.
+        lv_mxp  TYPE i,
+        lv_plen TYPE i.
 
   CLEAR: cv_technical, cv_ok.
   cv_ok = abap_false.
@@ -230,7 +231,6 @@ FORM arch_build_write_var_tech
 
   " Nếu user nhập trùng tiền tố bảng (vd EKKO_VAR_02) thì tách thành logical VAR_02
   " để tên VARID = EKKO_VAR_02, tránh EK_EKKO_VAR_02 do giới hạn 14 ký tự.
-  DATA(lv_plen) TYPE i.
   lv_plen = strlen( lv_pfx ).
   IF lv_plen > 0 AND strlen( lv_log ) >= lv_plen + 2.
     IF substring( val = lv_log len = lv_plen ) = lv_pfx AND
