@@ -197,7 +197,7 @@ FORM arch_variant_tab_prefix
   ENDIF.
 ENDFORM.
 
-FORM arch_build_write_variant_technical
+FORM arch_build_write_var_tech
   USING    iv_tabname TYPE tabname
            iv_logical TYPE variant
   CHANGING cv_technical TYPE variant
@@ -248,7 +248,7 @@ FORM arch_build_write_variant_technical
   cv_ok = abap_true.
 ENDFORM.
 
-FORM arch_logical_from_write_variant_technical
+FORM arch_log_from_write_var
   USING    iv_tabname TYPE tabname
            iv_technical TYPE variant
   CHANGING cv_logical TYPE variant
@@ -298,7 +298,7 @@ FORM do_archive_via_adk.
         lv_vok   TYPE abap_bool.
 
   IF gv_variant IS NOT INITIAL.
-    PERFORM arch_build_write_variant_technical
+    PERFORM arch_build_write_var_tech
       USING gv_tabname gv_variant
       CHANGING lv_vtech lv_vok.
     IF lv_vok = abap_false.
