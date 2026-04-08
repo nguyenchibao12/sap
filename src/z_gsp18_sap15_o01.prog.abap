@@ -132,7 +132,7 @@ ENDMODULE.
 *& Module STATUS_0600 OUTPUT — toolbar giống hub (Back/Exit)
 *&---------------------------------------------------------------------*
 MODULE status_0600 OUTPUT.
-  SET PF-STATUS 'STATUS_100'.
+  SET PF-STATUS 'STATUS_300'.
   SET TITLEBAR 'TITLE_300'.
 ENDMODULE.
 

@@ -417,7 +417,6 @@ MODULE user_command_0500 INPUT.
             IF lv_rc_500 = 0.
               SUBMIT (gv_prog_write)
                 WITH p_table = gv_tabname
-                USING SELECTION-SET lv_vtech_500
                 VIA SELECTION-SCREEN
                 AND RETURN.
             ELSE.
@@ -474,7 +473,6 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 MODULE user_command_0600 INPUT.
   DATA: lv_rc_600  TYPE sy-subrc,
-        lv_ans_600 TYPE char1,
         lv_u6      TYPE sy-ucomm.
 
   lv_u6 = ok_code.
@@ -497,25 +495,17 @@ MODULE user_command_0600 INPUT.
             r_c     = lv_rc_600.
 
         IF lv_rc_600 = 0.
-          SUBMIT (gv_prog_del) VIA SELECTION-SCREEN
-            USING SELECTION-SET gv_variant AND RETURN.
+          SUBMIT (gv_prog_del)
+            WITH p_table = gv_tabname
+            WITH p_test  = gv_test_mode
+            VIA SELECTION-SCREEN
+            AND RETURN.
         ELSE.
-          CALL FUNCTION 'POPUP_TO_CONFIRM'
-            EXPORTING
-              titlebar              = 'Thông báo'
-              text_question         = 'Variant chưa tồn tại. Tạo mới?'
-              text_button_1         = 'Có'
-              text_button_2         = 'Không'
-              display_cancel_button = ' '
-            IMPORTING
-              answer                = lv_ans_600
-            EXCEPTIONS
-              OTHERS                = 1.
-          IF lv_ans_600 = '1'.
-            SUBMIT (gv_prog_del) VIA SELECTION-SCREEN AND RETURN.
-          ELSE.
-            CLEAR gv_variant.
-          ENDIF.
+          SUBMIT (gv_prog_del)
+            WITH p_table = gv_tabname
+            WITH p_test  = gv_test_mode
+            VIA SELECTION-SCREEN
+            AND RETURN.
         ENDIF.
       ELSE.
         MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
@@ -531,6 +521,21 @@ MODULE user_command_0600 INPUT.
 
     WHEN 'BT_RUN_DELETE'.
       PERFORM do_archive_delete_job.
+
+    WHEN 'ONLI'.
+      IF gv_tabname IS INITIAL.
+        MESSAGE 'Vui lòng nhập Table Name ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSEIF gv_start_date <> 'X'.
+        MESSAGE 'Chưa maintain Start Date. Vào Start Date để khai báo trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSEIF gv_spool_set <> 'X'.
+        MESSAGE 'Chưa maintain Spool Parameters. Vào Spool Parameters trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSEIF gv_del_sess_def IS INITIAL AND gv_variant IS INITIAL.
+        MESSAGE 'Chưa chọn Archive Selection (session) hoặc Variant cho delete.' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSE.
+        PERFORM do_archive_delete_job.
+        SET SCREEN 0100.
+        LEAVE SCREEN.
+      ENDIF.
 
     WHEN 'BACK'.
       SET SCREEN 0100.

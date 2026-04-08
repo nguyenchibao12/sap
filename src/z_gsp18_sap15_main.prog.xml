@@ -868,6 +868,21 @@
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>PUSH</TYPE>
+       <NAME>EXECUTE_BTN_C6</NAME>
+       <TEXT>Execute_____________</TEXT>
+       <LINE>010</LINE>
+       <COLUMN>002</COLUMN>
+       <LENGTH>024</LENGTH>
+       <VISLENGTH>024</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <PUSH_FCODE>ONLI</PUSH_FCODE>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>OKCODE</TYPE>
        <NAME>OK_CODE</NAME>
        <TEXT>____________________</TEXT>
