@@ -158,7 +158,7 @@ MODULE check_variant_0300 INPUT.
       r_c     = lv_rc_chk.
 
   IF lv_rc_chk <> 0.
-    lv_q_c = |Variant SAP "{ lv_vtech_c }" chưa có cho bảng { gv_tabname }. Tạo mới? (Lưu trên màn hình chọn đúng tên { lv_vtech_c })|.
+    lv_q_c = |Chưa có variant cho bảng { gv_tabname }. Giữ nguyên ô Variant "{ gv_variant }" (không đổi sang tên kỹ thuật). Tên lưu trong SAP: { lv_vtech_c }. Tạo mới?|.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
         titlebar              = 'Thông báo'
@@ -234,7 +234,7 @@ MODULE user_command_0300 INPUT.
                 VIA SELECTION-SCREEN
                 AND RETURN.
             ELSE.
-              lv_q_300 = |Variant SAP "{ lv_vtech_300 }" chưa tồn tại. Tạo mới? (Lưu đúng tên { lv_vtech_300 })|.
+              lv_q_300 = |Variant chưa tồn tại. Ô Variant giữ "{ gv_variant }". Tên trong SAP: { lv_vtech_300 } (chỉ tham khảo). Tạo mới?|.
               CALL FUNCTION 'POPUP_TO_CONFIRM'
                 EXPORTING
                   titlebar              = 'Thông báo'
@@ -421,7 +421,7 @@ MODULE user_command_0500 INPUT.
                 VIA SELECTION-SCREEN
                 AND RETURN.
             ELSE.
-              lv_q_500 = |Variant SAP "{ lv_vtech_500 }" chưa tồn tại. Tạo mới? (Lưu đúng tên { lv_vtech_500 })|.
+              lv_q_500 = |Variant chưa tồn tại. Ô Variant giữ "{ gv_variant }". Tên trong SAP: { lv_vtech_500 } (chỉ tham khảo). Tạo mới?|.
               CALL FUNCTION 'POPUP_TO_CONFIRM'
                 EXPORTING
                   titlebar              = 'Thông báo'
