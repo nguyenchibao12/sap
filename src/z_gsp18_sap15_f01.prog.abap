@@ -195,6 +195,36 @@ FORM do_archive_via_adk.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& FORM DO_ARCHIVE_DELETE_JOB — SUBMIT delete program (ADK delete)
+*&---------------------------------------------------------------------*
+FORM do_archive_delete_job.
+  IF gv_tabname IS INITIAL.
+    MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+  IF gv_prog_del IS INITIAL.
+    PERFORM get_archive_programs.
+  ENDIF.
+  IF gv_prog_del IS INITIAL.
+    MESSAGE 'Chưa cấu hình delete program (AOBJ)' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  IF gv_variant IS NOT INITIAL.
+    SUBMIT (gv_prog_del)
+      WITH p_table = gv_tabname
+      WITH p_test  = gv_test_mode
+      USING SELECTION-SET gv_variant
+      AND RETURN.
+  ELSE.
+    SUBMIT (gv_prog_del)
+      WITH p_table = gv_tabname
+      WITH p_test  = gv_test_mode
+      AND RETURN.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& FORM DO_RESTORE_VIA_ADK — gọi ADK Read Program (từ lcl_handler)
 *&---------------------------------------------------------------------*
 FORM do_restore_via_adk.
@@ -683,7 +713,12 @@ FORM maintenance_spool_params.
         lv_valid TYPE char1,
         lv_rep   TYPE programm.
 
-  lv_rep = COND #( WHEN gv_prog_write IS NOT INITIAL THEN gv_prog_write ELSE sy-repid ).
+  lv_rep = COND #(
+    WHEN sy-dynnr = '0600' AND gv_prog_del IS NOT INITIAL
+    THEN gv_prog_del
+    WHEN gv_prog_write IS NOT INITIAL
+    THEN gv_prog_write
+    ELSE sy-repid ).
 
   CALL FUNCTION 'GET_PRINT_PARAMETERS'
     EXPORTING

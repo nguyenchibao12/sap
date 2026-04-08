@@ -95,9 +95,10 @@ DATA: gv_object     TYPE arch_obj-object,
       gv_test_mode  TYPE char1 VALUE 'X',
       gv_det_log    TYPE char1 VALUE 'X'.
 
-" Screen 0500 — hiển thị giống SARA Create archive file
+" Screen 0500 / 0600 — SARA-style status texts
 DATA: gv_disp_mandt    TYPE mandt,
       gv_disp_uname    TYPE syuname,
+      gv_stat_arch_tx  TYPE char20,
       gv_stat_start_tx TYPE char20,
       gv_stat_spool_tx TYPE char20.
 

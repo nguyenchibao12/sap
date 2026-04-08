@@ -89,3 +89,37 @@ MODULE status_0500 OUTPUT.
   SET PF-STATUS 'STATUS_300'.
   SET TITLEBAR 'TITLE_300'.
 ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module INIT_FIELDS_0600 OUTPUT — Delete (SARA-style)
+*&---------------------------------------------------------------------*
+MODULE init_fields_0600 OUTPUT.
+  IF gv_object IS INITIAL.
+    gv_object = 'Z_ARCH_EKK'.
+  ENDIF.
+  IF gv_test_mode IS INITIAL.
+    gv_test_mode = 'X'.
+  ENDIF.
+  IF gv_det_log IS INITIAL.
+    gv_det_log = 'X'.
+  ENDIF.
+
+  gv_disp_mandt = sy-mandt.
+  gv_disp_uname = sy-uname.
+
+  gv_stat_arch_tx  = COND #( WHEN gv_variant IS NOT INITIAL THEN 'Defined' ELSE 'Not Defined' ).
+  gv_stat_start_tx = COND #( WHEN gv_start_date = 'X' THEN 'Defined' ELSE 'Not Defined' ).
+  gv_stat_spool_tx = COND #( WHEN gv_spool_set = 'X' THEN 'Defined' ELSE 'Not Defined' ).
+
+  IF gv_prog_del IS INITIAL.
+    PERFORM get_archive_programs.
+  ENDIF.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module STATUS_0600 OUTPUT — toolbar giống hub (Back/Exit)
+*&---------------------------------------------------------------------*
+MODULE status_0600 OUTPUT.
+  SET PF-STATUS 'STATUS_100'.
+  SET TITLEBAR 'TITLE_300'.
+ENDMODULE.

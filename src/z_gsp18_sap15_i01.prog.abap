@@ -60,11 +60,19 @@ MODULE user_command_0100 INPUT.
         LEAVE SCREEN.
       ENDIF.
 
-    WHEN 'BT_DELETE'.
+    WHEN 'BT_RESTORE'.
       IF gv_tabname IS INITIAL.
         MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM do_restore_preview.
+      ENDIF.
+
+    WHEN 'BT_ADK_DELETE'.
+      IF gv_tabname IS INITIAL.
+        MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSE.
+        SET SCREEN 0600.
+        LEAVE SCREEN.
       ENDIF.
 
     WHEN 'BT_MONITOR'.
@@ -212,20 +220,29 @@ MODULE f4_gv_variant INPUT.
   TYPES: BEGIN OF ty_vf4,
            variant TYPE rvari,
          END OF ty_vf4.
-  DATA: lt_vf4 TYPE TABLE OF ty_vf4.
+  DATA: lt_vf4 TYPE TABLE OF ty_vf4,
+        lv_rep TYPE programm.
 
-  IF gv_prog_write IS INITIAL.
-    PERFORM get_archive_programs.
+  IF sy-dynnr = '0600'.
+    IF gv_prog_del IS INITIAL.
+      PERFORM get_archive_programs.
+    ENDIF.
+    lv_rep = gv_prog_del.
+  ELSE.
+    IF gv_prog_write IS INITIAL.
+      PERFORM get_archive_programs.
+    ENDIF.
+    lv_rep = gv_prog_write.
   ENDIF.
-  CHECK gv_prog_write IS NOT INITIAL.
+  CHECK lv_rep IS NOT INITIAL.
 
   SELECT variant FROM varid
-    WHERE report = @gv_prog_write
+    WHERE report = @lv_rep
     INTO TABLE @lt_vf4
     UP TO 500 ROWS.
 
   IF lt_vf4 IS INITIAL.
-    MESSAGE 'No saved variants for this archive write program' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'No saved variants for this report' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -302,6 +319,85 @@ MODULE user_command_0500 INPUT.
         SET SCREEN 0100.
         LEAVE SCREEN.
       ENDIF.
+
+    WHEN 'BACK'.
+      SET SCREEN 0100.
+      LEAVE SCREEN.
+  ENDCASE.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module USER_COMMAND_0600 INPUT — SARA-style Delete (archive DB)
+*&---------------------------------------------------------------------*
+MODULE user_command_0600 INPUT.
+  DATA: lv_rc_600  TYPE sy-subrc,
+        lv_ans_600 TYPE char1,
+        lv_u6      TYPE sy-ucomm.
+
+  lv_u6 = ok_code.
+  CLEAR ok_code.
+
+  CASE lv_u6.
+    WHEN 'BT_EDIT' OR 'EDIT_BTN'.
+      IF gv_variant IS NOT INITIAL.
+        IF gv_prog_del IS INITIAL.
+          PERFORM get_archive_programs.
+        ENDIF.
+        IF gv_prog_del IS INITIAL.
+          RETURN.
+        ENDIF.
+        CALL FUNCTION 'RS_VARIANT_EXISTS'
+          EXPORTING
+            report  = gv_prog_del
+            variant = gv_variant
+          IMPORTING
+            r_c     = lv_rc_600.
+
+        IF lv_rc_600 = 0.
+          SUBMIT (gv_prog_del) VIA SELECTION-SCREEN
+            USING SELECTION-SET gv_variant AND RETURN.
+        ELSE.
+          CALL FUNCTION 'POPUP_TO_CONFIRM'
+            EXPORTING
+              titlebar              = 'Thông báo'
+              text_question         = 'Variant chưa tồn tại. Tạo mới?'
+              text_button_1         = 'Có'
+              text_button_2         = 'Không'
+              display_cancel_button = ' '
+            IMPORTING
+              answer                = lv_ans_600
+            EXCEPTIONS
+              OTHERS                = 1.
+          IF lv_ans_600 = '1'.
+            SUBMIT (gv_prog_del) VIA SELECTION-SCREEN AND RETURN.
+          ELSE.
+            CLEAR gv_variant.
+          ENDIF.
+        ENDIF.
+      ELSE.
+        MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
+      ENDIF.
+
+    WHEN 'BT_ARCH_SEL'.
+      IF gv_prog_del IS INITIAL.
+        PERFORM get_archive_programs.
+      ENDIF.
+      IF gv_prog_del IS INITIAL.
+        MESSAGE 'Chưa cấu hình delete program (AOBJ)' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSEIF gv_variant IS NOT INITIAL.
+        SUBMIT (gv_prog_del) VIA SELECTION-SCREEN
+          USING SELECTION-SET gv_variant AND RETURN.
+      ELSE.
+        SUBMIT (gv_prog_del) VIA SELECTION-SCREEN AND RETURN.
+      ENDIF.
+
+    WHEN 'BT_START' OR 'START_BTN'.
+      PERFORM maintenance_start_date.
+    WHEN 'BT_SPOOL' OR 'SPOOL_BTN'.
+      PERFORM maintenance_spool_params.
+
+    WHEN 'BT_RUN_DELETE'.
+      PERFORM do_archive_delete_job.
 
     WHEN 'BACK'.
       SET SCREEN 0100.
