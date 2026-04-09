@@ -297,120 +297,23 @@ START-OF-SELECTION.
     RETURN.
   ENDIF.
 
-  " Generic delete path: read ZSTR_ARCH_REC payload and delete by KEY_VALS
-  DATA: lt_arch_gen TYPE TABLE OF zstr_arch_rec,
+  " USED_CLASSES: log what is inside the archive file (generic ZSTR_ARCH_REC vs legacy table line type)
+  DATA: lt_used    TYPE adk_classes,
+        lv_tab_try TYPE tabname,
+        lv_got     TYPE abap_bool,
+        lv_obj_h   TYPE syst-tabix,
+        lt_arch_gen TYPE TABLE OF zstr_arch_rec,
         ls_arch_gen TYPE zstr_arch_rec,
-        lv_obj_h_gen TYPE syst-tabix,
         lt_pairs_gen TYPE TABLE OF string,
         lv_pair_gen  TYPE string,
         lv_kf_gen    TYPE string,
         lv_kv_gen    TYPE string,
+        lv_kv_esc    TYPE string,
         lv_where_gen TYPE string,
-        lv_del_rc    TYPE i.
-
-  DO.
-    CLEAR lv_obj_h_gen.
-    CALL FUNCTION 'ARCHIVE_READ_OBJECT'
-      EXPORTING
-        object = lv_obj
-      IMPORTING
-        archive_handle = lv_obj_h_gen
-      EXCEPTIONS
-        no_record_found           = 1
-        file_io_error             = 2
-        internal_error            = 3
-        open_error                = 4
-        cancelled_by_user         = 5
-        object_not_found          = 6
-        filename_creation_failure = 7
-        file_already_open         = 8
-        not_authorized            = 9
-        file_not_found            = 10
-        OTHERS                    = 11.
-    IF sy-subrc <> 0.
-      EXIT.
-    ENDIF.
-
-    REFRESH lt_arch_gen.
-    CALL FUNCTION 'ARCHIVE_GET_TABLE'
-      EXPORTING
-        archive_handle        = lv_obj_h_gen
-        record_structure      = 'ZSTR_ARCH_REC'
-        all_records_of_object = 'X'
-      TABLES
-        table                 = lt_arch_gen
-      EXCEPTIONS
-        end_of_object           = 1
-        internal_error          = 2
-        wrong_access_to_archive = 3
-        OTHERS                  = 4.
-    IF sy-subrc <> 0 OR lt_arch_gen IS INITIAL.
-      CONTINUE.
-    ENDIF.
-
-    LOOP AT lt_arch_gen INTO ls_arch_gen.
-      CHECK ls_arch_gen-rec_type = 'D'.
-      IF p_table IS NOT INITIAL AND ls_arch_gen-table_name <> p_table.
-        CONTINUE.
-      ENDIF.
-
-      CLEAR: lv_where_gen, lv_pair_gen, lv_kf_gen, lv_kv_gen.
-      REFRESH lt_pairs_gen.
-      SPLIT ls_arch_gen-key_vals AT '|' INTO TABLE lt_pairs_gen.
-      LOOP AT lt_pairs_gen INTO lv_pair_gen.
-        SPLIT lv_pair_gen AT '=' INTO lv_kf_gen lv_kv_gen.
-        CHECK lv_kf_gen IS NOT INITIAL.
-        IF lv_where_gen IS NOT INITIAL.
-          lv_where_gen = lv_where_gen && ' AND '.
-        ENDIF.
-        lv_where_gen = lv_where_gen && lv_kf_gen && ` EQ '` && lv_kv_gen && `'`.
-      ENDLOOP.
-      IF lv_where_gen IS INITIAL.
-        ADD 1 TO lv_err.
-        CONTINUE.
-      ENDIF.
-      lv_where_gen = |MANDT EQ '{ sy-mandt }' AND | && lv_where_gen.
-
-      IF p_test = ' '.
-        DELETE FROM (ls_arch_gen-table_name) WHERE (lv_where_gen).
-        lv_del_rc = sy-subrc.
-        IF lv_del_rc = 0 OR lv_del_rc = 4.
-          CALL FUNCTION 'ARCHIVE_DELETE_RECORD' EXCEPTIONS OTHERS = 1.
-          ADD 1 TO lv_cnt.
-          PERFORM del_agg_bump_legacy USING lt_del_agg ls_arch_gen-table_name.
-        ELSE.
-          ADD 1 TO lv_err.
-        ENDIF.
-      ELSE.
-        ADD 1 TO lv_cnt.
-        WRITE: / '  [TEST] Would delete ' && ls_arch_gen-table_name && ' / ' && ls_arch_gen-key_vals.
-      ENDIF.
-    ENDLOOP.
-  ENDDO.
-
-  CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
-    EXPORTING
-      archive_handle = lv_arch_h
-    EXCEPTIONS
-      OTHERS         = 1.
-
-  IF p_test = ' '.
-    PERFORM flush_arch_log_delete USING lt_del_agg lv_err.
-  ENDIF.
-
-  WRITE: /.
-  WRITE: / '=== Generic Summary: processed ' && lv_cnt && ' errors ' && lv_err && ' ==='.
-  IF p_test = 'X'.
-    WRITE: / 'Uncheck Test Mode to delete DB rows + log.'.
-  ENDIF.
-  RETURN.
-
-  " USED_CLASSES must match FM typing (DDIC table type ADK_CLASSES), not TABLE OF arch_ddic
-  " — avoids CALL_FUNCTION_CONFLICT_TAB_TYP (CX_SY_DYN_CALL_ILLEGAL_TYPE).
-  DATA: lt_used    TYPE adk_classes,
-        lv_tab_try TYPE tabname,
-        lv_got     TYPE abap_bool,
-        lv_obj_h   TYPE syst-tabix.
+        lv_del_rc    TYPE i,
+        lv_gt_rc     TYPE sy-subrc,
+        lv_ro_ix     TYPE i VALUE 0,
+        lv_tn_cmp    TYPE tabname.
 
   CALL FUNCTION 'ARCHIVE_GET_INFORMATION'
     EXPORTING
@@ -426,18 +329,16 @@ START-OF-SELECTION.
       wrong_access_to_archive = 2
       OTHERS                  = 3.
 
-  WRITE: / 'GET_INFORMATION: obj ' && lv_obj && ' arch ' && lv_arch_name && ' doc ' && lv_doc && ' rc ' && sy-subrc.
-  LOOP AT lt_used REFERENCE INTO DATA(lr_used).
-    PERFORM adk_used_row_to_tabname USING lr_used->* CHANGING lv_tab_try.
-    WRITE: / '  REGISTERED_DDIC_NAME: ' && lv_tab_try.
+  WRITE: / |GET_INFORMATION: obj={ lv_obj } arch={ lv_arch_name } doc={ lv_doc } rc={ sy-subrc }|.
+  LOOP AT lt_used REFERENCE INTO DATA(lr_inf).
+    PERFORM adk_used_row_to_tabname USING lr_inf->* CHANGING lv_tab_try.
+    WRITE: / |  FILE_STRUCTURE: { lv_tab_try }|.
   ENDLOOP.
-  CLEAR lv_tab_try.
   WRITE: /.
 
   DO.
     CLEAR lv_obj_h.
-    " Handle từ OPEN_FOR_DELETE (lv_arch_h) không truyền vào READ_OBJECT — FM chỉ IMPORT OBJECT;
-    " IMPORTING archive_handle = handle ngữ cảnh object (dùng cho GET_TABLE / DELETE_RECORD).
+    ADD 1 TO lv_ro_ix.
     CALL FUNCTION 'ARCHIVE_READ_OBJECT'
       EXPORTING
         object = lv_obj
@@ -445,56 +346,134 @@ START-OF-SELECTION.
         archive_handle = lv_obj_h
       EXCEPTIONS
         no_record_found           = 1
-        file_io_error           = 2
-        internal_error          = 3
-        open_error              = 4
-        cancelled_by_user       = 5
-        object_not_found        = 6
+        file_io_error             = 2
+        internal_error            = 3
+        open_error                = 4
+        cancelled_by_user         = 5
+        object_not_found          = 6
         filename_creation_failure = 7
-        file_already_open       = 8
-        not_authorized          = 9
-        file_not_found          = 10
-        OTHERS                  = 11.
+        file_already_open         = 8
+        not_authorized            = 9
+        file_not_found            = 10
+        OTHERS                    = 11.
     IF sy-subrc <> 0.
+      IF lv_ro_ix = 1.
+        WRITE: / |READ_OBJECT: no object / end of file (subrc={ sy-subrc }) — check file matches WRITE format.|.
+      ENDIF.
       EXIT.
     ENDIF.
 
+    WRITE: / |READ_OBJECT #{ lv_ro_ix }: handle={ lv_obj_h }|.
+
     CLEAR lv_got.
 
-    " Nếu đã chọn cụ thể session/file: không ép p_table từ màn hình hub (có thể lệch object/file).
-    IF lv_use_p_table = abap_true AND p_table IS NOT INITIAL.
-      PERFORM process_one_arch_table USING lv_obj_h p_table p_test CHANGING lv_cnt lv_err lv_got.
-    ENDIF.
+    " --- Path A: generic payload (ZSTR_ARCH_REC) ---
+    REFRESH lt_arch_gen.
+    CLEAR lv_gt_rc.
+    CALL FUNCTION 'ARCHIVE_GET_TABLE'
+      EXPORTING
+        archive_handle        = lv_obj_h
+        record_structure      = 'ZSTR_ARCH_REC'
+        all_records_of_object = 'X'
+      TABLES
+        table                 = lt_arch_gen
+      EXCEPTIONS
+        end_of_object           = 1
+        internal_error          = 2
+        wrong_access_to_archive = 3
+        OTHERS                  = 4.
+    lv_gt_rc = sy-subrc.
 
-    IF lv_got = abap_false.
-      LOOP AT lt_used REFERENCE INTO DATA(lr_u).
-        PERFORM adk_used_row_to_tabname USING lr_u->* CHANGING lv_tab_try.
-        CHECK lv_tab_try IS NOT INITIAL.
-        PERFORM process_one_arch_table USING lv_obj_h lv_tab_try p_test CHANGING lv_cnt lv_err lv_got.
-        IF lv_got = abap_true.
-          EXIT.
+    IF lv_gt_rc = 0 AND lt_arch_gen IS NOT INITIAL.
+      WRITE: / |  GET_TABLE ZSTR_ARCH_REC: { lines( lt_arch_gen ) } rows (subrc=0)|.
+      lv_got = abap_true.
+      LOOP AT lt_arch_gen INTO ls_arch_gen.
+        CHECK ls_arch_gen-rec_type = 'D'.
+        IF p_table IS NOT INITIAL.
+          lv_tn_cmp = ls_arch_gen-table_name.
+          CONDENSE lv_tn_cmp.
+          TRANSLATE lv_tn_cmp TO UPPER CASE.
+          IF lv_tn_cmp <> p_table.
+            CONTINUE.
+          ENDIF.
+        ENDIF.
+
+        CLEAR: lv_where_gen, lv_pair_gen, lv_kf_gen, lv_kv_gen, lv_kv_esc.
+        REFRESH lt_pairs_gen.
+        SPLIT ls_arch_gen-key_vals AT '|' INTO TABLE lt_pairs_gen.
+        LOOP AT lt_pairs_gen INTO lv_pair_gen.
+          SPLIT lv_pair_gen AT '=' INTO lv_kf_gen lv_kv_gen.
+          CHECK lv_kf_gen IS NOT INITIAL.
+          lv_kv_esc = lv_kv_gen.
+          REPLACE ALL OCCURRENCES OF `'` IN lv_kv_esc WITH `''`.
+          IF lv_where_gen IS NOT INITIAL.
+            lv_where_gen = lv_where_gen && ' AND '.
+          ENDIF.
+          lv_where_gen = lv_where_gen && lv_kf_gen && ` EQ '` && lv_kv_esc && `'`.
+        ENDLOOP.
+        IF lv_where_gen IS INITIAL.
+          ADD 1 TO lv_err.
+          WRITE: / |  WARN: empty KEY_VALS for { ls_arch_gen-table_name }|.
+          CONTINUE.
+        ENDIF.
+        lv_where_gen = |MANDT EQ '{ sy-mandt }' AND | && lv_where_gen.
+
+        IF p_test = ' '.
+          DELETE FROM (ls_arch_gen-table_name) WHERE (lv_where_gen).
+          lv_del_rc = sy-subrc.
+          IF lv_del_rc = 0 OR lv_del_rc = 4.
+            CALL FUNCTION 'ARCHIVE_DELETE_RECORD' EXCEPTIONS OTHERS = 1.
+            ADD 1 TO lv_cnt.
+            PERFORM del_agg_bump_legacy USING lt_del_agg ls_arch_gen-table_name.
+          ELSE.
+            ADD 1 TO lv_err.
+            WRITE: / |  ERR: DELETE { ls_arch_gen-table_name } subrc={ lv_del_rc }|.
+          ENDIF.
+        ELSE.
+          ADD 1 TO lv_cnt.
+          WRITE: / '  [TEST] Would delete ' && ls_arch_gen-table_name && ' / ' && ls_arch_gen-key_vals.
         ENDIF.
       ENDLOOP.
+    ELSE.
+      WRITE: / |  GET_TABLE ZSTR_ARCH_REC: skip (subrc={ lv_gt_rc }, rows={ lines( lt_arch_gen ) }) — try legacy table line type.|.
     ENDIF.
 
+    " --- Path B: legacy PUT_TABLE = full row of DDIC table (ZSP26_*) ---
     IF lv_got = abap_false.
-      SELECT table_name FROM zsp26_arch_cfg INTO TABLE lt_cfg_tabs
-        WHERE is_active = 'X'.
-      LOOP AT lt_cfg_tabs INTO lv_cfg_tab.
-        PERFORM process_one_arch_table USING lv_obj_h lv_cfg_tab p_test CHANGING lv_cnt lv_err lv_got.
-        IF lv_got = abap_true.
-          EXIT.
-        ENDIF.
-      ENDLOOP.
-    ENDIF.
+      IF lv_use_p_table = abap_true AND p_table IS NOT INITIAL.
+        PERFORM process_one_arch_table USING lv_obj_h p_table p_test CHANGING lv_cnt lv_err lv_got.
+      ENDIF.
 
-    IF lv_got = abap_false.
-      WRITE: / 'WARN: Could not ARCHIVE_GET_TABLE for this object (set P_TABLE or check registration).'.
-      lv_err = lv_err + 1.
+      IF lv_got = abap_false.
+        LOOP AT lt_used REFERENCE INTO DATA(lr_u).
+          PERFORM adk_used_row_to_tabname USING lr_u->* CHANGING lv_tab_try.
+          CHECK lv_tab_try IS NOT INITIAL.
+          CHECK lv_tab_try <> 'ZSTR_ARCH_REC'.
+          PERFORM process_one_arch_table USING lv_obj_h lv_tab_try p_test CHANGING lv_cnt lv_err lv_got.
+          IF lv_got = abap_true.
+            EXIT.
+          ENDIF.
+        ENDLOOP.
+      ENDIF.
+
+      IF lv_got = abap_false.
+        SELECT table_name FROM zsp26_arch_cfg INTO TABLE lt_cfg_tabs
+          WHERE is_active = 'X'.
+        LOOP AT lt_cfg_tabs INTO lv_cfg_tab.
+          PERFORM process_one_arch_table USING lv_obj_h lv_cfg_tab p_test CHANGING lv_cnt lv_err lv_got.
+          IF lv_got = abap_true.
+            EXIT.
+          ENDIF.
+        ENDLOOP.
+      ENDIF.
+
+      IF lv_got = abap_false.
+        WRITE: / '  WARN: Could not GET_TABLE this object (generic empty + legacy failed).'.
+        ADD 1 TO lv_err.
+      ENDIF.
     ENDIF.
   ENDDO.
 
-  " Một số hệ không có ARCHIVE_CLOSE_OBJECT (CALL_FUNCTION_NOT_FOUND) — dùng CLOSE_FILE như Z_ARCH_EKK_WRITE.
   CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
     EXPORTING
       archive_handle = lv_arch_h
@@ -507,8 +486,10 @@ START-OF-SELECTION.
 
   WRITE: /.
   WRITE: / '=== Summary: processed ' && lv_cnt && ' errors ' && lv_err && ' ==='.
-  WRITE: / 'Lifecycle: DELETE step executed. Source DB rows matched by archive records were processed for deletion.'.
-  IF p_test = 'X'. WRITE: / 'Uncheck Test Mode to delete DB rows + log.'. ENDIF.
+  WRITE: / 'Generic ZSTR_ARCH_REC + legacy GET_TABLE fallback. Check FILE_STRUCTURE lines above.'.
+  IF p_test = 'X'.
+    WRITE: / 'Uncheck Test Mode to delete DB rows + log.'.
+  ENDIF.
 
 *&---------------------------------------------------------------------*
 *& DDIC row type of ADK_CLASSES is not always ARCH_DDIC (no -NAME on some releases).
