@@ -100,7 +100,7 @@ DATA: gv_object     TYPE arch_obj-object,
 " Screen 0500 / 0600 — SARA-style status texts
 DATA: gv_disp_mandt    TYPE mandt,
       gv_disp_uname    TYPE syuname,
-      gv_stat_arch_tx  TYPE char20,
+      gv_stat_arch_tx  TYPE char40,
       gv_stat_start_tx TYPE char20,
       gv_stat_spool_tx TYPE char20,
       gv_scr600_head   TYPE char80,
