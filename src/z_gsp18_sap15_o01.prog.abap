@@ -135,15 +135,3 @@ MODULE status_0600 OUTPUT.
   SET PF-STATUS 'STATUS_300'.
   SET TITLEBAR 'TITLE_300'.
 ENDMODULE.
-
-*&---------------------------------------------------------------------*
-*& Module HIDE_F4_SESS_0600 OUTPUT — ô GV_F4_SESS cho F4 chọn session ADMI
-*&---------------------------------------------------------------------*
-MODULE hide_f4_sess_0600 OUTPUT.
-  LOOP AT SCREEN.
-    IF screen-name = 'GV_F4_SESS'.
-      screen-invisible = '1'.
-      MODIFY SCREEN.
-    ENDIF.
-  ENDLOOP.
-ENDMODULE.

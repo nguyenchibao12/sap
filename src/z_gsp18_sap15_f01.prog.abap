@@ -722,6 +722,14 @@ FORM arch_del_pick_session_popup.
   READ TABLE lt_ret INTO ls_ret INDEX 1.
   IF sy-subrc = 0.
     gv_f4_sess = ls_ret-fieldval.
+    IF ls_ret-recordpos > 0.
+      READ TABLE lt_run INTO gs_del_admi INDEX ls_ret-recordpos.
+      IF sy-subrc = 0.
+        gv_del_sess_def = 'X'.
+        EXPORT del_admi = gs_del_admi TO MEMORY ID 'Z_GSP18_ADMI_DEL'.
+        RETURN.
+      ENDIF.
+    ENDIF.
   ENDIF.
   IF gv_f4_sess IS INITIAL.
     CLEAR lt_df.
@@ -750,6 +758,16 @@ FORM arch_del_pick_session_popup.
   READ TABLE lt_run INTO gs_del_admi
     WITH KEY client = sy-mandt object = lv_obj document = gv_f4_sess.
   IF sy-subrc <> 0.
+    " Fallback tolerant match when popup return formatting differs
+    LOOP AT lt_run INTO ls_run.
+      IF ls_run-document CS gv_f4_sess OR gv_f4_sess CS ls_run-document.
+        gs_del_admi = ls_run.
+        EXIT.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+  IF gs_del_admi-document IS INITIAL.
     CLEAR gs_del_admi.
     MESSAGE 'Không khớp session đã chọn với ADMI_RUN.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.

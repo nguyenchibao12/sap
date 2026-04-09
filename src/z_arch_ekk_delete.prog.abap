@@ -104,6 +104,7 @@ START-OF-SELECTION.
 
   CALL FUNCTION 'ARCHIVE_OPEN_FOR_DELETE'
     EXPORTING
+      aindflag     = space
       object       = lv_open_obj
       archive_name = lv_arch_key
       test_mode    = p_test
@@ -250,18 +251,26 @@ FORM process_one_arch_table
   ASSIGN gr_dyn->* TO <lt>.
   REFRESH <lt>.
 
-  CALL FUNCTION 'ARCHIVE_GET_TABLE'
-    EXPORTING
-      archive_handle           = pv_handle
-      record_structure         = pv_tab
-      all_records_of_object    = 'X'
-    TABLES
-      table                    = <lt>
-    EXCEPTIONS
-      end_of_object            = 1
-      internal_error           = 2
-      wrong_access_to_archive  = 3
-      OTHERS                   = 4.
+  TRY.
+      CALL FUNCTION 'ARCHIVE_GET_TABLE'
+        EXPORTING
+          archive_handle           = pv_handle
+          record_structure         = pv_tab
+          all_records_of_object    = 'X'
+        TABLES
+          table                    = <lt>
+        EXCEPTIONS
+          end_of_object            = 1
+          internal_error           = 2
+          wrong_access_to_archive  = 3
+          OTHERS                   = 4.
+    CATCH cx_sy_dyn_call_illegal_type.
+      WRITE: / '  WARN: ARCHIVE_GET_TABLE type conflict, skip tab ' && pv_tab.
+      RETURN.
+    CATCH cx_sy_dyn_call_illegal_func.
+      WRITE: / '  WARN: ARCHIVE_GET_TABLE unavailable on this system.'.
+      RETURN.
+  ENDTRY.
 
   IF sy-subrc <> 0 OR <lt> IS INITIAL.
     RETURN.
