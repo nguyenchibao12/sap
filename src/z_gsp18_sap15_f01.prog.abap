@@ -668,8 +668,7 @@ FORM arch_del_pick_session_popup.
         ls_run TYPE admi_run,
         lt_ret TYPE TABLE OF ddshretval,
         ls_ret TYPE ddshretval,
-        lt_df  TYPE TABLE OF dynpread,
-        ls_df  TYPE dynpread.
+        lv_doc TYPE admi_run-document.
 
   IF gv_object IS INITIAL.
     gv_object = 'Z_ARCH_EKK'.
@@ -679,9 +678,6 @@ FORM arch_del_pick_session_popup.
   IF gv_prog_del IS INITIAL.
     PERFORM get_archive_programs.
   ENDIF.
-
-  " Không CLEAR gv_f4_sess — user thường gõ session rồi mở popup; xóa sẽ làm mất ô và F4/dynpro không transfer được.
-  CLEAR: gv_del_sess_def, gs_del_admi.
 
   SELECT * FROM admi_run
     WHERE client = @sy-mandt
@@ -705,13 +701,11 @@ FORM arch_del_pick_session_popup.
     APPEND ls_f4 TO lt_f4.
   ENDLOOP.
 
+  " Popup-only return: không bind DYNPROFIELD — bind từ nút bấm thường làm SAP GUI không xác nhận (tick) được.
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
       retfield     = 'DOCUMENT'
       window_title = 'Archive Administration: Select Files for Delete Program'
-      dynpprog     = sy-repid
-      dynpnr       = sy-dynnr
-      dynprofield  = 'GV_F4_SESS'
       value_org    = 'S'
     TABLES
       value_tab    = lt_f4
@@ -719,64 +713,40 @@ FORM arch_del_pick_session_popup.
     EXCEPTIONS
       OTHERS       = 0.
 
-  READ TABLE lt_ret INTO ls_ret INDEX 1.
-  IF sy-subrc = 0.
-    IF ls_ret-recordpos > 0.
-      READ TABLE lt_run INTO gs_del_admi INDEX ls_ret-recordpos.
-      IF sy-subrc = 0.
-        gv_f4_sess = gs_del_admi-document.
-        gv_del_sess_def = 'X'.
-        EXPORT del_admi = gs_del_admi TO MEMORY ID 'Z_GSP18_ADMI_DEL'.
-        RETURN.
-      ENDIF.
-    ENDIF.
-    IF ls_ret-fieldval IS NOT INITIAL.
-      gv_f4_sess = ls_ret-fieldval.
-    ENDIF.
-  ENDIF.
-  IF gv_f4_sess IS INITIAL.
-    CLEAR lt_df.
-    ls_df-fieldname = 'GV_F4_SESS'.
-    APPEND ls_df TO lt_df.
-    CALL FUNCTION 'DYNP_VALUES_READ'
-      EXPORTING
-        dyname     = sy-repid
-        dynumb     = sy-dynnr
-      TABLES
-        dynpfields = lt_df
-      EXCEPTIONS
-        OTHERS     = 1.
-    IF sy-subrc = 0.
-      READ TABLE lt_df INTO ls_df INDEX 1.
-      IF sy-subrc = 0.
-        gv_f4_sess = ls_df-fieldvalue.
-      ENDIF.
-    ENDIF.
-  ENDIF.
-  CONDENSE gv_f4_sess.
-  IF gv_f4_sess IS INITIAL.
+  IF lt_ret IS INITIAL.
     RETURN.
   ENDIF.
 
-  READ TABLE lt_run INTO gs_del_admi
-    WITH KEY client = sy-mandt object = lv_obj document = gv_f4_sess.
-  IF sy-subrc <> 0.
-    " Fallback tolerant match when popup return formatting differs
-    LOOP AT lt_run INTO ls_run.
-      IF ls_run-document CS gv_f4_sess OR gv_f4_sess CS ls_run-document.
-        gs_del_admi = ls_run.
-        EXIT.
-      ENDIF.
-    ENDLOOP.
+  READ TABLE lt_ret INTO ls_ret INDEX 1.
+
+  CLEAR: gs_del_admi, lv_doc, gv_f4_sess.
+
+  IF ls_ret-recordpos > 0.
+    READ TABLE lt_run INTO gs_del_admi INDEX ls_ret-recordpos.
+  ENDIF.
+
+  IF gs_del_admi-document IS INITIAL AND ls_ret-fieldval IS NOT INITIAL.
+    lv_doc = ls_ret-fieldval.
+    CONDENSE lv_doc.
+    READ TABLE lt_run INTO gs_del_admi
+      WITH KEY client = sy-mandt object = lv_obj document = lv_doc.
+    IF sy-subrc <> 0.
+      LOOP AT lt_run INTO ls_run.
+        IF ls_run-document CS lv_doc OR lv_doc CS ls_run-document.
+          gs_del_admi = ls_run.
+          EXIT.
+        ENDIF.
+      ENDLOOP.
+    ENDIF.
   ENDIF.
 
   IF gs_del_admi-document IS INITIAL.
-    CLEAR gs_del_admi.
-    MESSAGE 'Không khớp session đã chọn với ADMI_RUN.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'Không chọn được session từ danh sách.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  gv_del_sess_def = 'X'.
+  gv_f4_sess        = gs_del_admi-document.
+  gv_del_sess_def   = 'X'.
 
   EXPORT del_admi = gs_del_admi TO MEMORY ID 'Z_GSP18_ADMI_DEL'.
 
