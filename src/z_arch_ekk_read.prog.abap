@@ -77,13 +77,16 @@ START-OF-SELECTION.
 
   DATA: lv_any TYPE abap_bool VALUE abap_false,
         lv_ts_s TYPE timestampl,
-        lv_ts_e TYPE timestampl.
+        lv_ts_e TYPE timestampl,
+        lv_obj_h TYPE syst-tabix.
 
   WHILE abap_true.
+    CLEAR lv_obj_h.
     CALL FUNCTION 'ARCHIVE_READ_OBJECT'
       EXPORTING
-        archive_handle = lv_arch_h
-        object         = lv_obj
+        object = lv_obj
+      IMPORTING
+        archive_handle = lv_obj_h
       EXCEPTIONS
         no_record_found             = 1
         file_io_error               = 2
@@ -119,7 +122,7 @@ START-OF-SELECTION.
 
     CALL FUNCTION 'ARCHIVE_GET_TABLE'
       EXPORTING
-        archive_handle           = lv_arch_h
+        archive_handle           = lv_obj_h
         record_structure         = lv_tab
         all_records_of_object    = 'X'
       TABLES
