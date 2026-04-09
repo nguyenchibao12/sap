@@ -136,7 +136,8 @@ START-OF-SELECTION.
   " — avoids CALL_FUNCTION_CONFLICT_TAB_TYP (CX_SY_DYN_CALL_ILLEGAL_TYPE).
   DATA: lt_used    TYPE adk_classes,
         lv_tab_try TYPE tabname,
-        lv_got     TYPE abap_bool.
+        lv_got     TYPE abap_bool,
+        lv_obj_h   TYPE syst-tabix.
 
   CALL FUNCTION 'ARCHIVE_GET_INFORMATION'
     EXPORTING
@@ -161,10 +162,14 @@ START-OF-SELECTION.
   WRITE: /.
 
   DO.
+    CLEAR lv_obj_h.
+    " Handle từ OPEN_FOR_DELETE (lv_arch_h) không truyền vào READ_OBJECT — FM chỉ IMPORT OBJECT;
+    " IMPORTING archive_handle = handle ngữ cảnh object (dùng cho GET_TABLE / DELETE_RECORD).
     CALL FUNCTION 'ARCHIVE_READ_OBJECT'
       EXPORTING
-        archive_handle = lv_arch_h
-        object         = lv_obj
+        object = lv_obj
+      IMPORTING
+        archive_handle = lv_obj_h
       EXCEPTIONS
         no_record_found           = 1
         file_io_error           = 2
@@ -185,14 +190,14 @@ START-OF-SELECTION.
 
     " Prefer P_TABLE; else try each DDIC name from GET_INFORMATION rows (ARCH_DDIC / class list)
     IF p_table IS NOT INITIAL.
-      PERFORM process_one_arch_table USING lv_arch_h p_table p_test CHANGING lv_cnt lv_err lv_got.
+      PERFORM process_one_arch_table USING lv_obj_h p_table p_test CHANGING lv_cnt lv_err lv_got.
     ENDIF.
 
     IF lv_got = abap_false.
       LOOP AT lt_used REFERENCE INTO DATA(lr_u).
         PERFORM adk_used_row_to_tabname USING lr_u->* CHANGING lv_tab_try.
         CHECK lv_tab_try IS NOT INITIAL.
-        PERFORM process_one_arch_table USING lv_arch_h lv_tab_try p_test CHANGING lv_cnt lv_err lv_got.
+        PERFORM process_one_arch_table USING lv_obj_h lv_tab_try p_test CHANGING lv_cnt lv_err lv_got.
         IF lv_got = abap_true.
           EXIT.
         ENDIF.
@@ -203,7 +208,7 @@ START-OF-SELECTION.
       SELECT table_name FROM zsp26_arch_cfg INTO TABLE lt_cfg_tabs
         WHERE is_active = 'X'.
       LOOP AT lt_cfg_tabs INTO lv_cfg_tab.
-        PERFORM process_one_arch_table USING lv_arch_h lv_cfg_tab p_test CHANGING lv_cnt lv_err lv_got.
+        PERFORM process_one_arch_table USING lv_obj_h lv_cfg_tab p_test CHANGING lv_cnt lv_err lv_got.
         IF lv_got = abap_true.
           EXIT.
         ENDIF.
