@@ -717,49 +717,65 @@ FORM arch_del_pick_session_popup.
     RETURN.
   ENDIF.
 
-  DATA: lv_best_rp TYPE i,
-        lv_dstr    TYPE string.
+  DATA: lv_rp_doc TYPE i,
+        lv_dstr   TYPE string,
+        lv_fn     TYPE string.
 
-  CLEAR: gs_del_admi, lv_doc, gv_f4_sess, lv_best_rp.
+  CLEAR: gs_del_admi, lv_doc, gv_f4_sess, lv_rp_doc.
 
-  " F4 có thể trả nhiều dòng return_tab; recordpos đôi khi chỉ có ở dòng sau — lấy recordpos lớn nhất.
+  " recordpos theo từng cột — không được lấy MAX trên cả return_tab (dễ luôn ra index 1 = session mới nhất).
+  " Gộp mọi dòng có FIELDNAME = DOCUMENT: lấy fieldval và recordpos (thường nằm ở các dòng khác nhau).
   LOOP AT lt_ret INTO ls_ret.
-    IF ls_ret-recordpos > lv_best_rp.
-      lv_best_rp = ls_ret-recordpos.
+    lv_fn = ls_ret-fieldname.
+    CONDENSE lv_fn.
+    TRANSLATE lv_fn TO UPPER CASE.
+    IF lv_fn <> 'DOCUMENT'.
+      CONTINUE.
     ENDIF.
-  ENDLOOP.
-  IF lv_best_rp > 0.
-    READ TABLE lt_run INTO gs_del_admi INDEX lv_best_rp.
-  ENDIF.
-
-  " Khớp DOCUMENT qua lt_f4 (cùng thứ tự với lt_run sau SORT) nếu recordpos / INDEX 1 không đủ.
-  IF gs_del_admi-document IS INITIAL.
-    LOOP AT lt_ret INTO ls_ret.
-      CHECK ls_ret-fieldval IS NOT INITIAL.
-      CHECK ls_ret-fieldname IS INITIAL OR ls_ret-fieldname = 'DOCUMENT'.
+    IF ls_ret-fieldval IS NOT INITIAL.
       lv_dstr = ls_ret-fieldval.
       CONDENSE lv_dstr.
       lv_doc = CONV admi_run-document( lv_dstr ).
+    ENDIF.
+    IF ls_ret-recordpos > 0.
+      lv_rp_doc = ls_ret-recordpos.
+    ENDIF.
+  ENDLOOP.
+
+  IF lv_doc IS INITIAL AND lv_rp_doc = 0.
+    LOOP AT lt_ret INTO ls_ret.
+      CHECK ls_ret-fieldval IS NOT INITIAL.
+      lv_dstr = ls_ret-fieldval.
+      CONDENSE lv_dstr.
+      lv_doc = CONV admi_run-document( lv_dstr ).
+      IF ls_ret-recordpos > 0.
+        lv_rp_doc = ls_ret-recordpos.
+      ENDIF.
+      EXIT.
+    ENDLOOP.
+  ENDIF.
+
+  IF lv_doc IS NOT INITIAL.
+    READ TABLE lt_run INTO gs_del_admi
+      WITH KEY client = sy-mandt object = lv_obj document = lv_doc.
+    IF sy-subrc <> 0.
       READ TABLE lt_f4 INTO ls_f4 WITH KEY document = lv_doc.
       IF sy-subrc = 0.
         READ TABLE lt_run INTO gs_del_admi INDEX sy-tabix.
-        EXIT.
       ENDIF.
-      READ TABLE lt_run INTO gs_del_admi
-        WITH KEY client = sy-mandt object = lv_obj document = lv_doc.
-      IF sy-subrc = 0.
-        EXIT.
-      ENDIF.
+    ENDIF.
+    IF gs_del_admi-document IS INITIAL.
       LOOP AT lt_run INTO ls_run.
-        IF ls_run-document CS lv_doc OR lv_doc CS ls_run-document.
+        IF ls_run-document = lv_doc.
           gs_del_admi = ls_run.
           EXIT.
         ENDIF.
       ENDLOOP.
-      IF gs_del_admi-document IS NOT INITIAL.
-        EXIT.
-      ENDIF.
-    ENDLOOP.
+    ENDIF.
+  ENDIF.
+
+  IF gs_del_admi-document IS INITIAL AND lv_rp_doc > 0.
+    READ TABLE lt_run INTO gs_del_admi INDEX lv_rp_doc.
   ENDIF.
 
   IF gs_del_admi-document IS INITIAL.
