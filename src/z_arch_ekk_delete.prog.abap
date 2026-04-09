@@ -134,7 +134,9 @@ START-OF-SELECTION.
 
   " USED_CLASSES must match FM typing (DDIC table type ADK_CLASSES), not TABLE OF arch_ddic
   " — avoids CALL_FUNCTION_CONFLICT_TAB_TYP (CX_SY_DYN_CALL_ILLEGAL_TYPE).
-  DATA lt_used TYPE adk_classes.
+  DATA: lt_used    TYPE adk_classes,
+        lv_tab_try TYPE tabname,
+        lv_got     TYPE abap_bool.
 
   CALL FUNCTION 'ARCHIVE_GET_INFORMATION'
     EXPORTING
@@ -151,13 +153,12 @@ START-OF-SELECTION.
       OTHERS                  = 3.
 
   WRITE: / 'GET_INFORMATION: obj ' && lv_obj && ' arch ' && lv_arch_name && ' doc ' && lv_doc && ' rc ' && sy-subrc.
-  LOOP AT lt_used INTO DATA(ls_used).
-    WRITE: / '  REGISTERED_DDIC_NAME: ' && ls_used-name.
+  LOOP AT lt_used REFERENCE INTO DATA(lr_used).
+    PERFORM adk_used_row_to_tabname USING lr_used->* CHANGING lv_tab_try.
+    WRITE: / '  REGISTERED_DDIC_NAME: ' && lv_tab_try.
   ENDLOOP.
+  CLEAR lv_tab_try.
   WRITE: /.
-
-  DATA: lv_tab_try TYPE tabname,
-        lv_got     TYPE abap_bool.
 
   DO.
     CALL FUNCTION 'ARCHIVE_READ_OBJECT'
@@ -188,8 +189,8 @@ START-OF-SELECTION.
     ENDIF.
 
     IF lv_got = abap_false.
-      LOOP AT lt_used INTO DATA(ls_u).
-        lv_tab_try = ls_u-name.
+      LOOP AT lt_used REFERENCE INTO DATA(lr_u).
+        PERFORM adk_used_row_to_tabname USING lr_u->* CHANGING lv_tab_try.
         CHECK lv_tab_try IS NOT INITIAL.
         PERFORM process_one_arch_table USING lv_arch_h lv_tab_try p_test CHANGING lv_cnt lv_err lv_got.
         IF lv_got = abap_true.
@@ -227,6 +228,48 @@ START-OF-SELECTION.
   WRITE: / '=== Summary: processed ' && lv_cnt && ' errors ' && lv_err && ' ==='.
   WRITE: / 'Lifecycle: DELETE step executed. Source DB rows matched by archive records were processed for deletion.'.
   IF p_test = 'X'. WRITE: / 'Uncheck Test Mode to delete DB rows + log.'. ENDIF.
+
+*&---------------------------------------------------------------------*
+*& DDIC row type of ADK_CLASSES is not always ARCH_DDIC (no -NAME on some releases).
+*& Try common component names; convert first non-empty to TABNAME.
+*&---------------------------------------------------------------------*
+FORM adk_used_row_to_tabname USING    ps_row TYPE any
+                               CHANGING cv_tab TYPE tabname.
+
+  FIELD-SYMBOLS <fs_comp> TYPE any.
+  DATA: lt_nm TYPE STANDARD TABLE OF string WITH EMPTY KEY,
+        lv_nm TYPE string,
+        lv_s  TYPE string.
+
+  APPEND `NAME` TO lt_nm.
+  APPEND `CLASS` TO lt_nm.
+  APPEND `TABNAME` TO lt_nm.
+  APPEND `STRUCTURE` TO lt_nm.
+  APPEND `RECORD_STRUCTURE` TO lt_nm.
+  APPEND `DDIC_NAME` TO lt_nm.
+  APPEND `OBJ_CLASS` TO lt_nm.
+  APPEND `ARCH_CLASS` TO lt_nm.
+
+  CLEAR cv_tab.
+  LOOP AT lt_nm INTO lv_nm.
+    ASSIGN COMPONENT lv_nm OF STRUCTURE ps_row TO <fs_comp>.
+    IF sy-subrc <> 0 OR <fs_comp> IS NOT ASSIGNED.
+      CONTINUE.
+    ENDIF.
+    TRY.
+        lv_s = CONV string( <fs_comp> ).
+      CATCH cx_root.
+        CONTINUE.
+    ENDTRY.
+    CONDENSE lv_s.
+    IF strlen( lv_s ) = 0 OR strlen( lv_s ) > 30.
+      CONTINUE.
+    ENDIF.
+    cv_tab = lv_s.
+    TRANSLATE cv_tab TO UPPER CASE.
+    RETURN.
+  ENDLOOP.
+ENDFORM.
 
 *&---------------------------------------------------------------------*
 FORM process_one_arch_table
