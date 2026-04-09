@@ -23,6 +23,7 @@ TYPES: BEGIN OF ty_cfg_disp,
 
 DATA: gs_cfg    TYPE zsp26_arch_cfg,
       gr_src    TYPE REF TO data,
+      gr_arch   TYPE REF TO data,
       lt_dd     TYPE TABLE OF dfies,
       lv_cutoff TYPE d,
       lv_cnt    TYPE i VALUE 0,
@@ -33,6 +34,7 @@ DATA: gs_cfg    TYPE zsp26_arch_cfg,
       lv_ts_e   TYPE timestampl.
 
 FIELD-SYMBOLS: <lt_src> TYPE STANDARD TABLE,
+               <lt_arch> TYPE STANDARD TABLE,
                <row>    TYPE any.
 
 " g_scr_h0 / g_scr_h1: do COMMENT /1(79) tự khai báo — không thêm DATA (trùng trên ADT/bản mới)
@@ -255,6 +257,53 @@ START-OF-SELECTION.
     RETURN.
   ENDIF.
 
+  " Build generic archive payload rows (ZSTR_ARCH_REC)
+  CREATE DATA gr_arch TYPE TABLE OF zstr_arch_rec.
+  ASSIGN gr_arch->* TO <lt_arch>.
+  REFRESH <lt_arch>.
+
+  CALL FUNCTION 'DDIF_FIELDINFO_GET'
+    EXPORTING
+      tabname   = p_table
+    TABLES
+      dfies_tab = lt_dd
+    EXCEPTIONS
+      OTHERS    = 1.
+
+  LOOP AT <lt_src> ASSIGNING <row>.
+    DATA ls_arch_rec TYPE zstr_arch_rec.
+    DATA lv_keyvals  TYPE char255.
+    DATA lv_json     TYPE string.
+    CLEAR: ls_arch_rec, lv_keyvals, lv_json.
+
+    LOOP AT lt_dd INTO DATA(ls_ddk) WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
+      ASSIGN COMPONENT ls_ddk-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<fkv2>).
+      IF <fkv2> IS ASSIGNED.
+        DATA(lv_val2) = CONV string( <fkv2> ).
+        IF lv_keyvals IS NOT INITIAL.
+          lv_keyvals = |{ lv_keyvals }| && '|' && |{ ls_ddk-fieldname }={ lv_val2 }|.
+        ELSE.
+          lv_keyvals = |{ ls_ddk-fieldname }={ lv_val2 }|.
+        ENDIF.
+      ENDIF.
+    ENDLOOP.
+
+    TRY.
+        lv_json = /ui2/cl_json=>serialize( data = <row> ).
+      CATCH cx_root.
+        lv_json = ''.
+    ENDTRY.
+
+    ls_arch_rec-rec_type   = 'D'.
+    ls_arch_rec-table_name = p_table.
+    ls_arch_rec-key_vals   = lv_keyvals.
+    ls_arch_rec-data_json  = lv_json.
+    ls_arch_rec-exec_user  = sy-uname.
+    GET TIME STAMP FIELD ls_arch_rec-exec_ts.
+
+    INSERT ls_arch_rec INTO TABLE <lt_arch>.
+  ENDLOOP.
+
   IF p_test = ' '.
     GET TIME STAMP FIELD lv_ts_s.
 
@@ -275,11 +324,11 @@ START-OF-SELECTION.
       MESSAGE 'ARCHIVE_OPEN_FOR_WRITE failed. Check AOBJ Z_ARCH_EKK / authorizations.' TYPE 'A'.
     ENDIF.
 
-    " Position: immediately after OPEN — register DDIC line type of target table (TABNAME = structure)
+    " Register generic DDIC record structure
     DATA: lt_reg TYPE TABLE OF arch_ddic,
           ls_reg TYPE arch_ddic.
     CLEAR ls_reg.
-    ls_reg-name = p_table.
+    ls_reg-name = 'ZSTR_ARCH_REC'.
     APPEND ls_reg TO lt_reg.
 
     CALL FUNCTION 'ARCHIVE_REGISTER_STRUCTURES'
@@ -309,9 +358,9 @@ START-OF-SELECTION.
     CALL FUNCTION 'ARCHIVE_PUT_TABLE'
       EXPORTING
         archive_handle   = lv_arch_h
-        record_structure = p_table
+        record_structure = 'ZSTR_ARCH_REC'
       TABLES
-        table            = <lt_src>
+        table            = <lt_arch>
       EXCEPTIONS
         internal_error            = 1
         wrong_access_to_archive   = 2
@@ -328,7 +377,7 @@ START-OF-SELECTION.
       MESSAGE 'Archive write failed (PUT_TABLE).' TYPE 'A'.
     ENDIF.
 
-    lv_cnt = lines( <lt_src> ).
+    lv_cnt = lines( <lt_arch> ).
 
     " On this system, ARCHIVE_CLOSE_OBJECT is unavailable.
     " Persist object explicitly, then close archive file.
@@ -369,7 +418,7 @@ START-OF-SELECTION.
     ls_log-end_time    = lv_ts_e.
     ls_log-exec_user   = sy-uname.
     ls_log-exec_date   = sy-datum.
-    ls_log-message     = |ADK PUT_TABLE { lv_cnt } rows. Cutoff { lv_cutoff }. HANDLE={ lv_arch_h }|.
+    ls_log-message     = |ADK PUT_TABLE generic { lv_cnt } rows. Tab { p_table }. Cutoff { lv_cutoff }. HANDLE={ lv_arch_h }|.
     INSERT zsp26_arch_log FROM ls_log.
     COMMIT WORK.
   ENDIF.

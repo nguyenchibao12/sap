@@ -297,6 +297,114 @@ START-OF-SELECTION.
     RETURN.
   ENDIF.
 
+  " Generic delete path: read ZSTR_ARCH_REC payload and delete by KEY_VALS
+  DATA: lt_arch_gen TYPE TABLE OF zstr_arch_rec,
+        ls_arch_gen TYPE zstr_arch_rec,
+        lv_obj_h_gen TYPE syst-tabix,
+        lt_pairs_gen TYPE TABLE OF string,
+        lv_pair_gen  TYPE string,
+        lv_kf_gen    TYPE string,
+        lv_kv_gen    TYPE string,
+        lv_where_gen TYPE string,
+        lv_del_rc    TYPE i.
+
+  DO.
+    CLEAR lv_obj_h_gen.
+    CALL FUNCTION 'ARCHIVE_READ_OBJECT'
+      EXPORTING
+        object = lv_obj
+      IMPORTING
+        archive_handle = lv_obj_h_gen
+      EXCEPTIONS
+        no_record_found           = 1
+        file_io_error             = 2
+        internal_error            = 3
+        open_error                = 4
+        cancelled_by_user         = 5
+        object_not_found          = 6
+        filename_creation_failure = 7
+        file_already_open         = 8
+        not_authorized            = 9
+        file_not_found            = 10
+        OTHERS                    = 11.
+    IF sy-subrc <> 0.
+      EXIT.
+    ENDIF.
+
+    REFRESH lt_arch_gen.
+    CALL FUNCTION 'ARCHIVE_GET_TABLE'
+      EXPORTING
+        archive_handle        = lv_obj_h_gen
+        record_structure      = 'ZSTR_ARCH_REC'
+        all_records_of_object = 'X'
+      TABLES
+        table                 = lt_arch_gen
+      EXCEPTIONS
+        end_of_object           = 1
+        internal_error          = 2
+        wrong_access_to_archive = 3
+        OTHERS                  = 4.
+    IF sy-subrc <> 0 OR lt_arch_gen IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    LOOP AT lt_arch_gen INTO ls_arch_gen.
+      CHECK ls_arch_gen-rec_type = 'D'.
+      IF p_table IS NOT INITIAL AND ls_arch_gen-table_name <> p_table.
+        CONTINUE.
+      ENDIF.
+
+      CLEAR: lv_where_gen, lv_pair_gen, lv_kf_gen, lv_kv_gen.
+      REFRESH lt_pairs_gen.
+      SPLIT ls_arch_gen-key_vals AT '|' INTO TABLE lt_pairs_gen.
+      LOOP AT lt_pairs_gen INTO lv_pair_gen.
+        SPLIT lv_pair_gen AT '=' INTO lv_kf_gen lv_kv_gen.
+        CHECK lv_kf_gen IS NOT INITIAL.
+        IF lv_where_gen IS NOT INITIAL.
+          lv_where_gen = lv_where_gen && ' AND '.
+        ENDIF.
+        lv_where_gen = lv_where_gen && lv_kf_gen && ` EQ '` && lv_kv_gen && `'`.
+      ENDLOOP.
+      IF lv_where_gen IS INITIAL.
+        ADD 1 TO lv_err.
+        CONTINUE.
+      ENDIF.
+      lv_where_gen = |MANDT EQ '{ sy-mandt }' AND | && lv_where_gen.
+
+      IF p_test = ' '.
+        DELETE FROM (ls_arch_gen-table_name) WHERE (lv_where_gen).
+        lv_del_rc = sy-subrc.
+        IF lv_del_rc = 0 OR lv_del_rc = 4.
+          CALL FUNCTION 'ARCHIVE_DELETE_RECORD' EXCEPTIONS OTHERS = 1.
+          ADD 1 TO lv_cnt.
+          PERFORM del_agg_bump_legacy USING lt_del_agg ls_arch_gen-table_name.
+        ELSE.
+          ADD 1 TO lv_err.
+        ENDIF.
+      ELSE.
+        ADD 1 TO lv_cnt.
+        WRITE: / '  [TEST] Would delete ' && ls_arch_gen-table_name && ' / ' && ls_arch_gen-key_vals.
+      ENDIF.
+    ENDLOOP.
+  ENDDO.
+
+  CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+    EXPORTING
+      archive_handle = lv_arch_h
+    EXCEPTIONS
+      OTHERS         = 1.
+
+  IF p_test = ' '.
+    PERFORM flush_arch_log_delete USING lt_del_agg lv_err.
+  ENDIF.
+
+  WRITE: /.
+  WRITE: / '=== Generic Summary: processed ' && lv_cnt && ' errors ' && lv_err && ' ==='.
+  IF p_test = 'X'.
+    WRITE: / 'Uncheck Test Mode to delete DB rows + log.'.
+  ENDIF.
+  RETURN.
+
   " USED_CLASSES must match FM typing (DDIC table type ADK_CLASSES), not TABLE OF arch_ddic
   " — avoids CALL_FUNCTION_CONFLICT_TAB_TYP (CX_SY_DYN_CALL_ILLEGAL_TYPE).
   DATA: lt_used    TYPE adk_classes,

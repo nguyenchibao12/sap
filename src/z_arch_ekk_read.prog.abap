@@ -12,13 +12,13 @@ TYPES: BEGIN OF ty_arch_rec,
          rec_type   TYPE c LENGTH 1,
          table_name TYPE c LENGTH 30,
          key_vals   TYPE c LENGTH 255,
-         data_json  TYPE c LENGTH 4990,
+         data_json  TYPE c LENGTH 255,
        END OF ty_arch_rec.
 
 TYPES: BEGIN OF ty_disp,
          table_name TYPE c LENGTH 30,
          key_vals   TYPE c LENGTH 255,
-         data_json  TYPE c LENGTH 4990,
+         data_json  TYPE c LENGTH 255,
        END OF ty_disp.
 
 DATA: ls_arec    TYPE ty_arch_rec,
@@ -78,7 +78,11 @@ START-OF-SELECTION.
   DATA: lv_any TYPE abap_bool VALUE abap_false,
         lv_ts_s TYPE timestampl,
         lv_ts_e TYPE timestampl,
-        lv_obj_h TYPE syst-tabix.
+        lv_obj_h TYPE syst-tabix,
+        lt_arch TYPE TABLE OF zstr_arch_rec,
+        lv_ins  TYPE i,
+        lv_ief  TYPE i.
+  CLEAR lt_disp.
 
   WHILE abap_true.
     CLEAR lv_obj_h.
@@ -103,75 +107,63 @@ START-OF-SELECTION.
       EXIT.
     ENDIF.
 
-    DATA(lv_tab) = p_table.
-    IF lv_tab IS INITIAL.
-      MESSAGE 'P_TABLE required for GET_TABLE read path.' TYPE 'S' DISPLAY LIKE 'E'.
-      CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
-        EXPORTING
-          archive_handle = lv_arch_h
-        EXCEPTIONS
-          OTHERS         = 1.
-      RETURN.
-    ENDIF.
-
-    TRY.
-        CREATE DATA gr_dyn TYPE TABLE OF (lv_tab).
-      CATCH cx_sy_create_data_error.
-        MESSAGE |Invalid table name { lv_tab }| TYPE 'S' DISPLAY LIKE 'E'.
-        CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
-          EXPORTING
-            archive_handle = lv_arch_h
-          EXCEPTIONS
-            OTHERS         = 1.
-        RETURN.
-    ENDTRY.
-    ASSIGN gr_dyn->* TO <lt_dyn>.
-    REFRESH <lt_dyn>.
+    REFRESH lt_arch.
 
     CALL FUNCTION 'ARCHIVE_GET_TABLE'
       EXPORTING
         archive_handle           = lv_obj_h
-        record_structure         = lv_tab
+        record_structure         = 'ZSTR_ARCH_REC'
         all_records_of_object    = 'X'
       TABLES
-        table                    = <lt_dyn>
+        table                    = lt_arch
       EXCEPTIONS
         end_of_object            = 1
         internal_error           = 2
         wrong_access_to_archive  = 3
         OTHERS                   = 4.
 
-    IF sy-subrc <> 0 OR <lt_dyn> IS INITIAL.
-      WRITE: / |SKIP OBJECT: GET_TABLE { lv_tab } RC={ sy-subrc }|.
+    IF sy-subrc <> 0 OR lt_arch IS INITIAL.
+      WRITE: / |SKIP OBJECT: GET_TABLE ZSTR_ARCH_REC RC={ sy-subrc }|.
       CONTINUE.
     ENDIF.
 
     lv_any = abap_true.
 
-    CALL FUNCTION 'REUSE_ALV_LIST_DISPLAY'
-      EXPORTING
-        i_structure_name       = lv_tab
-        i_callback_program     = sy-repid
-        i_callback_user_command = 'HANDLE_UCOMM'
-      TABLES
-        t_outtab               = <lt_dyn>
-      EXCEPTIONS
-        program_error        = 1
-        OTHERS               = 2.
+    LOOP AT lt_arch INTO DATA(ls_arch2).
+      CHECK ls_arch2-rec_type = 'D'.
+      IF p_table IS NOT INITIAL AND ls_arch2-table_name <> p_table.
+        CONTINUE.
+      ENDIF.
+      CLEAR ls_disp.
+      ls_disp-table_name = ls_arch2-table_name.
+      ls_disp-key_vals   = ls_arch2-key_vals.
+      ls_disp-data_json  = ls_arch2-data_json.
+      APPEND ls_disp TO lt_disp.
+    ENDLOOP.
 
     IF p_rest = 'X'.
-      DATA: lv_ins    TYPE i VALUE 0,
-            lv_ief    TYPE i VALUE 0,
-            lv_ins_rc TYPE i,
+      DATA: lv_ins_rc TYPE i,
             ls_log    TYPE zsp26_arch_log.
       GET TIME STAMP FIELD lv_ts_s.
-      INSERT (lv_tab) FROM TABLE <lt_dyn>.
-      lv_ins_rc = sy-subrc.
-      IF lv_ins_rc = 0.
-        lv_ins = lines( <lt_dyn> ).
-      ELSE.
-        lv_ief = 1.
-      ENDIF.
+      CLEAR: lv_ins, lv_ief.
+      LOOP AT lt_disp INTO ls_disp.
+        CREATE DATA gr_dyn TYPE (ls_disp-table_name).
+        ASSIGN gr_dyn->* TO FIELD-SYMBOL(<rec_dyn>).
+        TRY.
+            /ui2/cl_json=>deserialize(
+              EXPORTING json = CONV string( ls_disp-data_json )
+              CHANGING  data = <rec_dyn> ).
+            INSERT (ls_disp-table_name) FROM <rec_dyn>.
+            IF sy-subrc = 0.
+              ADD 1 TO lv_ins.
+            ELSE.
+              ADD 1 TO lv_ief.
+            ENDIF.
+          CATCH cx_root.
+            ADD 1 TO lv_ief.
+        ENDTRY.
+      ENDLOOP.
+      lv_ins_rc = COND #( WHEN lv_ief = 0 THEN 0 ELSE 4 ).
       IF lv_ins > 0.
         COMMIT WORK.
       ENDIF.
@@ -179,8 +171,8 @@ START-OF-SELECTION.
       TRY. ls_log-log_id = cl_system_uuid=>create_uuid_x16_static( ).
       CATCH cx_uuid_error. ENDTRY.
       SELECT SINGLE config_id FROM zsp26_arch_cfg INTO @ls_log-config_id
-        WHERE table_name = @lv_tab AND is_active = 'X'.
-      ls_log-table_name = lv_tab.
+        WHERE table_name = @p_table AND is_active = 'X'.
+      ls_log-table_name = p_table.
       ls_log-action     = 'RESTORE'.
       ls_log-rec_count  = lv_ins.
       ls_log-status     = COND #( WHEN lv_ief = 0 THEN 'S' ELSE 'W' ).
@@ -188,10 +180,10 @@ START-OF-SELECTION.
       ls_log-end_time   = lv_ts_e.
       ls_log-exec_user  = sy-uname.
       ls_log-exec_date  = sy-datum.
-      ls_log-message    = |RESTORE INSERT FROM TABLE { lv_tab }: { lv_ins } rows. RC={ lv_ins_rc }|.
+      ls_log-message    = |RESTORE generic: { lv_ins } rows. RC={ lv_ins_rc }|.
       INSERT zsp26_arch_log FROM ls_log.
       COMMIT WORK.
-      MESSAGE |Restored { lv_ins } rows into { lv_tab }| TYPE 'S'.
+      MESSAGE |Restored { lv_ins } rows| TYPE 'S'.
     ENDIF.
   ENDWHILE.
 
@@ -202,7 +194,34 @@ START-OF-SELECTION.
       OTHERS         = 1.
 
   IF lv_any = abap_false.
-    MESSAGE |No data for { p_table } (PUT_TABLE format). Try P_JSON for legacy.| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No data for { p_table } (generic format). Try P_JSON for legacy.| TYPE 'S' DISPLAY LIKE 'W'.
+  ELSEIF lt_disp IS NOT INITIAL.
+    DATA: lo_alv    TYPE REF TO cl_salv_table,
+          lo_funcs  TYPE REF TO cl_salv_functions,
+          lo_cols   TYPE REF TO cl_salv_columns_table,
+          lo_col    TYPE REF TO cl_salv_column_table,
+          lo_disp_s TYPE REF TO cl_salv_display_settings.
+    TRY.
+      cl_salv_table=>factory(
+        IMPORTING r_salv_table = lo_alv
+        CHANGING  t_table      = lt_disp ).
+      lo_funcs = lo_alv->get_functions( ).
+      lo_funcs->set_all( abap_true ).
+      lo_cols = lo_alv->get_columns( ).
+      lo_cols->set_optimize( abap_true ).
+      TRY. lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
+           lo_col->set_long_text( 'Table Name' ). CATCH cx_salv_not_found. ENDTRY.
+      TRY. lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
+           lo_col->set_long_text( 'Key Values' ). CATCH cx_salv_not_found. ENDTRY.
+      TRY. lo_col ?= lo_cols->get_column( 'DATA_JSON' ).
+           lo_col->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
+      lo_disp_s = lo_alv->get_display_settings( ).
+      lo_disp_s->set_list_header(
+        |GENERIC ADK — { p_table } [ { lines( lt_disp ) } ]| ).
+      lo_alv->display( ).
+    CATCH cx_salv_msg INTO DATA(lx_gen).
+      MESSAGE lx_gen->get_text( ) TYPE 'E'.
+    ENDTRY.
   ENDIF.
 
 *----------------------------------------------------------------------*
