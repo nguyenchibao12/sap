@@ -36,7 +36,8 @@ DATA: ls_arec      TYPE ty_arch_rec,
       lv_cfg_tab   TYPE tabname,
       ls_hub_admi  TYPE admi_run,
       lv_open_obj  TYPE arch_obj-object,
-      lv_arch_key  TYPE admi_files-archiv_key.
+      lv_arch_key  TYPE admi_files-archiv_key,
+      lv_use_p_table TYPE abap_bool VALUE abap_true.
 
 PARAMETERS: p_table TYPE tabname DEFAULT 'ZSP26_EKKO'.
 PARAMETERS: p_test  TYPE c AS CHECKBOX DEFAULT 'X'.
@@ -61,9 +62,13 @@ START-OF-SELECTION.
     IMPORT del_admi = ls_hub_admi FROM MEMORY ID 'Z_GSP18_ADMI_DEL'.
   ENDIF.
   IF ls_hub_admi-document IS NOT INITIAL.
+    lv_use_p_table = abap_false.
     DATA: lt_af_dd   TYPE TABLE OF dfies,
           ls_af_dd   TYPE dfies,
-          lv_where_af TYPE string.
+          lv_where_af TYPE string,
+          lv_col_obj  TYPE fieldname,
+          lv_col_doc  TYPE fieldname,
+          lv_col_cli  TYPE fieldname.
 
     WRITE: / 'Hub: ADMI session' && ` ` && ls_hub_admi-document && ` AOBJ ` && ls_hub_admi-object.
     lv_open_obj = ls_hub_admi-object.
@@ -77,16 +82,83 @@ START-OF-SELECTION.
       EXCEPTIONS
         OTHERS    = 1.
 
-    lv_where_af = |OBJECT = '{ ls_hub_admi-object }' AND DOCUMENT = '{ ls_hub_admi-document }'|.
+    CLEAR: lv_col_obj, lv_col_doc, lv_col_cli.
+
+    READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'OBJECT'.
+    IF sy-subrc = 0.
+      lv_col_obj = 'OBJECT'.
+    ELSE.
+      READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'AR_OBJECT'.
+      IF sy-subrc = 0.
+        lv_col_obj = 'AR_OBJECT'.
+      ELSE.
+        READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'ARCHIVE_OBJECT'.
+        IF sy-subrc = 0.
+          lv_col_obj = 'ARCHIVE_OBJECT'.
+        ELSE.
+          READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'ARCH_OBJECT'.
+          IF sy-subrc = 0.
+            lv_col_obj = 'ARCH_OBJECT'.
+          ENDIF.
+        ENDIF.
+      ENDIF.
+    ENDIF.
+
+    " Ưu tiên ARCH_DOCID vì nhiều hệ lưu số session tại cột này;
+    " DOCUMENT có thể mang định danh khác và dẫn tới lấy sai ARCHIV_KEY.
+    READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'ARCH_DOCID'.
+    IF sy-subrc = 0.
+      lv_col_doc = 'ARCH_DOCID'.
+    ELSE.
+      READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'DOCUMENT'.
+      IF sy-subrc = 0.
+        lv_col_doc = 'DOCUMENT'.
+      ELSE.
+        READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'DOC_ID'.
+        IF sy-subrc = 0.
+          lv_col_doc = 'DOC_ID'.
+        ELSE.
+          READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'DOCID'.
+          IF sy-subrc = 0.
+            lv_col_doc = 'DOCID'.
+          ELSE.
+            READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'DOCUMENT_ID'.
+            IF sy-subrc = 0.
+              lv_col_doc = 'DOCUMENT_ID'.
+            ENDIF.
+          ENDIF.
+        ENDIF.
+      ENDIF.
+    ENDIF.
 
     READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'MANDT'.
     IF sy-subrc = 0.
-      lv_where_af = |MANDT = '{ sy-mandt }' AND | && lv_where_af.
+      lv_col_cli = 'MANDT'.
     ELSE.
       READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'CLIENT'.
       IF sy-subrc = 0.
-        lv_where_af = |CLIENT = '{ sy-mandt }' AND | && lv_where_af.
+        lv_col_cli = 'CLIENT'.
       ENDIF.
+    ENDIF.
+
+    IF lv_col_doc IS INITIAL.
+      WRITE: / 'ADMI_FILES fields on this system:'.
+      LOOP AT lt_af_dd INTO ls_af_dd.
+        WRITE: / '  - ' && ls_af_dd-fieldname.
+      ENDLOOP.
+      MESSAGE 'Cấu trúc ADMI_FILES trên hệ này khác chuẩn (không thấy cột document).' TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+
+    lv_where_af = |{ lv_col_doc } = '{ ls_hub_admi-document }'|.
+
+    " Một số hệ có cột object, một số hệ không có (như spool bạn gửi)
+    IF lv_col_obj IS NOT INITIAL.
+      lv_where_af = |{ lv_col_obj } = '{ ls_hub_admi-object }' AND | && lv_where_af.
+    ENDIF.
+
+    IF lv_col_cli IS NOT INITIAL.
+      lv_where_af = |{ lv_col_cli } = '{ sy-mandt }' AND | && lv_where_af.
     ENDIF.
 
     SELECT SINGLE archiv_key
@@ -94,9 +166,62 @@ START-OF-SELECTION.
       WHERE (lv_where_af)
       INTO @lv_arch_key.
     IF sy-subrc <> 0.
-      FREE MEMORY ID 'Z_GSP18_ADMI_DEL'.
-      MESSAGE 'Không tìm thấy khóa file trong ADMI_FILES cho session đã chọn (OBJECT/DOCUMENT).' TYPE 'S' DISPLAY LIKE 'E'.
-      RETURN.
+      " Fallback mềm: một số hệ lưu document theo format khác (ARCH_DOCID có hậu tố, hoặc khác cột ưu tiên).
+      DATA: lt_af_scan TYPE TABLE OF admi_files,
+            ls_af_scan TYPE admi_files,
+            lv_doc_in  TYPE string,
+            lv_doc_db  TYPE string,
+            lv_ok_hit  TYPE abap_bool.
+      FIELD-SYMBOLS: <fs_doc_any> TYPE any.
+
+      lv_doc_in = ls_hub_admi-document.
+      CONDENSE lv_doc_in.
+
+      SELECT * FROM admi_files INTO TABLE @lt_af_scan UP TO 5000 ROWS.
+
+      CLEAR lv_arch_key.
+      lv_ok_hit = abap_false.
+      LOOP AT lt_af_scan INTO ls_af_scan.
+        CLEAR lv_doc_db.
+
+        ASSIGN COMPONENT lv_col_doc OF STRUCTURE ls_af_scan TO <fs_doc_any>.
+        IF sy-subrc = 0 AND <fs_doc_any> IS ASSIGNED.
+          lv_doc_db = <fs_doc_any>.
+          CONDENSE lv_doc_db.
+        ENDIF.
+
+        IF lv_doc_db IS INITIAL.
+          ASSIGN COMPONENT 'DOCUMENT' OF STRUCTURE ls_af_scan TO <fs_doc_any>.
+          IF sy-subrc = 0 AND <fs_doc_any> IS ASSIGNED.
+            lv_doc_db = <fs_doc_any>.
+            CONDENSE lv_doc_db.
+          ENDIF.
+        ENDIF.
+
+        IF lv_doc_db IS INITIAL.
+          ASSIGN COMPONENT 'ARCH_DOCID' OF STRUCTURE ls_af_scan TO <fs_doc_any>.
+          IF sy-subrc = 0 AND <fs_doc_any> IS ASSIGNED.
+            lv_doc_db = <fs_doc_any>.
+            CONDENSE lv_doc_db.
+          ENDIF.
+        ENDIF.
+
+        IF lv_doc_db IS INITIAL.
+          CONTINUE.
+        ENDIF.
+
+        IF lv_doc_db = lv_doc_in OR lv_doc_db CS lv_doc_in OR lv_doc_in CS lv_doc_db.
+          lv_arch_key = ls_af_scan-archiv_key.
+          lv_ok_hit = abap_true.
+          EXIT.
+        ENDIF.
+      ENDLOOP.
+
+      IF lv_ok_hit = abap_false OR lv_arch_key IS INITIAL.
+        FREE MEMORY ID 'Z_GSP18_ADMI_DEL'.
+        MESSAGE 'Không tìm thấy khóa file trong ADMI_FILES cho session đã chọn (OBJECT/DOCUMENT).' TYPE 'S' DISPLAY LIKE 'E'.
+        RETURN.
+      ENDIF.
     ENDIF.
     FREE MEMORY ID 'Z_GSP18_ADMI_DEL'.
   ENDIF.
@@ -108,28 +233,62 @@ START-OF-SELECTION.
     EXIT.
   ENDIF.
 
-  CALL FUNCTION 'ARCHIVE_OPEN_FOR_DELETE'
-    EXPORTING
-      aindflag     = space
-      object       = lv_open_obj
-      archive_name = lv_arch_key
-      test_mode    = p_test
-    IMPORTING
-      archive_handle = lv_arch_h
-    EXCEPTIONS
-      file_already_open     = 1
-      file_io_error         = 2
-      internal_error        = 3
-      no_files_available    = 4
-      object_not_found      = 5
-      open_error            = 6
-      not_authorized        = 7
-      archiving_standard_violation = 8
-      OTHERS                = 9.
-  IF sy-subrc <> 0.
-    CASE sy-subrc.
+  DATA lv_open_rc TYPE sy-subrc.
+
+  IF lv_arch_key IS NOT INITIAL.
+    WRITE: / 'Resolved ARCHIV_KEY: ' && lv_arch_key.
+    CALL FUNCTION 'ARCHIVE_OPEN_FOR_DELETE'
+      EXPORTING
+        aindflag     = space
+        object       = lv_open_obj
+        archive_name = lv_arch_key
+        test_mode    = p_test
+      IMPORTING
+        archive_handle = lv_arch_h
+      EXCEPTIONS
+        file_already_open     = 1
+        file_io_error         = 2
+        internal_error        = 3
+        no_files_available    = 4
+        object_not_found      = 5
+        open_error            = 6
+        not_authorized        = 7
+        archiving_standard_violation = 8
+        OTHERS                = 9.
+    lv_open_rc = sy-subrc.
+  ELSE.
+    WRITE: / 'ARCHIV_KEY not resolved from ADMI_FILES. Try open by object only.'.
+    lv_open_rc = 4.
+  ENDIF.
+
+  IF lv_open_rc <> 0.
+    WRITE: / |Open by key failed, rc={ lv_open_rc }. Try open by object only.|.
+    " Fallback: mở theo object khi key/session mapping khác format trên hệ thống.
+    CALL FUNCTION 'ARCHIVE_OPEN_FOR_DELETE'
+      EXPORTING
+        aindflag     = space
+        object       = lv_open_obj
+        test_mode    = p_test
+      IMPORTING
+        archive_handle = lv_arch_h
+      EXCEPTIONS
+        file_already_open     = 1
+        file_io_error         = 2
+        internal_error        = 3
+        no_files_available    = 4
+        object_not_found      = 5
+        open_error            = 6
+        not_authorized        = 7
+        archiving_standard_violation = 8
+        OTHERS                = 9.
+    lv_open_rc = sy-subrc.
+  ENDIF.
+
+  IF lv_open_rc <> 0.
+    WRITE: / |Open for delete failed rc={ lv_open_rc } object={ lv_open_obj } key={ lv_arch_key }|.
+    CASE lv_open_rc.
       WHEN 4.
-        MESSAGE 'Không có file archive hoặc chưa có session delete phù hợp — không mở được delete.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Không mở được archive cho delete (không có file phù hợp).' TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 5.
         MESSAGE 'Không tìm thấy đối tượng archive (AOBJ) hoặc chưa đăng ký.' TYPE 'S' DISPLAY LIKE 'E'.
       WHEN OTHERS.
@@ -194,8 +353,8 @@ START-OF-SELECTION.
 
     CLEAR lv_got.
 
-    " Prefer P_TABLE; else try each DDIC name from GET_INFORMATION rows (ARCH_DDIC / class list)
-    IF p_table IS NOT INITIAL.
+    " Nếu đã chọn cụ thể session/file: không ép p_table từ màn hình hub (có thể lệch object/file).
+    IF lv_use_p_table = abap_true AND p_table IS NOT INITIAL.
       PERFORM process_one_arch_table USING lv_obj_h p_table p_test CHANGING lv_cnt lv_err lv_got.
     ENDIF.
 
