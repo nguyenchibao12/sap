@@ -221,9 +221,12 @@ START-OF-SELECTION.
     ENDIF.
   ENDDO.
 
-  CALL FUNCTION 'ARCHIVE_CLOSE_OBJECT'
+  " Một số hệ không có ARCHIVE_CLOSE_OBJECT (CALL_FUNCTION_NOT_FOUND) — dùng CLOSE_FILE như Z_ARCH_EKK_WRITE.
+  CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+    EXPORTING
+      archive_handle = lv_arch_h
     EXCEPTIONS
-      OTHERS = 1.
+      OTHERS         = 1.
 
   IF p_test = ' '.
     PERFORM flush_arch_log_delete USING lt_del_agg lv_err.
@@ -423,9 +426,12 @@ FORM run_delete_legacy_json.
         lv_kf_loc     TYPE string,
         lv_kv_loc     TYPE string,
         lt_del_loc    TYPE ty_del_agg_htab,
-        ls_del_loc    TYPE ty_del_agg.
+        ls_del_loc    TYPE ty_del_agg,
+        lv_leg_h      TYPE syst-tabix.
 
   CALL FUNCTION 'ARCHIVE_OPEN_FOR_DELETE'
+    IMPORTING
+      archive_handle = lv_leg_h
     EXCEPTIONS OTHERS = 1.
   IF sy-subrc <> 0.
     MESSAGE 'Không mở được archive (legacy / P_JSON).' TYPE 'S' DISPLAY LIKE 'E'.
@@ -477,9 +483,11 @@ FORM run_delete_legacy_json.
     ENDIF.
   ENDDO.
 
-  CALL FUNCTION 'ARCHIVE_CLOSE_OBJECT'
+  CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+    EXPORTING
+      archive_handle = lv_leg_h
     EXCEPTIONS
-      OTHERS = 1.
+      OTHERS         = 1.
 
   IF p_test = ' '.
     PERFORM flush_arch_log_delete USING lt_del_loc lv_err_loc.

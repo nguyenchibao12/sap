@@ -106,7 +106,11 @@ START-OF-SELECTION.
     DATA(lv_tab) = p_table.
     IF lv_tab IS INITIAL.
       MESSAGE 'P_TABLE required for GET_TABLE read path.' TYPE 'S' DISPLAY LIKE 'E'.
-      CALL FUNCTION 'ARCHIVE_CLOSE_OBJECT' EXCEPTIONS OTHERS = 1.
+      CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+        EXPORTING
+          archive_handle = lv_arch_h
+        EXCEPTIONS
+          OTHERS         = 1.
       RETURN.
     ENDIF.
 
@@ -114,7 +118,11 @@ START-OF-SELECTION.
         CREATE DATA gr_dyn TYPE TABLE OF (lv_tab).
       CATCH cx_sy_create_data_error.
         MESSAGE |Invalid table name { lv_tab }| TYPE 'S' DISPLAY LIKE 'E'.
-        CALL FUNCTION 'ARCHIVE_CLOSE_OBJECT' EXCEPTIONS OTHERS = 1.
+        CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+          EXPORTING
+            archive_handle = lv_arch_h
+          EXCEPTIONS
+            OTHERS         = 1.
         RETURN.
     ENDTRY.
     ASSIGN gr_dyn->* TO <lt_dyn>.
@@ -187,7 +195,11 @@ START-OF-SELECTION.
     ENDIF.
   ENDWHILE.
 
-  CALL FUNCTION 'ARCHIVE_CLOSE_OBJECT' EXCEPTIONS OTHERS = 1.
+  CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+    EXPORTING
+      archive_handle = lv_arch_h
+    EXCEPTIONS
+      OTHERS         = 1.
 
   IF lv_any = abap_false.
     MESSAGE |No data for { p_table } (PUT_TABLE format). Try P_JSON for legacy.| TYPE 'S' DISPLAY LIKE 'W'.
