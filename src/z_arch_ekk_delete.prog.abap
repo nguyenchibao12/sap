@@ -132,9 +132,9 @@ START-OF-SELECTION.
     RETURN.
   ENDIF.
 
-  " USED_CLASSES: list of DDIC names (often same shape as ARCH_DDIC-NAME)
-  DATA: lt_used TYPE TABLE OF arch_ddic,
-        ls_used TYPE arch_ddic.
+  " USED_CLASSES must match FM typing (DDIC table type ADK_CLASSES), not TABLE OF arch_ddic
+  " — avoids CALL_FUNCTION_CONFLICT_TAB_TYP (CX_SY_DYN_CALL_ILLEGAL_TYPE).
+  DATA lt_used TYPE adk_classes.
 
   CALL FUNCTION 'ARCHIVE_GET_INFORMATION'
     EXPORTING
@@ -151,7 +151,7 @@ START-OF-SELECTION.
       OTHERS                  = 3.
 
   WRITE: / 'GET_INFORMATION: obj ' && lv_obj && ' arch ' && lv_arch_name && ' doc ' && lv_doc && ' rc ' && sy-subrc.
-  LOOP AT lt_used INTO ls_used.
+  LOOP AT lt_used INTO DATA(ls_used).
     WRITE: / '  REGISTERED_DDIC_NAME: ' && ls_used-name.
   ENDLOOP.
   WRITE: /.
@@ -188,8 +188,8 @@ START-OF-SELECTION.
     ENDIF.
 
     IF lv_got = abap_false.
-      LOOP AT lt_used INTO ls_used.
-        lv_tab_try = ls_used-name.
+      LOOP AT lt_used INTO DATA(ls_u).
+        lv_tab_try = ls_u-name.
         CHECK lv_tab_try IS NOT INITIAL.
         PERFORM process_one_arch_table USING lv_arch_h lv_tab_try p_test CHANGING lv_cnt lv_err lv_got.
         IF lv_got = abap_true.
@@ -240,7 +240,7 @@ FORM process_one_arch_table
   DATA: lv_lines TYPE i,
         lv_t     TYPE i.
 
-  FIELD-SYMBOLS <lt> TYPE STANDARD TABLE.
+  FIELD-SYMBOLS <lt> TYPE ANY TABLE.
 
   cv_got = abap_false.
   TRY.
