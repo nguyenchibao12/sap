@@ -283,7 +283,8 @@ FORM process_one_arch_table
   DATA: lv_lines TYPE i,
         lv_t     TYPE i.
 
-  FIELD-SYMBOLS <lt> TYPE ANY TABLE.
+  " FM ARCHIVE_GET_TABLE — TABLES chỉ chấp nhận STANDARD TABLE (ANY TABLE → SYNTAX_ERROR).
+  FIELD-SYMBOLS <lt> TYPE STANDARD TABLE.
 
   cv_got = abap_false.
   TRY.
