@@ -717,27 +717,49 @@ FORM arch_del_pick_session_popup.
     RETURN.
   ENDIF.
 
-  READ TABLE lt_ret INTO ls_ret INDEX 1.
+  DATA: lv_best_rp TYPE i,
+        lv_dstr    TYPE string.
 
-  CLEAR: gs_del_admi, lv_doc, gv_f4_sess.
+  CLEAR: gs_del_admi, lv_doc, gv_f4_sess, lv_best_rp.
 
-  IF ls_ret-recordpos > 0.
-    READ TABLE lt_run INTO gs_del_admi INDEX ls_ret-recordpos.
+  " F4 có thể trả nhiều dòng return_tab; recordpos đôi khi chỉ có ở dòng sau — lấy recordpos lớn nhất.
+  LOOP AT lt_ret INTO ls_ret.
+    IF ls_ret-recordpos > lv_best_rp.
+      lv_best_rp = ls_ret-recordpos.
+    ENDIF.
+  ENDLOOP.
+  IF lv_best_rp > 0.
+    READ TABLE lt_run INTO gs_del_admi INDEX lv_best_rp.
   ENDIF.
 
-  IF gs_del_admi-document IS INITIAL AND ls_ret-fieldval IS NOT INITIAL.
-    lv_doc = ls_ret-fieldval.
-    CONDENSE lv_doc.
-    READ TABLE lt_run INTO gs_del_admi
-      WITH KEY client = sy-mandt object = lv_obj document = lv_doc.
-    IF sy-subrc <> 0.
+  " Khớp DOCUMENT qua lt_f4 (cùng thứ tự với lt_run sau SORT) nếu recordpos / INDEX 1 không đủ.
+  IF gs_del_admi-document IS INITIAL.
+    LOOP AT lt_ret INTO ls_ret.
+      CHECK ls_ret-fieldval IS NOT INITIAL.
+      CHECK ls_ret-fieldname IS INITIAL OR ls_ret-fieldname = 'DOCUMENT'.
+      lv_dstr = ls_ret-fieldval.
+      CONDENSE lv_dstr.
+      lv_doc = CONV admi_run-document( lv_dstr ).
+      READ TABLE lt_f4 INTO ls_f4 WITH KEY document = lv_doc.
+      IF sy-subrc = 0.
+        READ TABLE lt_run INTO gs_del_admi INDEX sy-tabix.
+        EXIT.
+      ENDIF.
+      READ TABLE lt_run INTO gs_del_admi
+        WITH KEY client = sy-mandt object = lv_obj document = lv_doc.
+      IF sy-subrc = 0.
+        EXIT.
+      ENDIF.
       LOOP AT lt_run INTO ls_run.
         IF ls_run-document CS lv_doc OR lv_doc CS ls_run-document.
           gs_del_admi = ls_run.
           EXIT.
         ENDIF.
       ENDLOOP.
-    ENDIF.
+      IF gs_del_admi-document IS NOT INITIAL.
+        EXIT.
+      ENDIF.
+    ENDLOOP.
   ENDIF.
 
   IF gs_del_admi-document IS INITIAL.
@@ -747,6 +769,7 @@ FORM arch_del_pick_session_popup.
 
   gv_f4_sess        = gs_del_admi-document.
   gv_del_sess_def   = 'X'.
+  gv_stat_arch_tx   = |Defined ({ gs_del_admi-document })|.
 
   EXPORT del_admi = gs_del_admi TO MEMORY ID 'Z_GSP18_ADMI_DEL'.
 
