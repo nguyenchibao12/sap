@@ -680,7 +680,8 @@ FORM arch_del_pick_session_popup.
     PERFORM get_archive_programs.
   ENDIF.
 
-  CLEAR: gv_f4_sess, gv_del_sess_def, gs_del_admi.
+  " Không CLEAR gv_f4_sess — user thường gõ session rồi mở popup; xóa sẽ làm mất ô và F4/dynpro không transfer được.
+  CLEAR: gv_del_sess_def, gs_del_admi.
 
   SELECT * FROM admi_run
     WHERE client = @sy-mandt
@@ -718,17 +719,19 @@ FORM arch_del_pick_session_popup.
     EXCEPTIONS
       OTHERS       = 0.
 
-  CLEAR gv_f4_sess.
   READ TABLE lt_ret INTO ls_ret INDEX 1.
   IF sy-subrc = 0.
-    gv_f4_sess = ls_ret-fieldval.
     IF ls_ret-recordpos > 0.
       READ TABLE lt_run INTO gs_del_admi INDEX ls_ret-recordpos.
       IF sy-subrc = 0.
+        gv_f4_sess = gs_del_admi-document.
         gv_del_sess_def = 'X'.
         EXPORT del_admi = gs_del_admi TO MEMORY ID 'Z_GSP18_ADMI_DEL'.
         RETURN.
       ENDIF.
+    ENDIF.
+    IF ls_ret-fieldval IS NOT INITIAL.
+      gv_f4_sess = ls_ret-fieldval.
     ENDIF.
   ENDIF.
   IF gv_f4_sess IS INITIAL.

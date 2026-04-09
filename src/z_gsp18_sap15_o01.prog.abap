@@ -123,6 +123,10 @@ MODULE init_fields_0600 OUTPUT.
   gv_stat_start_tx = COND #( WHEN gv_start_date = 'X' THEN 'Defined' ELSE 'Not Defined' ).
   gv_stat_spool_tx = COND #( WHEN gv_spool_set = 'X' THEN 'Defined' ELSE 'Not Defined' ).
 
+  IF gv_del_sess_def = 'X' AND gs_del_admi-document IS NOT INITIAL.
+    gv_f4_sess = gs_del_admi-document.
+  ENDIF.
+
   IF gv_prog_del IS INITIAL.
     PERFORM get_archive_programs.
   ENDIF.
