@@ -548,6 +548,9 @@ MODULE user_command_0600 INPUT.
       ELSEIF gv_del_sess_def IS INITIAL AND gv_variant IS INITIAL.
         MESSAGE 'Chưa chọn Archive Selection (session) hoặc Variant cho delete.' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
+        IF gv_test_mode = 'X'.
+          MESSAGE 'Đang ở Test Mode: job Delete chỉ mô phỏng, không xóa dữ liệu DB.' TYPE 'S' DISPLAY LIKE 'W'.
+        ENDIF.
         PERFORM do_archive_delete_bg_job.
         SET SCREEN 0100.
         LEAVE SCREEN.

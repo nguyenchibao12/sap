@@ -41,6 +41,7 @@ DATA: ls_arec      TYPE ty_arch_rec,
 PARAMETERS: p_table TYPE tabname DEFAULT 'ZSP26_EKKO'.
 PARAMETERS: p_test  TYPE c AS CHECKBOX DEFAULT 'X'.
 PARAMETERS: p_json  TYPE c AS CHECKBOX DEFAULT ' '.
+PARAMETERS: p_doc   TYPE admi_run-document.
 
 *----------------------------------------------------------------------*
 START-OF-SELECTION.
@@ -53,8 +54,13 @@ START-OF-SELECTION.
   CLEAR: ls_hub_admi, lv_arch_key.
   lv_open_obj = lv_obj.
 
-  IMPORT del_admi = ls_hub_admi FROM MEMORY ID 'Z_GSP18_ADMI_DEL'.
-  IF sy-subrc = 0.
+  IF p_doc IS NOT INITIAL.
+    ls_hub_admi-object   = lv_obj.
+    ls_hub_admi-document = p_doc.
+  ELSE.
+    IMPORT del_admi = ls_hub_admi FROM MEMORY ID 'Z_GSP18_ADMI_DEL'.
+  ENDIF.
+  IF ls_hub_admi-document IS NOT INITIAL.
     DATA: lt_af_dd   TYPE TABLE OF dfies,
           ls_af_dd   TYPE dfies,
           lv_where_af TYPE string.

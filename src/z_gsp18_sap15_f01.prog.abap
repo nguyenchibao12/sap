@@ -511,7 +511,8 @@ ENDFORM.
 *& FORM DO_ARCHIVE_DELETE_JOB — SUBMIT delete program (ADK delete)
 *&---------------------------------------------------------------------*
 FORM do_archive_delete_job.
-  DATA lv_rc_var TYPE sy-subrc.
+  DATA: lv_rc_var  TYPE sy-subrc,
+        lv_sel_doc TYPE admi_run-document.
 
   IF gv_tabname IS INITIAL.
     MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
@@ -527,6 +528,9 @@ FORM do_archive_delete_job.
 
   IF gv_del_sess_def = 'X'.
     EXPORT del_admi = gs_del_admi TO MEMORY ID 'Z_GSP18_ADMI_DEL'.
+    lv_sel_doc = gs_del_admi-document.
+  ELSEIF gv_f4_sess IS NOT INITIAL.
+    lv_sel_doc = gv_f4_sess.
   ENDIF.
 
   IF gv_variant IS NOT INITIAL.
@@ -542,6 +546,7 @@ FORM do_archive_delete_job.
     SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
+      WITH p_doc   = lv_sel_doc
       USING SELECTION-SET gv_variant
       AND RETURN.
   ELSE.
@@ -551,6 +556,7 @@ FORM do_archive_delete_job.
     SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
+      WITH p_doc   = lv_sel_doc
       AND RETURN.
   ENDIF.
 ENDFORM.
@@ -561,7 +567,8 @@ ENDFORM.
 FORM do_archive_delete_bg_job.
   DATA: lv_jobname  TYPE tbtcjob-jobname,
         lv_jobcount TYPE tbtcjob-jobcount,
-        lv_rc_var   TYPE sy-subrc.
+        lv_rc_var   TYPE sy-subrc,
+        lv_sel_doc  TYPE admi_run-document.
 
   IF gv_tabname IS INITIAL.
     MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
@@ -577,6 +584,9 @@ FORM do_archive_delete_bg_job.
 
   IF gv_del_sess_def = 'X'.
     EXPORT del_admi = gs_del_admi TO MEMORY ID 'Z_GSP18_ADMI_DEL'.
+    lv_sel_doc = gs_del_admi-document.
+  ELSEIF gv_f4_sess IS NOT INITIAL.
+    lv_sel_doc = gv_f4_sess.
   ENDIF.
 
   IF gv_variant IS NOT INITIAL.
@@ -609,6 +619,7 @@ FORM do_archive_delete_bg_job.
     SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
+      WITH p_doc   = lv_sel_doc
       USING SELECTION-SET gv_variant
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
@@ -619,6 +630,7 @@ FORM do_archive_delete_bg_job.
     SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
+      WITH p_doc   = lv_sel_doc
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   ENDIF.

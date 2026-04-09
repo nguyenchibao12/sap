@@ -41,9 +41,6 @@ MODULE init_fields_0300 OUTPUT.
   IF gv_object IS INITIAL.
     gv_object = 'Z_ARCH_EKK'.
   ENDIF.
-  IF gv_test_mode IS INITIAL.
-    gv_test_mode = 'X'.
-  ENDIF.
   IF gv_det_log IS INITIAL.
     gv_det_log = 'X'.
   ENDIF.
@@ -70,9 +67,6 @@ ENDMODULE.
 MODULE init_fields_0500 OUTPUT.
   IF gv_object IS INITIAL.
     gv_object = 'Z_ARCH_EKK'.
-  ENDIF.
-  IF gv_test_mode IS INITIAL.
-    gv_test_mode = 'X'.
   ENDIF.
   IF gv_det_log IS INITIAL.
     gv_det_log = 'X'.
@@ -103,9 +97,6 @@ ENDMODULE.
 MODULE init_fields_0600 OUTPUT.
   IF gv_object IS INITIAL.
     gv_object = 'Z_ARCH_EKK'.
-  ENDIF.
-  IF gv_test_mode IS INITIAL.
-    gv_test_mode = 'X'.
   ENDIF.
   IF gv_det_log IS INITIAL.
     gv_det_log = 'X'.
