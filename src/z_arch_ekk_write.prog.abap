@@ -32,7 +32,8 @@ DATA: gs_cfg    TYPE zsp26_arch_cfg,
       lv_cfg_ok TYPE abap_bool,
       lv_ts_s   TYPE timestampl,
       lv_ts_e   TYPE timestampl,
-      lv_sql_elig_cnt TYPE i.
+      lv_sql_elig_cnt TYPE i,
+      lv_tbl_tot      TYPE i.
 
 FIELD-SYMBOLS: <lt_src> TYPE STANDARD TABLE,
                <lt_arch> TYPE STANDARD TABLE,
@@ -175,8 +176,15 @@ AT SELECTION-SCREEN.
           MESSAGE |{ lv_sql_elig_cnt } row(s) matched date/SQL but 0 after ZSP26_ARCH_RULE. Restored data must still pass rules — check rule values vs field types (dates now compared as D).|
                   TYPE 'S' DISPLAY LIKE 'W'.
         ELSE.
-          MESSAGE |No rows from SQL on { p_table } (cutoff { lv_co }, field { gs_cfg-data_field }). Clear or widen S_DATE on selection screen if needed.|
-                  TYPE 'S' DISPLAY LIKE 'W'.
+          CLEAR lv_tbl_tot.
+          SELECT COUNT(*) FROM (p_table) INTO @lv_tbl_tot.
+          IF lv_tbl_tot > 0.
+            MESSAGE |{ lv_tbl_tot } row(s) on { p_table } (mandt { sy-mandt }) but none match SQL: { gs_cfg-data_field } in S_DATE / cutoff { lv_co }. RESTORE is OK if SE16 shows rows — often AEDAT is empty or outside range; try wider S_DATE, or set ZSP26_ARCH_CFG DATA_FIELD to BEDAT if that is your real document date.|
+                    TYPE 'S' DISPLAY LIKE 'W'.
+          ELSE.
+            MESSAGE |0 rows in { p_table } for this client — RESTORE did not persist here or wrong table/MANDT. If log says Restored N rows, check SE16 same client + keys.|
+                    TYPE 'S' DISPLAY LIKE 'W'.
+          ENDIF.
         ENDIF.
         RETURN.
       ENDIF.
@@ -265,7 +273,13 @@ START-OF-SELECTION.
     IF lv_sql_elig_cnt > 0.
       WRITE: / |{ lv_sql_elig_cnt } row(s) matched SQL but none after ZSP26_ARCH_RULE (row-level).|.
     ELSE.
-      WRITE: / |No rows from SQL (cutoff { lv_cutoff }, { gs_cfg-data_field }). Check S_DATE / retention.|.
+      CLEAR lv_tbl_tot.
+      SELECT COUNT(*) FROM (p_table) INTO @lv_tbl_tot.
+      IF lv_tbl_tot > 0.
+        WRITE: / |{ lv_tbl_tot } row(s) on { p_table } (mandt { sy-mandt }) but none match SQL ({ gs_cfg-data_field } vs S_DATE / cutoff { lv_cutoff }).|.
+      ELSE.
+        WRITE: / |No rows from SQL (cutoff { lv_cutoff }, { gs_cfg-data_field }). Table empty this client — check RESTORE/MANDT.|.
+      ENDIF.
     ENDIF.
     WRITE: / 'No eligible rows — nothing to archive.'.
     RETURN.
