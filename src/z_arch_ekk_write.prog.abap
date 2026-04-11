@@ -274,7 +274,10 @@ START-OF-SELECTION.
     DATA ls_arch_rec TYPE zstr_arch_rec.
     DATA lv_keyvals  TYPE char255.
     DATA lv_json     TYPE string.
-    CLEAR: ls_arch_rec, lv_keyvals, lv_json.
+    DATA: lv_jlen TYPE i,
+          lv_jpos TYPE i,
+          lv_take TYPE i.
+    CLEAR: lv_keyvals, lv_json.
 
     LOOP AT lt_dd INTO DATA(ls_ddk) WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
       ASSIGN COMPONENT ls_ddk-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<fkv2>).
@@ -294,14 +297,34 @@ START-OF-SELECTION.
         lv_json = ''.
     ENDTRY.
 
-    ls_arch_rec-rec_type   = 'D'.
-    ls_arch_rec-table_name = p_table.
-    ls_arch_rec-key_vals   = lv_keyvals.
-    ls_arch_rec-data_json  = lv_json.
-    ls_arch_rec-exec_user  = sy-uname.
-    GET TIME STAMP FIELD ls_arch_rec-exec_ts.
-
-    INSERT ls_arch_rec INTO TABLE <lt_arch>.
+    " Chunk JSON across rows: REC_TYPE D = first part, 2 = continuation (matches ZSP26_DE_ARCHJSON LEN 1333).
+    lv_jlen = strlen( lv_json ).
+    IF lv_jlen = 0.
+      CLEAR ls_arch_rec.
+      ls_arch_rec-rec_type   = 'D'.
+      ls_arch_rec-table_name = p_table.
+      ls_arch_rec-key_vals   = lv_keyvals.
+      ls_arch_rec-exec_user  = sy-uname.
+      GET TIME STAMP FIELD ls_arch_rec-exec_ts.
+      INSERT ls_arch_rec INTO TABLE <lt_arch>.
+    ELSE.
+      CLEAR lv_jpos.
+      WHILE lv_jpos < lv_jlen.
+        CLEAR ls_arch_rec.
+        ls_arch_rec-table_name = p_table.
+        ls_arch_rec-key_vals   = lv_keyvals.
+        ls_arch_rec-rec_type   = COND #( WHEN lv_jpos = 0 THEN 'D' ELSE '2' ).
+        lv_take = 1333.
+        IF lv_jpos + lv_take > lv_jlen.
+          lv_take = lv_jlen - lv_jpos.
+        ENDIF.
+        ls_arch_rec-data_json = lv_json+lv_jpos(lv_take).
+        ls_arch_rec-exec_user  = sy-uname.
+        GET TIME STAMP FIELD ls_arch_rec-exec_ts.
+        INSERT ls_arch_rec INTO TABLE <lt_arch>.
+        lv_jpos = lv_jpos + lv_take.
+      ENDWHILE.
+    ENDIF.
   ENDLOOP.
 
   IF p_test = ' '.

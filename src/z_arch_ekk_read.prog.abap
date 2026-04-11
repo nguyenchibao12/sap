@@ -4,7 +4,7 @@ REPORT z_arch_ekk_read.
 *& ADK Read / Restore — Archive Object Z_ARCH_EKK
 *& OPEN_FOR_READ → GET_NEXT_OBJECT + GET_TABLE first (PUT_TABLE / S/4); else READ_OBJECT fallback
 *& Display: REUSE_ALV_LIST_DISPLAY I_STRUCTURE_NAME (no manual fieldcat)
-*& Restore: INSERT (tab) FROM TABLE <dyn> + ZSP26_ARCH_LOG
+*& Restore: MODIFY (upsert) + merge JSON chunks (D + 2) + ZSP26_ARCH_LOG
 *& P_JSON: legacy ty_arch_rec + GET_NEXT_RECORD + SALV on flat ty_disp
 *&---------------------------------------------------------------------*
 
@@ -16,9 +16,9 @@ TYPES: BEGIN OF ty_arch_rec,
        END OF ty_arch_rec.
 
 TYPES: BEGIN OF ty_disp,
-         table_name TYPE c LENGTH 30,
-         key_vals   TYPE c LENGTH 255,
-         data_json  TYPE c LENGTH 255,
+         table_name TYPE tabname,
+         key_vals   TYPE char255,
+         data_json  TYPE string,
        END OF ty_disp.
 
 DATA: ls_arec    TYPE ty_arch_rec,
@@ -222,6 +222,13 @@ FORM read_process_zstr_object
         lv_from   TYPE syst-tabix,
         lv_gt_rc  TYPE sy-subrc.
 
+  DATA: BEGIN OF ls_mj,
+          mj_table TYPE tabname,
+          mj_keys  TYPE char255,
+          mj_json  TYPE string,
+        END OF ls_mj.
+  DATA lv_mj_ok TYPE abap_bool.
+
   lv_disp0 = lines( lt_disp ).
 
   REFRESH lt_arch.
@@ -249,24 +256,58 @@ FORM read_process_zstr_object
     WRITE: / |WARN GET_TABLE ZSTR_ARCH_REC RC={ lv_gt_rc } rows={ lines( lt_arch ) } — still processing.|.
   ENDIF.
 
+  " Merge REC_TYPE D (first JSON chunk) + 2 (continuations); old archives = single D only.
+  CLEAR: ls_mj-mj_table, ls_mj-mj_keys, ls_mj-mj_json.
   LOOP AT lt_arch INTO ls_arch2.
-    CHECK ls_arch2-rec_type = 'D'.
+    IF ls_arch2-rec_type = 'D'.
+      IF ls_mj-mj_table IS NOT INITIAL.
+        CLEAR ls_disp.
+        ls_disp-table_name = ls_mj-mj_table.
+        ls_disp-key_vals   = ls_mj-mj_keys.
+        ls_disp-data_json  = ls_mj-mj_json.
+        lv_mj_ok = abap_true.
+        IF p_table IS NOT INITIAL.
+          lv_tn_row = ls_disp-table_name.
+          CONDENSE lv_tn_row.
+          TRANSLATE lv_tn_row TO UPPER CASE.
+          lv_tn_cmp = p_table.
+          TRANSLATE lv_tn_cmp TO UPPER CASE.
+          IF lv_tn_row <> lv_tn_cmp.
+            lv_mj_ok = abap_false.
+          ENDIF.
+        ENDIF.
+        IF lv_mj_ok = abap_true.
+          APPEND ls_disp TO lt_disp.
+        ENDIF.
+      ENDIF.
+      CLEAR: ls_mj-mj_table, ls_mj-mj_keys, ls_mj-mj_json.
+      ls_mj-mj_table = ls_arch2-table_name.
+      ls_mj-mj_keys  = ls_arch2-key_vals.
+      ls_mj-mj_json  = ls_arch2-data_json.
+    ELSEIF ls_arch2-rec_type = '2' AND ls_mj-mj_table IS NOT INITIAL.
+      ls_mj-mj_json = |{ ls_mj-mj_json }{ ls_arch2-data_json }|.
+    ENDIF.
+  ENDLOOP.
+  IF ls_mj-mj_table IS NOT INITIAL.
+    CLEAR ls_disp.
+    ls_disp-table_name = ls_mj-mj_table.
+    ls_disp-key_vals   = ls_mj-mj_keys.
+    ls_disp-data_json  = ls_mj-mj_json.
+    lv_mj_ok = abap_true.
     IF p_table IS NOT INITIAL.
-      lv_tn_row = ls_arch2-table_name.
+      lv_tn_row = ls_disp-table_name.
       CONDENSE lv_tn_row.
       TRANSLATE lv_tn_row TO UPPER CASE.
       lv_tn_cmp = p_table.
       TRANSLATE lv_tn_cmp TO UPPER CASE.
       IF lv_tn_row <> lv_tn_cmp.
-        CONTINUE.
+        lv_mj_ok = abap_false.
       ENDIF.
     ENDIF.
-    CLEAR ls_disp.
-    ls_disp-table_name = ls_arch2-table_name.
-    ls_disp-key_vals   = ls_arch2-key_vals.
-    ls_disp-data_json  = ls_arch2-data_json.
-    APPEND ls_disp TO lt_disp.
-  ENDLOOP.
+    IF lv_mj_ok = abap_true.
+      APPEND ls_disp TO lt_disp.
+    ENDIF.
+  ENDIF.
 
   IF p_rest = 'X'.
     IF lines( lt_disp ) <= lv_disp0.
@@ -283,9 +324,9 @@ FORM read_process_zstr_object
       ASSIGN gr_dyn->* TO FIELD-SYMBOL(<rec_dyn>).
       TRY.
           /ui2/cl_json=>deserialize(
-            EXPORTING json = CONV string( ls_disp-data_json )
+            EXPORTING json = ls_disp-data_json
             CHANGING  data = <rec_dyn> ).
-          INSERT (lv_tn_row) FROM <rec_dyn>.
+          MODIFY (lv_tn_row) FROM <rec_dyn>.
           IF sy-subrc = 0.
             ADD 1 TO lv_ins.
           ELSE.
@@ -318,7 +359,7 @@ FORM read_process_zstr_object
     IF lv_ins > 0.
       MESSAGE |Restored { lv_ins } rows| TYPE 'S'.
     ELSEIF lv_ief > 0.
-      MESSAGE |Restore: 0 inserted, { lv_ief } failed (duplicate key, JSON, or dynamic type). Check list / keys.|
+      MESSAGE |Restore: 0 rows OK, { lv_ief } failed (invalid JSON — file archived with old 255-char limit? re-archive after upgrade; or MODIFY error).|
               TYPE 'S' DISPLAY LIKE 'W'.
     ENDIF.
   ENDIF.
@@ -438,17 +479,21 @@ FORM run_read_legacy_json.
     DATA: lv_ok   TYPE i VALUE 0,
           lv_err  TYPE i VALUE 0,
           gr_rec  TYPE REF TO data,
-          lv_json TYPE string.
+          lv_json TYPE string,
+          lv_ltab TYPE tabname.
 
     LOOP AT lt_disp INTO ls_disp.
-      CREATE DATA gr_rec TYPE (ls_disp-table_name).
+      lv_ltab = ls_disp-table_name.
+      CONDENSE lv_ltab.
+      TRANSLATE lv_ltab TO UPPER CASE.
+      CREATE DATA gr_rec TYPE (lv_ltab).
       ASSIGN gr_rec->* TO FIELD-SYMBOL(<rec>).
       TRY.
-        lv_json = CONV string( ls_disp-data_json ).
+        lv_json = ls_disp-data_json.
         /ui2/cl_json=>deserialize(
           EXPORTING json = lv_json
           CHANGING  data = <rec> ).
-        INSERT (ls_disp-table_name) FROM <rec>.
+        MODIFY (lv_ltab) FROM <rec>.
         IF sy-subrc = 0.
           ADD 1 TO lv_ok.
         ELSE.
