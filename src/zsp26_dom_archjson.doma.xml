@@ -6,9 +6,9 @@
     <DOMNAME>ZSP26_DOM_ARCHJSON</DOMNAME>
     <DDLANGUAGE>E</DDLANGUAGE>
     <DATATYPE>CHAR</DATATYPE>
-    <LENG>001333</LENG>
+    <LENG>000255</LENG>
     <OUTPUTLEN>000255</OUTPUTLEN>
-    <DDTEXT>Archived row JSON chunk (generic ADK)</DDTEXT>
+    <DDTEXT>JSON chunk for ADK (255=LEN=OUTPUTLEN; avoids dynpro vs calc length warnings)</DDTEXT>
    </DD01V>
   </asx:values>
  </asx:abap>

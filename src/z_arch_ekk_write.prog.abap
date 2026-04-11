@@ -297,7 +297,7 @@ START-OF-SELECTION.
         lv_json = ''.
     ENDTRY.
 
-    " Chunk JSON across rows: REC_TYPE D = first part, 2 = continuation (matches ZSP26_DE_ARCHJSON LEN 1333).
+    " Chunk JSON: REC_TYPE D = first part, 2 = continuation (255 chars = domain LENG/OUTPUTLEN, no DDIC warnings).
     lv_jlen = strlen( lv_json ).
     IF lv_jlen = 0.
       CLEAR ls_arch_rec.
@@ -314,7 +314,7 @@ START-OF-SELECTION.
         ls_arch_rec-table_name = p_table.
         ls_arch_rec-key_vals   = lv_keyvals.
         ls_arch_rec-rec_type   = COND #( WHEN lv_jpos = 0 THEN 'D' ELSE '2' ).
-        lv_take = 1333.
+        lv_take = 255.
         IF lv_jpos + lv_take > lv_jlen.
           lv_take = lv_jlen - lv_jpos.
         ENDIF.
