@@ -430,7 +430,7 @@ START-OF-SELECTION.
     WRITE: / |Archived (PUT_TABLE): { lv_cnt }|.
     WRITE: / 'Lifecycle: WRITE completed only. DB source rows are NOT deleted yet.'.
     WRITE: / 'Next mandatory step: run DELETE program to remove source DB records.'.
-    WRITE: / 'Next: Z_ARCH_EKK_DELETE via SARA (uncheck P_JSON if using this PUT_TABLE format).'.
+    WRITE: / 'Next: run Z_ARCH_EKK_DELETE (hub/SUBMIT; select archive session/file). Uncheck P_JSON if using this PUT_TABLE format.'.
   ELSE.
     WRITE: / 'Uncheck Test Mode to run OPEN → REGISTER_STRUCTURES → NEW_OBJECT → PUT_TABLE → SAVE_OBJECT → CLOSE_FILE.'.
   ENDIF.

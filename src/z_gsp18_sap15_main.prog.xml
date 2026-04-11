@@ -409,7 +409,7 @@
       <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
       <SCREEN>0500</SCREEN>
       <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>Create archive file (SARA-style)</DESCRIPT>
+      <DESCRIPT>Create archive file (ADK session)</DESCRIPT>
       <TYPE>N</TYPE>
       <NEXTSCREEN>0500</NEXTSCREEN>
       <LINES>027</LINES>
@@ -647,7 +647,7 @@
       <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
       <SCREEN>0600</SCREEN>
       <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>Delete archive (compact SARA-style)</DESCRIPT>
+      <DESCRIPT>Delete archive (ADK delete program)</DESCRIPT>
       <TYPE>N</TYPE>
       <NEXTSCREEN>0600</NEXTSCREEN>
       <LINES>027</LINES>
@@ -965,7 +965,7 @@
       <TEXTNO>001</TEXTNO>
       <TEXT_TYPE>S</TEXT_TYPE>
       <FUN_TEXT>Write</FUN_TEXT>
-      <INFO_TEXT>ADK write: preview then archive to .ARC (SARA Write)</INFO_TEXT>
+      <INFO_TEXT>ADK write: preview then archive to .ARC</INFO_TEXT>
      </RSMPE_FUNT>
      <RSMPE_FUNT>
       <CODE>BT_RESTORE</CODE>
@@ -979,7 +979,7 @@
       <TEXTNO>001</TEXTNO>
       <TEXT_TYPE>S</TEXT_TYPE>
       <FUN_TEXT>Delete</FUN_TEXT>
-      <INFO_TEXT>ADK delete from DB after archive (SARA Delete)</INFO_TEXT>
+      <INFO_TEXT>ADK delete from DB after archive (Z_ARCH_EKK_DELETE)</INFO_TEXT>
      </RSMPE_FUNT>
      <RSMPE_FUNT>
       <CODE>BT_ARCH_SEL</CODE>

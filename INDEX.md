@@ -6,7 +6,9 @@ This repository is an SAP ABAP project for data archiving and restore, built aro
 
 - Main archive object: `Z_ARCH_EKK`
 - Main report/hub: `Z_GSP18_SAP15_MAIN`
-- Main process: preview eligible records -> archive write -> delete via SARA -> read/restore
+- Main process: preview eligible records → ADK write (`.ARC`) → delete from DB via `Z_ARCH_EKK_DELETE` (SUBMIT/job from the hub) → read/restore
+
+**Operational note (aligned with `PLAN_FINAL.md` §1.4):** End users are meant to stay in the custom report/transaction; **screen 0400** sets `GV_TABNAME`, and hub actions on **0100** must use that table. Standard transaction **SARA** is optional admin/setup tooling, not a required daily step in the documented user flow.
 
 ## Root Files
 
@@ -37,7 +39,7 @@ This repository is an SAP ABAP project for data archiving and restore, built aro
 ## ADK Programs
 
 - `src/z_arch_ekk_write.prog.abap` - write eligible records to ADK archive
-- `src/z_arch_ekk_delete.prog.abap` - delete archived records (run in SARA context)
+- `src/z_arch_ekk_delete.prog.abap` - ADK delete program (remove DB rows after archive; invoked from hub/SUBMIT/job)
 - `src/z_arch_ekk_read.prog.abap` - read archive and optionally restore records
 - `src/z_arch_ekk_create_variants.prog.abap` - utility to create write variants
 

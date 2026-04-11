@@ -21,7 +21,7 @@ MODULE user_command_0400 INPUT.
         MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         gv_hub_allowed = abap_true.
-        " Đồng bộ P_TABLE khi mở Z_ARCH_EKK_WRITE (SE38/SARA hoặc SUBMIT chưa truyền WITH)
+        " Đồng bộ P_TABLE khi mở Z_ARCH_EKK_WRITE (SE38/hub hoặc SUBMIT chưa truyền WITH)
         EXPORT arch_tabname = gv_tabname TO MEMORY ID 'Z_GSP18_ARCH_TAB'.
         SET SCREEN 0100.
         LEAVE SCREEN.
@@ -381,7 +381,7 @@ MODULE f4_gv_variant INPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Module USER_COMMAND_0500 INPUT — SARA-style Create archive file
+*& Module USER_COMMAND_0500 INPUT — ADK create archive file (session UI)
 *&---------------------------------------------------------------------*
 MODULE user_command_0500 INPUT.
   DATA: lv_rc_500    TYPE sy-subrc,
@@ -485,7 +485,7 @@ MODULE user_command_0500 INPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Module USER_COMMAND_0600 INPUT — SARA-style Delete (archive DB)
+*& Module USER_COMMAND_0600 INPUT — ADK delete from DB (archive session)
 *&---------------------------------------------------------------------*
 MODULE user_command_0600 INPUT.
   DATA: lv_rc_600  TYPE sy-subrc,

@@ -70,7 +70,7 @@ START-OF-SELECTION.
       archiving_standard_violation  = 8
       OTHERS                        = 9.
   IF sy-subrc <> 0.
-    MESSAGE 'Cannot open archive Z_ARCH_EKK for read (SARA / file selection).'
+    MESSAGE 'Cannot open archive Z_ARCH_EKK for read (check session / .ARC file selection).'
             TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.

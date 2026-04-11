@@ -113,7 +113,7 @@ ADK Programs (điều khiển từ hub bằng SUBMIT / job; không yêu cầu us
 
 Support:
   ZSP26_LOAD_SAMPLE_DATA  → load config + rules + deps + transaction data
-  Z_ARCH_EKK_CREATE_VARIANTS → tạo 10 SARA variants cho Z_ARCH_EKK_WRITE
+  Z_ARCH_EKK_CREATE_VARIANTS → tạo 10 variants (report Z_ARCH_EKK_WRITE)
 ```
 
 ---
@@ -868,12 +868,13 @@ Kỳ vọng:
 Pass/Fail: [ ]
 ```
 
-### TC-08: SARA Delete
+### TC-08: ADK Delete (hub / job; không bắt user mở SARA)
 ```
 Điều kiện: TC-06 đã tạo archive file, AOBJ config đúng
 Bước:
-  1. SARA → Z_ARCH_EKK → Delete
-  2. Chọn archive file từ TC-06
+  1. Chạy Z_ARCH_EKK_DELETE (hub, SUBMIT, hoặc job) — chọn session/file từ TC-06
+     (Quản trị có thể dùng SARA cho cùng bước nếu môi trường yêu cầu ngữ cảnh ADK đầy đủ.)
+  2. Xác nhận đúng archive file từ TC-06
   3. Variant: ZSP26_EKKO (hoặc để trống, set p_test='X' trước)
   4. Execute với p_test='X' trước
 Kỳ vọng TEST MODE:
@@ -944,8 +945,8 @@ Bước:
 Kỳ vọng:
   - In: "✓ Variant ZSP26_EKKO created — Archive PO Header (EKKO)"
   - ... 10 lines tương tự
-  - "=== Done. Check SARA → Z_ARCH_EKK → Archive → Variant (F4) ==="
-  Verify: SARA → Archive → F4 bên Variant → thấy 10 variants
+  - "=== Done. Variants saved — pick via F4 on selection screen or archive job variant list ==="
+  Verify: SE38 → Z_ARCH_EKK_WRITE → F4 Variant (hoặc danh sách variant job) → thấy 10 variants
 Pass/Fail: [ ]
 ```
 
@@ -996,16 +997,17 @@ Mở slide / sơ đồ kiến trúc:
 ```
 6. Z_ARCH_EKK_WRITE chạy (SUBMIT AND RETURN)
    "Records được serialize thành JSON và ghi vào file .ARC
-   chuẩn SAP ADK. File này an toàn, có checksum,
-   và SARA quản lý lifecycle."
+   chuẩn SAP ADK. File này an toàn, có checksum;
+   lifecycle file `.ARC` do ADK quản lý, vận hành qua chương trình đồ án."
 7. SE16 → ZSP26_ARCH_LOG → thấy entry ARCHIVE
 ```
 
-**Phần 5: SARA Delete (3 phút)**
+**Phần 5: ADK Delete (3 phút)**
 ```
-8. SARA → Z_ARCH_EKK → Delete → chọn file → TEST MODE trước
+8. Z_ARCH_EKK_DELETE từ hub hoặc SUBMIT (chọn session/file .ARC) → TEST MODE trước
    "Delete program đọc lại file .ARC, xác minh từng record,
    sau đó xóa khỏi DB. TEST MODE cho phép preview trước."
+   (Quản trị có thể dùng SARA cho cùng archive object nếu cần — không bắt buộc trong hướng dẫn end-user.)
 9. Chạy thật → SE16 → ZSP26_EKKO → còn 10 records
 ```
 
@@ -1032,8 +1034,8 @@ Mở slide / sơ đồ kiến trúc:
 **Phần 8: Q&A (câu hỏi thường gặp)**
 ```
 Q: Tại sao dùng ADK thay vì tự ghi vào bảng custom?
-A: ADK là chuẩn SAP: có file checksum, lifecycle management qua SARA,
-   tích hợp với SAP ILM, được chứng nhận compliance.
+A: ADK là chuẩn SAP: có file `.ARC` với checksum, lifecycle qua session/file archive,
+   tích hợp ILM; vận hành hằng ngày qua chương trình đồ án (write/delete/read), không bắt user vào SARA.
 
 Q: Làm sao hệ thống biết field nào là ngày archive?
 A: Config trong ZSP26_ARCH_CFG-DATA_FIELD, admin có thể thay đổi
@@ -1072,7 +1074,7 @@ A: Có, Z_ARCH_EKK_READ với p_rest='X' restore hoàn toàn.
 - [ ] Paste + Activate Z_ARCH_EKK_READ
 - [ ] Create + Paste + Activate Z_ARCH_EKK_CREATE_VARIANTS
 - [ ] Check AOBJ: Z_ARCH_EKK với Write/Delete/Read programs
-- [ ] Chạy Z_ARCH_EKK_CREATE_VARIANTS → 10 SARA variants
+- [ ] Chạy Z_ARCH_EKK_CREATE_VARIANTS → 10 write variants
 - [ ] Chạy ZSP26_LOAD_SAMPLE_DATA → data mẫu
 - [ ] Fix Bug 1 (STAT_ID type) nếu runtime error
 - [ ] Fix Bug 2 (LOG_ID type) nếu runtime error
@@ -1085,7 +1087,7 @@ A: Có, Z_ARCH_EKK_READ với p_rest='X' restore hoàn toàn.
 - [ ] TC-05: ADK Write TEST MODE
 - [ ] TC-06: ADK Write thật
 - [ ] TC-07: ADK Read display
-- [ ] TC-08: SARA Delete
+- [ ] TC-08: ADK Delete (hub / job; không bắt user mở SARA)
 - [ ] TC-09: ADK Read + Restore
 - [ ] TC-10: Monitor Storage Analysis
 - [ ] TC-11: Show All Tables button

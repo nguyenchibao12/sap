@@ -1336,7 +1336,7 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 *& FORM MAINTENANCE_START_DATE
 *&  Chuẩn SAP: BP_START_DATE_EDITOR — cùng hộp thoại "Start Time" như
-*&  SARA (lập lịch job: Immediate / Date/Time / After job / Event / …).
+*&  job scheduling (Immediate / Date/Time / After job / Event / …).
 *&  Không dùng POPUP_GET_VALUES + SYST-DATUM (dễ hỏng format F4 / hiển thị).
 *&---------------------------------------------------------------------*
 FORM maintenance_start_date.

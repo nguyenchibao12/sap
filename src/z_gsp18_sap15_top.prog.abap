@@ -84,20 +84,20 @@ DATA: gt_arch_stat TYPE TABLE OF ty_arch_stat,
       go_cont_200  TYPE REF TO cl_gui_custom_container,
       gt_fcat_200  TYPE lvc_t_fcat.
 
-" Screen 0300 / 0500 — SARA scheduler (variant, start, spool)
-" gv_object = AOBJ (transaction SARA, SPA ARC, ARCH_OBJ) — ví dụ Z_ARCH_EKK
-" gv_tabname = bảng DDIC đích (preview/write/delete SQL) — không thay cho AOBJ trên UI SARA
+" Screen 0300 / 0500 — archive / job scheduler (variant, start, spool)
+" gv_object = archive object id (AOBJ) — ví dụ Z_ARCH_EKK
+" gv_tabname = bảng DDIC đích (preview/write/delete SQL) — bổ sung cho object ở trên
 DATA: gv_object     TYPE arch_obj-object,
       gv_variant    TYPE variant, " ID do user nhập (vd VAR_01); tên SAP = {tiền_tố bảng}_{ID}
       gv_prog_write TYPE programm,
       gv_prog_del   TYPE programm,
       gv_start_date TYPE char1,
-      gs_btc_start  TYPE tbtcstrt, " BP_START_DATE_EDITOR (Start Time — như SARA/SM37)
+      gs_btc_start  TYPE tbtcstrt, " BP_START_DATE_EDITOR (Start Time — như SM37)
       gv_spool_set  TYPE char1,
       gv_test_mode  TYPE xfeld VALUE 'X',
       gv_det_log    TYPE char1 VALUE 'X'.
 
-" Screen 0500 / 0600 — SARA-style status texts
+" Screen 0500 / 0600 — status texts (write/delete steps)
 DATA: gv_disp_mandt    TYPE mandt,
       gv_disp_uname    TYPE syuname,
       gv_stat_arch_tx  TYPE char40,

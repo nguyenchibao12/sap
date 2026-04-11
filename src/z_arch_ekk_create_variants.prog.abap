@@ -1,6 +1,6 @@
 *&---------------------------------------------------------------------*
 *& Report  Z_ARCH_EKK_CREATE_VARIANTS
-*& One-time utility: creates SARA variants for Z_ARCH_EKK_WRITE
+*& One-time utility: creates report variants for Z_ARCH_EKK_WRITE (usable with archive scheduling)
 *& Run once in SE38, then delete or keep for reference
 *&---------------------------------------------------------------------*
 REPORT z_arch_ekk_create_variants.
@@ -156,4 +156,4 @@ START-OF-SELECTION.
   ENDLOOP.
 
   WRITE: /.
-  WRITE: / '=== Done. Check SARA → Z_ARCH_EKK → Archive → Variant (F4) ==='.
+  WRITE: / '=== Done. Variants saved — pick via F4 on selection screen or archive job variant list ==='.

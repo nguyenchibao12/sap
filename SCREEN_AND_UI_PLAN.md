@@ -14,6 +14,8 @@ Tài liệu tra cứu nhanh khi vẽ SE51, gán FCODE, pull abapGit hoặc debug
 
 **Luồng chạy thực tế:** `START-OF-SELECTION` → `CALL SCREEN 0400` (nhập bảng + **Continue**) → **0100** (thao tác Write / Restore / …). **Back** trên 0100 về **0400**. Các màn **0200 / 0300** vẫn **chưa** được `CALL SCREEN` từ MAIN.
 
+**Nguyên tắc vận hành (khớp `PLAN_FINAL.md` §1.4):** Một transaction/report đồ án là **cửa vào** chính; **không** bắt end-user mở **SARA** chuẩn SAP trong luồng hằng ngày. **0400** là nguồn **`GV_TABNAME`**: preview, `SUBMIT` write/delete/read phải **khớp bảng đã chọn** ở đây. **SARA** / **AOBJ** vẫn có thể dùng cho **thiết lập** hệ thống (archive object, kiểm tra file), tách khỏi story người dùng cuối.
+
 ---
 
 ## 2. Bảng dynpro — vẽ SE51

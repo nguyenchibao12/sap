@@ -92,7 +92,7 @@ MODULE status_0500 OUTPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Module INIT_FIELDS_0600 OUTPUT — Delete (SARA-style)
+*& Module INIT_FIELDS_0600 OUTPUT — ADK delete from DB
 *&---------------------------------------------------------------------*
 MODULE init_fields_0600 OUTPUT.
   IF gv_object IS INITIAL.
