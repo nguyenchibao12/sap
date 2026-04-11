@@ -67,7 +67,7 @@ MODULE user_command_0100 INPUT.
       IF gv_tabname IS INITIAL.
         MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
-        PERFORM do_restore_preview.
+        PERFORM do_restore_from_hub.
       ENDIF.
 
     WHEN 'BT_ADK_DELETE'.

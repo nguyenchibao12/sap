@@ -144,6 +144,8 @@ START-OF-SELECTION.
 
   IF lt_disp IS INITIAL.
     MESSAGE |No data for { p_table } (generic format). Try P_JSON for legacy.| TYPE 'S' DISPLAY LIKE 'W'.
+  ELSEIF p_rest = 'X'.
+    " INSERT + log + MESSAGE đã chạy trong read_process_zstr_object — không mở ALV lần nữa.
   ELSE.
     DATA: lo_alv    TYPE REF TO cl_salv_table,
           lo_funcs  TYPE REF TO cl_salv_functions,

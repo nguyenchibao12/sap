@@ -804,7 +804,32 @@ FORM arch_del_pick_session_popup.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_RESTORE_VIA_ADK — gọi ADK Read Program (từ lcl_handler)
+*& FORM DO_RESTORE_FROM_HUB — Restore từ archive (xác nhận → ADK + p_rest=X)
+*&---------------------------------------------------------------------*
+FORM do_restore_from_hub.
+  DATA: lv_ans TYPE c LENGTH 1.
+
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar       = 'Restore from archive'
+      text_question  = |Chọn file .ARC ở màn hình tiếp theo. Ghi dữ liệu vào bảng { gv_tabname }?|
+      text_button_1  = 'Yes, restore'
+      text_button_2  = 'Cancel'
+      default_button = '2'
+      icon_button_1  = 'ICON_OKAY'
+      icon_button_2  = 'ICON_CANCEL'
+    IMPORTING
+      answer         = lv_ans
+    EXCEPTIONS
+      OTHERS         = 1.
+
+  IF lv_ans = '1'.
+    PERFORM do_restore_via_adk.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM DO_RESTORE_VIA_ADK — gọi ADK Read Program (p_rest=X → INSERT DB)
 *&---------------------------------------------------------------------*
 FORM do_restore_via_adk.
   DATA: lv_rtab TYPE tabname.
