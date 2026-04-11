@@ -93,14 +93,14 @@ FORM build_where_from_arch_cfg
   ENDIF.
 
   IF lv_ae = abap_true AND lv_be = abap_true.
-    " EKKO-style: AEDAT often NULL/initial in DB — comparisons to '00000000' exclude those rows (3-valued SQL).
-    " IS INITIAL matches DDIC initial + SQL NULL for DATS (SAP Open SQL).
+    " EKKO-style: use BEDAT when AEDAT is DDIC initial. Dynamic WHERE (string) must not use IS INITIAL — parse error CX_SY_DYNAMIC_OSQL_SEMANTICS.
+    " Literal '00000000': works in dynamic OSQL; SQL NULL on AEDAT still needs CFG DATA_FIELD=BEDAT or row-level filter.
     IF pv_dlow IS NOT INITIAL.
-      cv_where = |( ( AEDAT IS NOT INITIAL AND AEDAT GE '{ pv_dlow }' AND AEDAT LE '{ lv_hi }' ) OR | &&
-                   |( AEDAT IS INITIAL AND BEDAT IS NOT INITIAL AND BEDAT GE '{ pv_dlow }' AND BEDAT LE '{ lv_hi }' ) )|.
+      cv_where = |( ( AEDAT NE '00000000' AND AEDAT GE '{ pv_dlow }' AND AEDAT LE '{ lv_hi }' ) OR | &&
+                   |( AEDAT EQ '00000000' AND BEDAT NE '00000000' AND BEDAT GE '{ pv_dlow }' AND BEDAT LE '{ lv_hi }' ) )|.
     ELSE.
-      cv_where = |( ( AEDAT IS NOT INITIAL AND AEDAT LE '{ lv_hi }' ) OR | &&
-                   |( AEDAT IS INITIAL AND BEDAT IS NOT INITIAL AND BEDAT LE '{ lv_hi }' ) )|.
+      cv_where = |( ( AEDAT NE '00000000' AND AEDAT LE '{ lv_hi }' ) OR | &&
+                   |( AEDAT EQ '00000000' AND BEDAT NE '00000000' AND BEDAT LE '{ lv_hi }' ) )|.
     ENDIF.
   ELSE.
     IF pv_dlow IS NOT INITIAL.
