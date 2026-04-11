@@ -31,7 +31,8 @@ DATA: gs_cfg    TYPE zsp26_arch_cfg,
       lv_arch_h TYPE syst-tabix,
       lv_cfg_ok TYPE abap_bool,
       lv_ts_s   TYPE timestampl,
-      lv_ts_e   TYPE timestampl.
+      lv_ts_e   TYPE timestampl,
+      lv_sql_elig_cnt TYPE i.
 
 FIELD-SYMBOLS: <lt_src> TYPE STANDARD TABLE,
                <lt_arch> TYPE STANDARD TABLE,
@@ -166,10 +167,17 @@ AT SELECTION-SCREEN.
       PERFORM append_rules_eq_to_where USING gs_cfg-config_id p_table CHANGING lv_w2.
       SELECT * FROM (p_table) INTO TABLE <lt_src> WHERE (lv_w2).
 
+      lv_sql_elig_cnt = lines( <lt_src> ).
       PERFORM apply_rules_to_src.
 
       IF <lt_src> IS INITIAL.
-        MESSAGE |No eligible records in { p_table } (cutoff: { lv_co })| TYPE 'S' DISPLAY LIKE 'W'.
+        IF lv_sql_elig_cnt > 0.
+          MESSAGE |{ lv_sql_elig_cnt } row(s) matched date/SQL but 0 after ZSP26_ARCH_RULE. Restored data must still pass rules — check rule values vs field types (dates now compared as D).|
+                  TYPE 'S' DISPLAY LIKE 'W'.
+        ELSE.
+          MESSAGE |No rows from SQL on { p_table } (cutoff { lv_co }, field { gs_cfg-data_field }). Clear or widen S_DATE on selection screen if needed.|
+                  TYPE 'S' DISPLAY LIKE 'W'.
+        ENDIF.
         RETURN.
       ENDIF.
 
@@ -230,6 +238,7 @@ START-OF-SELECTION.
   ASSIGN gr_src->* TO <lt_src>.
   SELECT * FROM (p_table) INTO TABLE <lt_src> WHERE (lv_where).
 
+  lv_sql_elig_cnt = lines( <lt_src> ).
   PERFORM apply_rules_to_src.
 
   IF p_keyf IS NOT INITIAL.
@@ -253,6 +262,11 @@ START-OF-SELECTION.
   WRITE: / |Records eligible: { lines( <lt_src> ) }|.
 
   IF <lt_src> IS INITIAL.
+    IF lv_sql_elig_cnt > 0.
+      WRITE: / |{ lv_sql_elig_cnt } row(s) matched SQL but none after ZSP26_ARCH_RULE (row-level).|.
+    ELSE.
+      WRITE: / |No rows from SQL (cutoff { lv_cutoff }, { gs_cfg-data_field }). Check S_DATE / retention.|.
+    ENDIF.
     WRITE: / 'No eligible rows — nothing to archive.'.
     RETURN.
   ENDIF.
@@ -473,7 +487,7 @@ FORM apply_rules_to_src.
       lv_ix = lv_ix - 1.
       CONTINUE.
     ENDIF.
-    PERFORM apply_archive_rules USING <lr> gs_cfg-config_id CHANGING lv_rp.
+    PERFORM apply_archive_rules USING <lr> gs_cfg-config_id gs_cfg-table_name CHANGING lv_rp.
     IF lv_rp = abap_false.
       DELETE <lt_src> INDEX lv_ix.
     ENDIF.

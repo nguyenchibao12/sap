@@ -94,7 +94,7 @@ FORM show_archive_preview.
 
     " Check archive rules first
     PERFORM apply_archive_rules
-      USING <row> gs_cfg-config_id
+      USING <row> gs_cfg-config_id gv_tabname
       CHANGING lv_rule_pass.
 
     IF lv_rule_pass = abap_false.

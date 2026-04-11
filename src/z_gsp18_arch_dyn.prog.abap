@@ -135,11 +135,13 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 *& FORM apply_archive_rules — row-level rule eval (ZSP26_ARCH_RULE)
 *& AND_OR on rule N = how rule N links to rule N+1 (eval at rule N+1).
+*& iv_tab: DDIC table → DATE fields (INTTYPE D) compared as type D (stable after JSON restore).
 *& Shared: main UI (F01) + Z_ARCH_EKK_WRITE
 *&---------------------------------------------------------------------*
 FORM apply_archive_rules
   USING    iv_row    TYPE any
            iv_cfg_id TYPE zsp26_arch_cfg-config_id
+           iv_tab    TYPE tabname
   CHANGING cv_pass   TYPE abap_bool.
 
   DATA: lt_rules     TYPE TABLE OF zsp26_arch_rule,
@@ -148,10 +150,24 @@ FORM apply_archive_rules
         lv_result    TYPE abap_bool,
         lv_match     TYPE abap_bool,
         lv_fv_s      TYPE string,
-        lv_first     TYPE abap_bool.
+        lv_first     TYPE abap_bool,
+        lt_df        TYPE TABLE OF dfies,
+        ls_df2       TYPE dfies,
+        lv_fn        TYPE fieldname,
+        lv_row_d     TYPE d,
+        lv_lo        TYPE d,
+        lv_hi        TYPE d,
+        lv_use_d     TYPE abap_bool.
 
   cv_pass  = abap_true.
   lv_first = abap_true.
+
+  IF iv_tab IS NOT INITIAL.
+    CALL FUNCTION 'DDIF_FIELDINFO_GET'
+      EXPORTING  tabname   = iv_tab
+      TABLES     dfies_tab = lt_df
+      EXCEPTIONS OTHERS    = 7.
+  ENDIF.
 
   SELECT * FROM zsp26_arch_rule INTO TABLE @lt_rules
     WHERE config_id = @iv_cfg_id
@@ -165,33 +181,75 @@ FORM apply_archive_rules
   CLEAR ls_prev_rule.
 
   LOOP AT lt_rules INTO ls_rule.
-    ASSIGN COMPONENT ls_rule-field_name OF STRUCTURE iv_row
-      TO FIELD-SYMBOL(<fv>).
+    lv_fn = ls_rule-field_name.
+    CONDENSE lv_fn.
+    TRANSLATE lv_fn TO UPPER CASE.
 
-    IF <fv> IS NOT ASSIGNED.
-      lv_match = abap_false.
+    CLEAR: lv_use_d, lv_match.
+    READ TABLE lt_df INTO ls_df2 WITH KEY fieldname = lv_fn.
+    IF sy-subrc = 0 AND ls_df2-inttype = 'D'.
+      lv_use_d = abap_true.
+    ENDIF.
+
+    IF lv_use_d = abap_true.
+      ASSIGN COMPONENT ls_df2-fieldname OF STRUCTURE iv_row TO FIELD-SYMBOL(<anyd>).
+      IF sy-subrc <> 0 OR <anyd> IS NOT ASSIGNED.
+        lv_match = abap_false.
+      ELSE.
+        lv_row_d = <anyd>.
+        lv_lo    = ls_rule-value_low.
+        lv_hi    = ls_rule-value_high.
+        CASE ls_rule-operator.
+          WHEN 'EQ'.
+            lv_match = COND #( WHEN lv_row_d = lv_lo THEN abap_true ELSE abap_false ).
+          WHEN 'NE'.
+            lv_match = COND #( WHEN lv_row_d <> lv_lo THEN abap_true ELSE abap_false ).
+          WHEN 'GT'.
+            lv_match = COND #( WHEN lv_row_d > lv_lo THEN abap_true ELSE abap_false ).
+          WHEN 'LT'.
+            lv_match = COND #( WHEN lv_row_d < lv_lo THEN abap_true ELSE abap_false ).
+          WHEN 'GE'.
+            lv_match = COND #( WHEN lv_row_d >= lv_lo THEN abap_true ELSE abap_false ).
+          WHEN 'LE'.
+            lv_match = COND #( WHEN lv_row_d <= lv_lo THEN abap_true ELSE abap_false ).
+          WHEN 'BT'.
+            lv_match = COND #( WHEN lv_row_d >= lv_lo AND lv_row_d <= lv_hi
+                               THEN abap_true ELSE abap_false ).
+          WHEN OTHERS.
+            lv_match = abap_true.
+        ENDCASE.
+      ENDIF.
     ELSE.
-      lv_fv_s = CONV string( <fv> ).
-      CASE ls_rule-operator.
-        WHEN 'EQ'.
-          lv_match = COND #( WHEN lv_fv_s =  ls_rule-value_low THEN abap_true ELSE abap_false ).
-        WHEN 'NE'.
-          lv_match = COND #( WHEN lv_fv_s <> ls_rule-value_low THEN abap_true ELSE abap_false ).
-        WHEN 'GT'.
-          lv_match = COND #( WHEN lv_fv_s >  ls_rule-value_low THEN abap_true ELSE abap_false ).
-        WHEN 'LT'.
-          lv_match = COND #( WHEN lv_fv_s <  ls_rule-value_low THEN abap_true ELSE abap_false ).
-        WHEN 'GE'.
-          lv_match = COND #( WHEN lv_fv_s >= ls_rule-value_low THEN abap_true ELSE abap_false ).
-        WHEN 'LE'.
-          lv_match = COND #( WHEN lv_fv_s <= ls_rule-value_low THEN abap_true ELSE abap_false ).
-        WHEN 'BT'.
-          lv_match = COND #( WHEN lv_fv_s >= ls_rule-value_low
-                              AND lv_fv_s <= ls_rule-value_high
-                             THEN abap_true ELSE abap_false ).
-        WHEN OTHERS.
-          lv_match = abap_true.
-      ENDCASE.
+      ASSIGN COMPONENT lv_fn OF STRUCTURE iv_row TO FIELD-SYMBOL(<fv>).
+      IF sy-subrc <> 0.
+        ASSIGN COMPONENT ls_rule-field_name OF STRUCTURE iv_row TO <fv>.
+      ENDIF.
+
+      IF <fv> IS NOT ASSIGNED.
+        lv_match = abap_false.
+      ELSE.
+        lv_fv_s = CONV string( <fv> ).
+        CASE ls_rule-operator.
+          WHEN 'EQ'.
+            lv_match = COND #( WHEN lv_fv_s =  ls_rule-value_low THEN abap_true ELSE abap_false ).
+          WHEN 'NE'.
+            lv_match = COND #( WHEN lv_fv_s <> ls_rule-value_low THEN abap_true ELSE abap_false ).
+          WHEN 'GT'.
+            lv_match = COND #( WHEN lv_fv_s >  ls_rule-value_low THEN abap_true ELSE abap_false ).
+          WHEN 'LT'.
+            lv_match = COND #( WHEN lv_fv_s <  ls_rule-value_low THEN abap_true ELSE abap_false ).
+          WHEN 'GE'.
+            lv_match = COND #( WHEN lv_fv_s >= ls_rule-value_low THEN abap_true ELSE abap_false ).
+          WHEN 'LE'.
+            lv_match = COND #( WHEN lv_fv_s <= ls_rule-value_low THEN abap_true ELSE abap_false ).
+          WHEN 'BT'.
+            lv_match = COND #( WHEN lv_fv_s >= ls_rule-value_low
+                                AND lv_fv_s <= ls_rule-value_high
+                               THEN abap_true ELSE abap_false ).
+          WHEN OTHERS.
+            lv_match = abap_true.
+        ENDCASE.
+      ENDIF.
     ENDIF.
 
     IF lv_first = abap_true.

@@ -326,6 +326,7 @@ FORM read_process_zstr_object
           /ui2/cl_json=>deserialize(
             EXPORTING json = ls_disp-data_json
             CHANGING  data = <rec_dyn> ).
+          PERFORM restore_assign_current_mandt USING gr_dyn.
           MODIFY (lv_tn_row) FROM <rec_dyn>.
           IF sy-subrc = 0.
             ADD 1 TO lv_ins.
@@ -493,6 +494,7 @@ FORM run_read_legacy_json.
         /ui2/cl_json=>deserialize(
           EXPORTING json = lv_json
           CHANGING  data = <rec> ).
+        PERFORM restore_assign_current_mandt USING gr_rec.
         MODIFY (lv_ltab) FROM <rec>.
         IF sy-subrc = 0.
           ADD 1 TO lv_ok.
@@ -531,6 +533,26 @@ FORM run_read_legacy_json.
 
     MESSAGE |Restored { lv_ok } records. Errors: { lv_err }| TYPE 'S'.
   ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& After JSON deserialize: force login client so rows appear in SE16 / current mandt.
+*&---------------------------------------------------------------------*
+FORM restore_assign_current_mandt USING pr_row TYPE REF TO data.
+  FIELD-SYMBOLS: <wa> TYPE any,
+                 <mv> TYPE any.
+  IF pr_row IS NOT BOUND.
+    RETURN.
+  ENDIF.
+  ASSIGN pr_row->* TO <wa>.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+  ASSIGN COMPONENT 'MANDT' OF STRUCTURE <wa> TO <mv>.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+  <mv> = sy-mandt.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
