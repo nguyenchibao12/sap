@@ -4,7 +4,7 @@
 **Hệ thống:** SAP ECC / S/4HANA ABAP  
 **Archive Object:** `Z_ARCH_EKK`  
 **Main Program:** `Z_GSP18_SAP15_MAIN`  
-**Ngày cập nhật:** 2026-04-04  
+**Ngày cập nhật:** 2026-04-04 (chỉnh hướng kế hoạch: 2026-04-11)  
 **Trạng thái tổng thể:** ~90% — còn cần activate + test end-to-end
 
 ---
@@ -21,6 +21,7 @@
 8. [Checklist Test Case đầy đủ](#8-checklist-test-case-đầy-đủ)
 9. [Script Demo bảo vệ đồ án](#9-script-demo-bảo-vệ-đồ-án)
 10. [Checklist 100% hoàn thành](#10-checklist-100-hoàn-thành)
+11. [Hướng đi tiếp theo](#11-hướng-đi-tiếp-theo)
 
 ---
 
@@ -35,7 +36,7 @@ Xây dựng một **công cụ quản lý lưu trữ và xóa dữ liệu (Data 
 | # | Feature | Mô tả chi tiết | Bảng liên quan |
 |---|---|---|---|
 | **F1** | **Archive Management Interface** | Màn hình chính quản lý: nhập bảng, preview records đủ điều kiện, nút Archive/Restore/Monitor/Config | Screen 0100, ZSP26_ARCH_CFG |
-| **F2** | **ADK Archive Write + Delete** | Ghi records vào file `.ARC` chuẩn SAP ADK, sau đó xóa khỏi DB qua SARA | Z_ARCH_EKK_WRITE, Z_ARCH_EKK_DELETE |
+| **F2** | **ADK Archive Write + Delete** | Ghi records vào file `.ARC` chuẩn SAP ADK, sau đó xóa khỏi DB bằng chương trình Delete ADK (SUBMIT/job), **không bắt end-user vào T-code SARA** | Z_ARCH_EKK_WRITE, Z_ARCH_EKK_DELETE |
 | **F3** | **ADK Archive Read + Restore** | Đọc file `.ARC`, hiển thị danh sách, restore về DB | Z_ARCH_EKK_READ |
 | **F4** | **Archive Rules & Dependency Check** | (a) Lọc records theo business rules (field/operator/value). (b) Kiểm tra records con trước khi archive | ZSP26_ARCH_RULE, ZSP26_ARCH_DEP |
 | **F5** | **Storage Analysis & Monitoring** | Đếm live records, log archive/restore/delete runs, snapshot vào ZSP26_ARCH_STAT, hiển thị SALV | ZSP26_ARCH_STAT, ZSP26_ARCH_LOG |
@@ -55,6 +56,23 @@ Xây dựng một **công cụ quản lý lưu trữ và xóa dữ liệu (Data 
 | ZSP26_MARA | MARA | Material Master | LAEDA | 730 ngày |
 | ZSP26_KNA1 | KNA1 | Customer Master | ERDAT | 730 ngày |
 
+### 1.4 Nguyên tắc triển khai (điều chỉnh hướng — chỉ kế hoạch, chưa bắt buộc đổi code ngay)
+
+**Mục tiêu UX:** Toàn bộ quy trình nghiệp vụ **tùy chỉnh trong đồ án** — người dùng **không** phải mở transaction **SARA** để archive/delete/read trong luồng hằng ngày. Mọi bước điều hướng qua **`Z_GSP18_SAP15_MAIN`** (và transaction custom trỏ vào report này, ví dụ `Z_GSP18_SARA`, chỉ là “cửa vào” — tên có thể đổi sau cho đỡ nhầm với SARA chuẩn SAP).
+
+**Phân biệt kỹ thuật:**
+
+- **SARA** = transaction chuẩn SAP để quản lý session archive trên màn hình.
+- **ADK** = bộ API (function modules `ARCHIVE_OPEN_FOR_*`, `ARCHIVE_*_RECORD`, …) và các report Write/Delete/Read gắn **Archive Object** (`Z_ARCH_EKK`). Đồ án **vẫn dùng ADK** để tạo/đọc file `.ARC` và xóa DB một cách chuẩn; điều đó **không** đồng nghĩa với việc bắt user vào SARA — chương trình gọi **SUBMIT** report, job nền, hoặc popup chọn session/file nội bộ (nếu có) thay cho điều hướng sang SARA.
+
+**Nguồn bảng từ screen 0400:**
+
+- **Screen 0400** là nơi người dùng nhập/chọn **`GV_TABNAME`** (Continue → vào hub).
+- Toàn bộ thao tác preview/archive trên hub phải **đọc đúng bảng đó** (Open SQL động `SELECT` theo tên bảng đã chọn), đồng bộ với cấu hình **`ZSP26_ARCH_CFG`** (retention, `DATA_FIELD`, rules phụ thuộc `CONFIG_ID`).
+- **Ràng buộc kế hoạch:** Trước khi preview/write, bảng nhập ở 0400 phải **có dòng cấu hình active** (hoặc quy tắc rõ ràng trong tài liệu — ví dụ fallback từ DDIC trong tương lai) để luôn **đọc được** dữ liệu và tính tuổi dữ liệu nhất quán. Nếu thiếu config, kế hoạch test cần ghi rõ: bắt buộc chạy `ZSP26_LOAD_SAMPLE_DATA` hoặc maintain `ZSP26_ARCH_CFG` cho đúng `TABLE_NAME`.
+
+**Setup hệ thống (một lần):** Quản trị vẫn có thể dùng **AOBJ** / giao diện SAP để đăng ký Archive Object và kiểm tra file — đây là tác vụ **cài đặt**, không phải luồng **end-user** mà đồ án muốn tách khỏi SARA.
+
 ---
 
 ## 2. Kiến trúc tổng thể
@@ -63,7 +81,7 @@ Xây dựng một **công cụ quản lý lưu trữ và xóa dữ liệu (Data 
 ┌─────────────────────────────────────────────────────────────────┐
 │                   Z_GSP18_SAP15_MAIN (Report)                   │
 │  INCLUDE TOP → INCLUDE F01 → INCLUDE O01 → INCLUDE I01         │
-│  START-OF-SELECTION: CALL SCREEN 0100                           │
+│  START-OF-SELECTION: CALL SCREEN 0400 → 0100 (hub)              │
 └──────────┬──────────────────────────────────────────────────────┘
            │ Screen 0100 — Main UI
            │  [Archive Write] [Restore] [Monitor] [Config]
@@ -88,10 +106,10 @@ Xây dựng một **công cụ quản lý lưu trữ và xóa dữ liệu (Data 
            └─► [Config] ───────────────► do_config (F01)
                                           └─► SELECT ZSP26_ARCH_CFG → SALV
 
-ADK Programs (chạy qua SUBMIT hoặc SARA):
-  Z_ARCH_EKK_WRITE   → ARCHIVE_OPEN_FOR_WRITE → loop records → ARCHIVE_WRITE_RECORD → ARCHIVE_CLOSE_OBJECT
-  Z_ARCH_EKK_DELETE  → ARCHIVE_OPEN_FOR_DELETE (via SARA) → ARCHIVE_GET_NEXT_RECORD → DELETE FROM table → ARCHIVE_DELETE_RECORD
-  Z_ARCH_EKK_READ    → ARCHIVE_OPEN_FOR_READ → ARCHIVE_GET_NEXT_RECORD → SALV display → (optional RESTORE)
+ADK Programs (điều khiển từ hub bằng SUBMIT / job; không yêu cầu user mở SARA):
+  Z_ARCH_EKK_WRITE   → ARCHIVE_OPEN_FOR_WRITE → … → ghi file `.ARC`
+  Z_ARCH_EKK_DELETE  → ARCHIVE_OPEN_FOR_DELETE (context từ session/file đã chọn hoặc tham số) → DELETE → ARCHIVE_DELETE_RECORD
+  Z_ARCH_EKK_READ    → ARCHIVE_OPEN_FOR_READ → … → SALV / RESTORE
 
 Support:
   ZSP26_LOAD_SAMPLE_DATA  → load config + rules + deps + transaction data
@@ -1073,6 +1091,45 @@ A: Có, Z_ARCH_EKK_READ với p_rest='X' restore hoàn toàn.
 - [ ] TC-11: Show All Tables button
 - [ ] TC-12: Show Eligible Data button
 - [ ] TC-13: CREATE_VARIANTS verify
+
+---
+
+## 11. Hướng đi tiếp theo
+
+*Bổ sung sau chỉnh hướng **mục 1.4**: hub tùy chỉnh, không bắt end-user vào SARA, nguồn bảng từ screen **0400**.*
+
+Phần này ghi **việc cần làm tiếp** — có thể làm dần theo thứ tự ưu tiên.
+
+### 11.1 Ưu tiên cao — nghiệm thu & nhất quán
+
+| # | Việc cần làm | Ghi chú |
+|---|----------------|---------|
+| 1 | **Activate + test end-to-end trên SAP** | Giữ checklist mục 10; chạy đủ TC-01…TC-13 sau khi import code. |
+| 2 | **Rà soát luồng 0400 → `GV_TABNAME` → preview/write/delete/read** | Đảm bảo mọi `SUBMIT` / job truyền đúng `p_table` (hoặc memory export) khớp bảng đã chọn ở **0400**; ghi chú vào `SCREEN_AND_UI_PLAN.md` nếu có chỗ lệch. |
+| 3 | **Dữ liệu cấu hình tối thiểu** | Với mỗi bảng cần demo: có dòng **active** trong `ZSP26_ARCH_CFG` (sample: `ZSP26_LOAD_SAMPLE_DATA` hoặc maintain tay). |
+| 4 | **AOBJ một lần** | Đăng ký `Z_ARCH_EKK` + program Write/Delete/Read — thuộc **setup**, không đưa vào story “user phải vào SARA”. |
+
+### 11.2 Ưu tiên trung bình — tài liệu & trải nghiệm
+
+| # | Việc cần làm | Ghi chú |
+|---|----------------|---------|
+| 5 | **Đồng bộ `INDEX.md` và `SCREEN_AND_UI_PLAN.md`** | Thêm một đoạn ngắn trùng tinh thần **1.4** (cửa vào custom, 0400 = nguồn bảng). |
+| 6 | **Đổi wording trong demo / Q&A (mục 9)** | Ví dụ câu trả lời đang nói “lifecycle qua SARA” — sửa thành “lifecycle file `.ARC` / ADK; vận hành qua chương trình đồ án” cho khớp **1.4**. |
+| 7 | **Đổi tên T-code** (tùy chọn) | Nếu `Z_GSP18_SARA` gây nhầm với SARA chuẩn SAP: đặt tên mới (ví dụ `Z_GSP18_ARCH`) và cập nhật `*.tran.xml` + tài liệu. |
+
+### 11.3 Ưu tiên thấp / tùy chọn sản phẩm
+
+| # | Việc cần làm | Ghi chú |
+|---|----------------|---------|
+| 8 | **Fallback khi chưa có `ZSP26_ARCH_CFG`** | Quyết định có cần **suy ra `DATA_FIELD`/retention từ DDIC** cho preview hay vẫn **bắt buộc maintain config** — nếu làm, bổ sung rule test và đoạn mô tả trong mục 3 / 5. |
+| 9 | **Đổi nhãn test TC-08** | Trong checklist: “SARA Delete” → **“ADK Delete (hub / job, không bắt user mở SARA)”** để khớp ngôn từ kế hoạch. |
+|10 | **Dọn code/message còn gợi SARA** | Rà soát text trong program (MESSAGE, comment) — chỉnh thành “archive session / file / chương trình Delete” nếu muốn thống nhất hoàn toàn với **1.4**. |
+
+### 11.4 Định nghĩa “xong” cho hướng 1.4
+
+- End-user chỉ vào **một transaction/report đồ án** để preview, ghi archive, xóa DB (theo thiết kế hub), đọc/restore, monitor — **không** có bước bắt buộc “mở SARA” trong hướng dẫn sử dụng.
+- Bảng xử lý **luôn** khớp với giá trị đã chọn ở **screen 0400** (hoặc luồng tương đương được tài liệu hóa).
+- Tài liệu (`PLAN_FINAL`, `INDEX`, `SCREEN_AND_UI_PLAN`) **không mâu thuẫn** nhau về hai điểm trên.
 
 ---
 
