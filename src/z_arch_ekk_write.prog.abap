@@ -33,7 +33,10 @@ DATA: gs_cfg    TYPE zsp26_arch_cfg,
       lv_ts_s   TYPE timestampl,
       lv_ts_e   TYPE timestampl,
       lv_sql_elig_cnt TYPE i,
-      lv_tbl_tot      TYPE i.
+      lv_tbl_tot      TYPE i,
+      lv_tpl_cid      TYPE zsp26_arch_cfg-config_id,
+      lv_tpl_df       TYPE zsp26_arch_cfg-data_field,
+      lv_tpl_ret      TYPE zsp26_arch_cfg-retention.
 
 FIELD-SYMBOLS: <lt_src> TYPE STANDARD TABLE,
                <lt_arch> TYPE STANDARD TABLE,
@@ -156,9 +159,12 @@ AT SELECTION-SCREEN.
       ENDIF.
 
       DATA: lv_co TYPE d,
-            lv_w2 TYPE string.
+            lv_w2 TYPE string,
+            lv_m  TYPE string,
+            lv_df TYPE zsp26_arch_cfg-data_field.
       lv_co = COND #( WHEN s_date-high IS NOT INITIAL THEN s_date-high
                       ELSE sy-datum - gs_cfg-retention ).
+      lv_df = gs_cfg-data_field.
 
       CREATE DATA gr_src TYPE TABLE OF (p_table).
       ASSIGN gr_src->* TO <lt_src>.
@@ -173,17 +179,17 @@ AT SELECTION-SCREEN.
 
       IF <lt_src> IS INITIAL.
         IF lv_sql_elig_cnt > 0.
-          MESSAGE |{ lv_sql_elig_cnt } row(s) matched date/SQL but 0 after ZSP26_ARCH_RULE. Restored data must still pass rules — check rule values vs field types (dates now compared as D).|
-                  TYPE 'S' DISPLAY LIKE 'W'.
+          lv_m = |{ lv_sql_elig_cnt } row(s) matched date/SQL but 0 after ZSP26_ARCH_RULE. Restored data must still pass rules — check rule values vs field types (dates now compared as D).|.
+          MESSAGE lv_m TYPE 'S' DISPLAY LIKE 'W'.
         ELSE.
           CLEAR lv_tbl_tot.
           SELECT COUNT(*) FROM (p_table) INTO @lv_tbl_tot.
           IF lv_tbl_tot > 0.
-            MESSAGE |{ lv_tbl_tot } row(s) on { p_table } (mandt { sy-mandt }) but none match SQL: { gs_cfg-data_field } in S_DATE / cutoff { lv_co }. RESTORE is OK if SE16 shows rows — often AEDAT is empty or outside range; try wider S_DATE, or set ZSP26_ARCH_CFG DATA_FIELD to BEDAT if that is your real document date.|
-                    TYPE 'S' DISPLAY LIKE 'W'.
+            lv_m = |{ lv_tbl_tot } row(s) on { p_table } mandt { sy-mandt } no SQL match field { lv_df } cutoff { lv_co }. Widen S_DATE or set CFG DATA_FIELD to BEDAT if AEDAT empty.|.
+            MESSAGE lv_m TYPE 'S' DISPLAY LIKE 'W'.
           ELSE.
-            MESSAGE |0 rows in { p_table } for this client — RESTORE did not persist here or wrong table/MANDT. If log says Restored N rows, check SE16 same client + keys.|
-                    TYPE 'S' DISPLAY LIKE 'W'.
+            lv_m = |0 rows in { p_table } for this client — RESTORE did not persist here or wrong table/MANDT. If log says Restored N rows, check SE16 same client + keys.|.
+            MESSAGE lv_m TYPE 'S' DISPLAY LIKE 'W'.
           ENDIF.
         ENDIF.
         RETURN.
@@ -211,18 +217,21 @@ START-OF-SELECTION.
   PERFORM validate_table_against_cfg
     USING p_table CHANGING gs_cfg lv_cfg_ok.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Invalid archive target '{ p_table }': no active ZSP26_ARCH_CFG or DATA_FIELD not in DDIC.|
-            TYPE 'A'.
+    MESSAGE |Invalid archive target '{ p_table }': no active ZSP26_ARCH_CFG or DATA_FIELD not in DDIC.| TYPE 'A'.
   ENDIF.
+
+  lv_tpl_df = gs_cfg-data_field.
+  lv_tpl_cid = gs_cfg-config_id.
+  lv_tpl_ret = gs_cfg-retention.
 
   lv_cutoff = COND #( WHEN s_date-high IS NOT INITIAL THEN s_date-high
                       ELSE sy-datum - gs_cfg-retention ).
 
   WRITE: /.
   WRITE: / |=== ADK Write (PUT_TABLE): { p_table } - Object Z_ARCH_EKK ===|.
-  WRITE: / |CONFIG_ID  : { gs_cfg-config_id }|.
-  WRITE: / |Date Field : { gs_cfg-data_field }|.
-  WRITE: / |Retention  : { gs_cfg-retention } days|.
+  WRITE: / |CONFIG_ID  : { lv_tpl_cid }|.
+  WRITE: / |Date Field : { lv_tpl_df }|.
+  WRITE: / |Retention  : { lv_tpl_ret } days|.
   IF s_date-low IS NOT INITIAL.
     WRITE: / |Date From  : { s_date-low }|.
   ELSE.
@@ -276,9 +285,9 @@ START-OF-SELECTION.
       CLEAR lv_tbl_tot.
       SELECT COUNT(*) FROM (p_table) INTO @lv_tbl_tot.
       IF lv_tbl_tot > 0.
-        WRITE: / |{ lv_tbl_tot } row(s) on { p_table } (mandt { sy-mandt }) but none match SQL ({ gs_cfg-data_field } vs S_DATE / cutoff { lv_cutoff }).|.
+        WRITE: / |{ lv_tbl_tot } row(s) on { p_table } mandt { sy-mandt } no SQL match field { lv_tpl_df } cutoff { lv_cutoff }.|.
       ELSE.
-        WRITE: / |No rows from SQL (cutoff { lv_cutoff }, { gs_cfg-data_field }). Table empty this client — check RESTORE/MANDT.|.
+        WRITE: / |No rows from SQL cutoff { lv_cutoff } field { lv_tpl_df }. Table empty this client - check RESTORE/MANDT.|.
       ENDIF.
     ENDIF.
     WRITE: / 'No eligible rows — nothing to archive.'.

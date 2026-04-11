@@ -54,7 +54,11 @@ FORM build_where_from_arch_cfg
            pv_dhigh TYPE d
   CHANGING cv_where TYPE string.
 
-  DATA: lv_hi TYPE d.
+  DATA: lv_hi   TYPE d,
+        lv_df_u TYPE string,
+        lt_df   TYPE TABLE OF dfies,
+        lv_ae   TYPE abap_bool,
+        lv_be   TYPE abap_bool.
 
   IF pv_dhigh IS NOT INITIAL.
     lv_hi = pv_dhigh.
@@ -62,10 +66,43 @@ FORM build_where_from_arch_cfg
     lv_hi = sy-datum - ps_cfg-retention.
   ENDIF.
 
-  IF pv_dlow IS NOT INITIAL.
-    cv_where = |{ ps_cfg-data_field } GE '{ pv_dlow }' AND { ps_cfg-data_field } LE '{ lv_hi }'|.
+  lv_df_u = ps_cfg-data_field.
+  CONDENSE lv_df_u.
+  TRANSLATE lv_df_u TO UPPER CASE.
+
+  CLEAR: lv_ae, lv_be.
+  IF lv_df_u = 'AEDAT'.
+    CALL FUNCTION 'DDIF_FIELDINFO_GET'
+      EXPORTING  tabname   = ps_cfg-table_name
+      TABLES     dfies_tab = lt_df
+      EXCEPTIONS OTHERS    = 7.
+    IF sy-subrc = 0.
+      READ TABLE lt_df WITH KEY fieldname = 'AEDAT' TRANSPORTING NO FIELDS.
+      IF sy-subrc = 0.
+        lv_ae = abap_true.
+      ENDIF.
+      READ TABLE lt_df WITH KEY fieldname = 'BEDAT' TRANSPORTING NO FIELDS.
+      IF sy-subrc = 0.
+        lv_be = abap_true.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+
+  IF lv_ae = abap_true AND lv_be = abap_true.
+    " EKKO-style: many rows keep AEDAT initial; use BEDAT for eligibility when AEDAT is empty
+    IF pv_dlow IS NOT INITIAL.
+      cv_where = |( ( AEDAT NE '00000000' AND AEDAT GE '{ pv_dlow }' AND AEDAT LE '{ lv_hi }' ) OR | &&
+                   |( AEDAT EQ '00000000' AND BEDAT GE '{ pv_dlow }' AND BEDAT LE '{ lv_hi }' ) )|.
+    ELSE.
+      cv_where = |( ( AEDAT NE '00000000' AND AEDAT LE '{ lv_hi }' ) OR | &&
+                   |( AEDAT EQ '00000000' AND BEDAT LE '{ lv_hi }' ) )|.
+    ENDIF.
   ELSE.
-    cv_where = |{ ps_cfg-data_field } LE '{ lv_hi }'|.
+    IF pv_dlow IS NOT INITIAL.
+      cv_where = |{ ps_cfg-data_field } GE '{ pv_dlow }' AND { ps_cfg-data_field } LE '{ lv_hi }'|.
+    ELSE.
+      cv_where = |{ ps_cfg-data_field } LE '{ lv_hi }'|.
+    ENDIF.
   ENDIF.
 ENDFORM.
 
