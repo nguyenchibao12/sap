@@ -160,6 +160,8 @@ AT SELECTION-SCREEN.
 
       DATA: lv_co TYPE d,
             lv_w2 TYPE string,
+            lv_w0 TYPE string,
+            lv_c0 TYPE i,
             lv_m  TYPE string,
             lv_df TYPE zsp26_arch_cfg-data_field.
       lv_co = COND #( WHEN s_date-high IS NOT INITIAL THEN s_date-high
@@ -171,6 +173,7 @@ AT SELECTION-SCREEN.
       PERFORM build_where_from_arch_cfg
         USING gs_cfg s_date-low lv_co
         CHANGING lv_w2.
+      lv_w0 = lv_w2.
       PERFORM append_rules_eq_to_where USING gs_cfg-config_id p_table CHANGING lv_w2.
       SELECT * FROM (p_table) INTO TABLE <lt_src> WHERE (lv_w2).
 
@@ -185,7 +188,13 @@ AT SELECTION-SCREEN.
           CLEAR lv_tbl_tot.
           SELECT COUNT(*) FROM (p_table) INTO @lv_tbl_tot.
           IF lv_tbl_tot > 0.
-            lv_m = |{ lv_tbl_tot } row(s) on { p_table } mandt { sy-mandt } no SQL match field { lv_df } cutoff { lv_co }. Widen S_DATE or set CFG DATA_FIELD to BEDAT if AEDAT empty.|.
+            CLEAR lv_c0.
+            SELECT COUNT(*) FROM (p_table) INTO @lv_c0 WHERE (lv_w0).
+            IF lv_c0 > 0.
+              lv_m = |{ lv_tbl_tot } row(s) on { p_table } mandt { sy-mandt }: { lv_c0 } match date window but 0 with EQ rules merged into Open SQL. Check ZSP26_ARCH_RULE for this CONFIG_ID.|.
+            ELSE.
+              lv_m = |{ lv_tbl_tot } row(s) on { p_table } mandt { sy-mandt } no SQL match field { lv_df } cutoff { lv_co }. Widen S_DATE or set CFG DATA_FIELD to BEDAT if AEDAT empty.|.
+            ENDIF.
             MESSAGE lv_m TYPE 'S' DISPLAY LIKE 'W'.
           ELSE.
             lv_m = |0 rows in { p_table } for this client — RESTORE did not persist here or wrong table/MANDT. If log says Restored N rows, check SE16 same client + keys.|.
@@ -244,10 +253,13 @@ START-OF-SELECTION.
   IF p_test = 'X'. WRITE: / '*** TEST MODE — no archive I/O ***'. ENDIF.
   WRITE: /.
 
-  DATA: lv_where TYPE string.
+  DATA: lv_where  TYPE string,
+        lv_where0 TYPE string,
+        lv_c0     TYPE i.
   PERFORM build_where_from_arch_cfg
     USING gs_cfg s_date-low lv_cutoff
-    CHANGING lv_where.
+    CHANGING lv_where0.
+  lv_where = lv_where0.
   PERFORM append_rules_eq_to_where USING gs_cfg-config_id p_table CHANGING lv_where.
 
   " Runtime memory for target rows: CREATE DATA creates heap data; ASSIGN binds field-symbol
@@ -285,7 +297,13 @@ START-OF-SELECTION.
       CLEAR lv_tbl_tot.
       SELECT COUNT(*) FROM (p_table) INTO @lv_tbl_tot.
       IF lv_tbl_tot > 0.
-        WRITE: / |{ lv_tbl_tot } row(s) on { p_table } mandt { sy-mandt } no SQL match field { lv_tpl_df } cutoff { lv_cutoff }.|.
+        CLEAR lv_c0.
+        SELECT COUNT(*) FROM (p_table) INTO @lv_c0 WHERE (lv_where0).
+        IF lv_c0 > 0.
+          WRITE: / |{ lv_tbl_tot } row(s) on { p_table } mandt { sy-mandt }: { lv_c0 } match date window but 0 with EQ rules in Open SQL — check ZSP26_ARCH_RULE.|.
+        ELSE.
+          WRITE: / |{ lv_tbl_tot } row(s) on { p_table } mandt { sy-mandt } no SQL match field { lv_tpl_df } cutoff { lv_cutoff }.|.
+        ENDIF.
       ELSE.
         WRITE: / |No rows from SQL cutoff { lv_cutoff } field { lv_tpl_df }. Table empty this client - check RESTORE/MANDT.|.
       ENDIF.

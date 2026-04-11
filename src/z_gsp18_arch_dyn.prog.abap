@@ -58,7 +58,8 @@ FORM build_where_from_arch_cfg
         lv_df_u TYPE string,
         lt_df   TYPE TABLE OF dfies,
         lv_ae   TYPE abap_bool,
-        lv_be   TYPE abap_bool.
+        lv_be   TYPE abap_bool,
+        lv_tab  TYPE tabname.
 
   IF pv_dhigh IS NOT INITIAL.
     lv_hi = pv_dhigh.
@@ -72,8 +73,11 @@ FORM build_where_from_arch_cfg
 
   CLEAR: lv_ae, lv_be.
   IF lv_df_u = 'AEDAT'.
+    lv_tab = ps_cfg-table_name.
+    CONDENSE lv_tab.
+    TRANSLATE lv_tab TO UPPER CASE.
     CALL FUNCTION 'DDIF_FIELDINFO_GET'
-      EXPORTING  tabname   = ps_cfg-table_name
+      EXPORTING  tabname   = lv_tab
       TABLES     dfies_tab = lt_df
       EXCEPTIONS OTHERS    = 7.
     IF sy-subrc = 0.
@@ -89,13 +93,14 @@ FORM build_where_from_arch_cfg
   ENDIF.
 
   IF lv_ae = abap_true AND lv_be = abap_true.
-    " EKKO-style: many rows keep AEDAT initial; use BEDAT for eligibility when AEDAT is empty
+    " EKKO-style: AEDAT often NULL/initial in DB — comparisons to '00000000' exclude those rows (3-valued SQL).
+    " IS INITIAL matches DDIC initial + SQL NULL for DATS (SAP Open SQL).
     IF pv_dlow IS NOT INITIAL.
-      cv_where = |( ( AEDAT NE '00000000' AND AEDAT GE '{ pv_dlow }' AND AEDAT LE '{ lv_hi }' ) OR | &&
-                   |( AEDAT EQ '00000000' AND BEDAT GE '{ pv_dlow }' AND BEDAT LE '{ lv_hi }' ) )|.
+      cv_where = |( ( AEDAT IS NOT INITIAL AND AEDAT GE '{ pv_dlow }' AND AEDAT LE '{ lv_hi }' ) OR | &&
+                   |( AEDAT IS INITIAL AND BEDAT IS NOT INITIAL AND BEDAT GE '{ pv_dlow }' AND BEDAT LE '{ lv_hi }' ) )|.
     ELSE.
-      cv_where = |( ( AEDAT NE '00000000' AND AEDAT LE '{ lv_hi }' ) OR | &&
-                   |( AEDAT EQ '00000000' AND BEDAT LE '{ lv_hi }' ) )|.
+      cv_where = |( ( AEDAT IS NOT INITIAL AND AEDAT LE '{ lv_hi }' ) OR | &&
+                   |( AEDAT IS INITIAL AND BEDAT IS NOT INITIAL AND BEDAT LE '{ lv_hi }' ) )|.
     ENDIF.
   ELSE.
     IF pv_dlow IS NOT INITIAL.
