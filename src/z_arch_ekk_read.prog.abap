@@ -170,7 +170,7 @@ START-OF-SELECTION.
       OTHERS         = 1.
 
   IF lt_disp IS INITIAL.
-    MESSAGE |No data for { p_table } (generic format). Try P_JSON for legacy.| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No data for { p_table } (generic). Check archive session/file = WRITE run; ZSP26_ARCH_LOG. Try P_JSON for legacy ty_arch_rec.| TYPE 'S' DISPLAY LIKE 'W'.
   ELSEIF p_rest = 'X'.
     " INSERT + log + MESSAGE đã chạy trong read_process_zstr_object — không mở ALV lần nữa.
   ELSE.
@@ -210,6 +210,7 @@ FORM read_process_zstr_object
 
   DATA: lt_arch   TYPE TABLE OF zstr_arch_rec,
         ls_arch2  TYPE zstr_arch_rec,
+        ls_fill   TYPE zstr_arch_rec,
         lv_ins_rc TYPE i,
         ls_log    TYPE zsp26_arch_log,
         lv_ts_s   TYPE timestampl,
@@ -249,7 +250,29 @@ FORM read_process_zstr_object
 
   " RC=1 end_of_object vẫn có thể kèm dữ liệu trong TABLE — không được bỏ qua (trước đây → Restore 0).
   IF lt_arch IS INITIAL.
-    WRITE: / |SKIP OBJECT: GET_TABLE ZSTR_ARCH_REC RC={ lv_gt_rc } rows=0|.
+    " Một số stack ADK: GET_TABLE sau PUT_TABLE trả TABLE rỗng dù có dữ liệu — đọc tuần tự bằng ZSTR_ARCH_REC.
+    DO.
+      CLEAR ls_fill.
+      CALL FUNCTION 'ARCHIVE_GET_NEXT_RECORD'
+        EXPORTING
+          archive_handle = pv_handle
+        IMPORTING
+          record         = ls_fill
+        EXCEPTIONS
+          end_of_object  = 1
+          OTHERS         = 2.
+      IF sy-subrc <> 0.
+        EXIT.
+      ENDIF.
+      APPEND ls_fill TO lt_arch.
+    ENDDO.
+    IF lines( lt_arch ) > 0.
+      WRITE: / |NOTE: empty GET_TABLE → GET_NEXT_RECORD, { lines( lt_arch ) } row(s).|.
+    ENDIF.
+  ENDIF.
+
+  IF lt_arch IS INITIAL.
+    WRITE: / |SKIP OBJECT: GET_TABLE ZSTR_ARCH_REC RC={ lv_gt_rc } rows=0 (GET_NEXT_RECORD also empty).|.
     RETURN.
   ENDIF.
   IF lv_gt_rc <> 0 AND lv_gt_rc <> 1.
