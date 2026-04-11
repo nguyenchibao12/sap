@@ -7,7 +7,7 @@
     <DDLANGUAGE>E</DDLANGUAGE>
     <DATATYPE>CHAR</DATATYPE>
     <LENG>001333</LENG>
-    <OUTPUTLEN>001333</OUTPUTLEN>
+    <OUTPUTLEN>000255</OUTPUTLEN>
     <DDTEXT>Archived row JSON chunk (generic ADK)</DDTEXT>
    </DD01V>
   </asx:values>
