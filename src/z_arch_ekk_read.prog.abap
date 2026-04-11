@@ -219,7 +219,8 @@ FORM read_process_zstr_object
         lv_tn_cmp TYPE tabname,
         lv_tn_row TYPE tabname,
         lv_disp0  TYPE i,
-        lv_from   TYPE syst-tabix.
+        lv_from   TYPE syst-tabix,
+        lv_gt_rc  TYPE sy-subrc.
 
   lv_disp0 = lines( lt_disp ).
 
@@ -237,10 +238,15 @@ FORM read_process_zstr_object
       internal_error           = 2
       wrong_access_to_archive  = 3
       OTHERS                   = 4.
+  lv_gt_rc = sy-subrc.
 
-  IF sy-subrc <> 0 OR lt_arch IS INITIAL.
-    WRITE: / |SKIP OBJECT: GET_TABLE ZSTR_ARCH_REC RC={ sy-subrc } rows={ lines( lt_arch ) }|.
+  " RC=1 end_of_object vẫn có thể kèm dữ liệu trong TABLE — không được bỏ qua (trước đây → Restore 0).
+  IF lt_arch IS INITIAL.
+    WRITE: / |SKIP OBJECT: GET_TABLE ZSTR_ARCH_REC RC={ lv_gt_rc } rows=0|.
     RETURN.
+  ENDIF.
+  IF lv_gt_rc <> 0 AND lv_gt_rc <> 1.
+    WRITE: / |WARN GET_TABLE ZSTR_ARCH_REC RC={ lv_gt_rc } rows={ lines( lt_arch ) } — still processing.|.
   ENDIF.
 
   LOOP AT lt_arch INTO ls_arch2.
@@ -270,13 +276,16 @@ FORM read_process_zstr_object
     GET TIME STAMP FIELD lv_ts_s.
     CLEAR: lv_ins, lv_ief.
     LOOP AT lt_disp INTO ls_disp FROM lv_from.
-      CREATE DATA gr_dyn TYPE (ls_disp-table_name).
+      lv_tn_row = ls_disp-table_name.
+      CONDENSE lv_tn_row.
+      TRANSLATE lv_tn_row TO UPPER CASE.
+      CREATE DATA gr_dyn TYPE (lv_tn_row).
       ASSIGN gr_dyn->* TO FIELD-SYMBOL(<rec_dyn>).
       TRY.
           /ui2/cl_json=>deserialize(
             EXPORTING json = CONV string( ls_disp-data_json )
             CHANGING  data = <rec_dyn> ).
-          INSERT (ls_disp-table_name) FROM <rec_dyn>.
+          INSERT (lv_tn_row) FROM <rec_dyn>.
           IF sy-subrc = 0.
             ADD 1 TO lv_ins.
           ELSE.
@@ -306,7 +315,12 @@ FORM read_process_zstr_object
     ls_log-message    = |RESTORE generic: { lv_ins } rows. RC={ lv_ins_rc }|.
     INSERT zsp26_arch_log FROM ls_log.
     COMMIT WORK.
-    MESSAGE |Restored { lv_ins } rows| TYPE 'S'.
+    IF lv_ins > 0.
+      MESSAGE |Restored { lv_ins } rows| TYPE 'S'.
+    ELSEIF lv_ief > 0.
+      MESSAGE |Restore: 0 inserted, { lv_ief } failed (duplicate key, JSON, or dynamic type). Check list / keys.|
+              TYPE 'S' DISPLAY LIKE 'W'.
+    ENDIF.
   ENDIF.
 
 ENDFORM.

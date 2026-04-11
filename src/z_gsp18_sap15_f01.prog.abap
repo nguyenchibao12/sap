@@ -811,15 +811,16 @@ FORM do_restore_from_hub.
 
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
-      titlebar       = 'Restore from archive'
-      text_question  = |Chọn file .ARC ở màn hình tiếp theo. Ghi dữ liệu vào bảng { gv_tabname }?|
-      text_button_1  = 'Yes, restore'
-      text_button_2  = 'No, back'
-      default_button = '2'
+      titlebar              = 'Restore from archive'
+      text_question         = |Chọn file .ARC ở màn hình tiếp theo. Ghi dữ liệu vào bảng { gv_tabname }?|
+      text_button_1         = 'Yes, restore'
+      text_button_2         = 'No'
+      default_button        = '2'
+      display_cancel_button = ' '
     IMPORTING
-      answer         = lv_ans
+      answer                = lv_ans
     EXCEPTIONS
-      OTHERS         = 1.
+      OTHERS                = 1.
 
   IF lv_ans = '1'.
     PERFORM do_restore_via_adk.
@@ -830,28 +831,16 @@ ENDFORM.
 *& FORM DO_RESTORE_VIA_ADK — gọi ADK Read Program (p_rest=X → INSERT DB)
 *&---------------------------------------------------------------------*
 FORM do_restore_via_adk.
-  DATA: lv_rtab TYPE tabname,
-        lv_doc  TYPE admi_run-document.
+  DATA: lv_rtab TYPE tabname.
   lv_rtab = gv_tabname.
   CONDENSE lv_rtab.
   TRANSLATE lv_rtab TO UPPER CASE.
-  CLEAR lv_doc.
-  IF gs_del_admi-document IS NOT INITIAL.
-    lv_doc = gs_del_admi-document.
-  ENDIF.
-  " Chỉ WITH p_doc khi có session — WITH p_doc = space ghi đè giá trị từ MEMORY (INITIALIZATION).
-  IF lv_doc IS NOT INITIAL.
-    SUBMIT z_arch_ekk_read
-      WITH p_table = lv_rtab
-      WITH p_rest  = 'X'
-      WITH p_doc   = lv_doc
-      AND RETURN.
-  ELSE.
-    SUBMIT z_arch_ekk_read
-      WITH p_table = lv_rtab
-      WITH p_rest  = 'X'
-      AND RETURN.
-  ENDIF.
+  " Không truyền P_DOC từ hub: ARCHIVE_OPEN_FOR_READ + archive_document thường cần khớp đúng stack;
+  " session trên hub có thể mở file sai / EOF → GET_TABLE rỗng → Restore 0. Chọn .ARC ở màn ADK.
+  SUBMIT z_arch_ekk_read
+    WITH p_table = lv_rtab
+    WITH p_rest  = 'X'
+    AND RETURN.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -1456,15 +1445,16 @@ FORM check_dependencies
   " Warn user — let them decide
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
-      titlebar       = 'Dependency Check Warning'
-      text_question  = |{ gv_tabname } has dependent child records ({ lv_total } total). Archive anyway?|
-      text_button_1  = 'Yes, Archive'
-      text_button_2  = 'No, back'
-      default_button = '2'
+      titlebar              = 'Dependency Check Warning'
+      text_question         = |{ gv_tabname } has dependent child records ({ lv_total } total). Archive anyway?|
+      text_button_1         = 'Yes, Archive'
+      text_button_2         = 'No'
+      default_button        = '2'
+      display_cancel_button = ' '
     IMPORTING
-      answer         = lv_answer
+      answer                = lv_answer
     EXCEPTIONS
-      OTHERS         = 1.
+      OTHERS                = 1.
 
   IF lv_answer <> '1'.
     cv_ok = abap_false.
