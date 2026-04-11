@@ -2,7 +2,7 @@ REPORT z_arch_ekk_read.
 *&---------------------------------------------------------------------*
 *& Report  Z_ARCH_EKK_READ
 *& ADK Read / Restore — Archive Object Z_ARCH_EKK
-*& Default: OPEN_FOR_READ → ARCHIVE_READ_OBJECT → ARCHIVE_GET_TABLE
+*& OPEN_FOR_READ → GET_NEXT_OBJECT + GET_TABLE first (PUT_TABLE / S/4); else READ_OBJECT fallback
 *& Display: REUSE_ALV_LIST_DISPLAY I_STRUCTURE_NAME (no manual fieldcat)
 *& Restore: INSERT (tab) FROM TABLE <dyn> + ZSP26_ARCH_LOG
 *& P_JSON: legacy ty_arch_rec + GET_NEXT_RECORD + SALV on flat ty_disp
@@ -75,117 +75,66 @@ START-OF-SELECTION.
     RETURN.
   ENDIF.
 
-  DATA: lv_any TYPE abap_bool VALUE abap_false,
-        lv_ts_s TYPE timestampl,
-        lv_ts_e TYPE timestampl,
-        lv_obj_h TYPE syst-tabix,
-        lt_arch TYPE TABLE OF zstr_arch_rec,
-        lv_ins  TYPE i,
-        lv_ief  TYPE i.
+  CONDENSE p_table.
+  TRANSLATE p_table TO UPPER CASE.
+
+  DATA: lv_obj_h TYPE syst-tabix,
+        lv_ro_ix TYPE i VALUE 0,
+        lv_gno_ix TYPE i VALUE 0.
+
   CLEAR lt_disp.
 
-  WHILE abap_true.
-    CLEAR lv_obj_h.
-    CALL FUNCTION 'ARCHIVE_READ_OBJECT'
+  " 1) File handle path first — avoids READ_OBJECT moving cursor before GET_NEXT (same as Z_ARCH_EKK_DELETE).
+  CLEAR lv_gno_ix.
+  DO.
+    ADD 1 TO lv_gno_ix.
+    CALL FUNCTION 'ARCHIVE_GET_NEXT_OBJECT'
       EXPORTING
-        object = lv_obj
-      IMPORTING
-        archive_handle = lv_obj_h
+        archive_handle = lv_arch_h
       EXCEPTIONS
-        no_record_found             = 1
-        file_io_error               = 2
-        internal_error              = 3
-        open_error                  = 4
-        cancelled_by_user           = 5
-        object_not_found            = 6
-        filename_creation_failure   = 7
-        file_already_open           = 8
-        not_authorized              = 9
-        file_not_found              = 10
-        OTHERS                      = 11.
+        end_of_file             = 1
+        file_io_error           = 2
+        internal_error          = 3
+        open_error              = 4
+        wrong_access_to_archive = 5
+        OTHERS                  = 6.
     IF sy-subrc <> 0.
       EXIT.
     ENDIF.
 
-    REFRESH lt_arch.
+    PERFORM read_process_zstr_object USING lv_arch_h.
+  ENDDO.
 
-    CALL FUNCTION 'ARCHIVE_GET_TABLE'
-      EXPORTING
-        archive_handle           = lv_obj_h
-        record_structure         = 'ZSTR_ARCH_REC'
-        all_records_of_object    = 'X'
-      TABLES
-        table                    = lt_arch
-      EXCEPTIONS
-        end_of_object            = 1
-        internal_error           = 2
-        wrong_access_to_archive  = 3
-        OTHERS                   = 4.
-
-    IF sy-subrc <> 0 OR lt_arch IS INITIAL.
-      WRITE: / |SKIP OBJECT: GET_TABLE ZSTR_ARCH_REC RC={ sy-subrc }|.
-      CONTINUE.
-    ENDIF.
-
-    lv_any = abap_true.
-
-    LOOP AT lt_arch INTO DATA(ls_arch2).
-      CHECK ls_arch2-rec_type = 'D'.
-      IF p_table IS NOT INITIAL AND ls_arch2-table_name <> p_table.
-        CONTINUE.
+  " 2) Object-handle path if nothing found (older stacks / other file layout).
+  IF lines( lt_disp ) = 0.
+    CLEAR lv_ro_ix.
+    DO.
+      ADD 1 TO lv_ro_ix.
+      CLEAR lv_obj_h.
+      CALL FUNCTION 'ARCHIVE_READ_OBJECT'
+        EXPORTING
+          object = lv_obj
+        IMPORTING
+          archive_handle = lv_obj_h
+        EXCEPTIONS
+          no_record_found             = 1
+          file_io_error               = 2
+          internal_error              = 3
+          open_error                  = 4
+          cancelled_by_user           = 5
+          object_not_found            = 6
+          filename_creation_failure   = 7
+          file_already_open           = 8
+          not_authorized              = 9
+          file_not_found              = 10
+          OTHERS                      = 11.
+      IF sy-subrc <> 0.
+        EXIT.
       ENDIF.
-      CLEAR ls_disp.
-      ls_disp-table_name = ls_arch2-table_name.
-      ls_disp-key_vals   = ls_arch2-key_vals.
-      ls_disp-data_json  = ls_arch2-data_json.
-      APPEND ls_disp TO lt_disp.
-    ENDLOOP.
 
-    IF p_rest = 'X'.
-      DATA: lv_ins_rc TYPE i,
-            ls_log    TYPE zsp26_arch_log.
-      GET TIME STAMP FIELD lv_ts_s.
-      CLEAR: lv_ins, lv_ief.
-      LOOP AT lt_disp INTO ls_disp.
-        CREATE DATA gr_dyn TYPE (ls_disp-table_name).
-        ASSIGN gr_dyn->* TO FIELD-SYMBOL(<rec_dyn>).
-        TRY.
-            /ui2/cl_json=>deserialize(
-              EXPORTING json = CONV string( ls_disp-data_json )
-              CHANGING  data = <rec_dyn> ).
-            INSERT (ls_disp-table_name) FROM <rec_dyn>.
-            IF sy-subrc = 0.
-              ADD 1 TO lv_ins.
-            ELSE.
-              ADD 1 TO lv_ief.
-            ENDIF.
-          CATCH cx_root.
-            ADD 1 TO lv_ief.
-        ENDTRY.
-      ENDLOOP.
-      lv_ins_rc = COND #( WHEN lv_ief = 0 THEN 0 ELSE 4 ).
-      IF lv_ins > 0.
-        COMMIT WORK.
-      ENDIF.
-      GET TIME STAMP FIELD lv_ts_e.
-      TRY. ls_log-log_id = cl_system_uuid=>create_uuid_x16_static( ).
-      CATCH cx_uuid_error. ENDTRY.
-      SELECT SINGLE config_id FROM zsp26_arch_cfg INTO @ls_log-config_id
-        WHERE table_name = @p_table AND is_active = 'X'.
-      ls_log-table_name = p_table.
-      ls_log-action     = 'RESTORE'.
-      ls_log-rec_count  = lv_ins.
-      ls_log-status     = COND #( WHEN lv_ief = 0 THEN 'S' ELSE 'W' ).
-      ls_log-start_time = lv_ts_s.
-      ls_log-end_time   = lv_ts_e.
-      ls_log-exec_user  = sy-uname.
-      ls_log-exec_date  = sy-datum.
-      ls_log-message    = |RESTORE generic: { lv_ins } rows. RC={ lv_ins_rc }|.
-      INSERT zsp26_arch_log FROM ls_log.
-      COMMIT WORK.
-      MESSAGE |Restored { lv_ins } rows| TYPE 'S'.
-    ENDIF.
-  ENDWHILE.
+      PERFORM read_process_zstr_object USING lv_obj_h.
+    ENDDO.
+  ENDIF.
 
   CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
     EXPORTING
@@ -193,9 +142,9 @@ START-OF-SELECTION.
     EXCEPTIONS
       OTHERS         = 1.
 
-  IF lv_any = abap_false.
+  IF lt_disp IS INITIAL.
     MESSAGE |No data for { p_table } (generic format). Try P_JSON for legacy.| TYPE 'S' DISPLAY LIKE 'W'.
-  ELSEIF lt_disp IS NOT INITIAL.
+  ELSE.
     DATA: lo_alv    TYPE REF TO cl_salv_table,
           lo_funcs  TYPE REF TO cl_salv_functions,
           lo_cols   TYPE REF TO cl_salv_columns_table,
@@ -224,6 +173,107 @@ START-OF-SELECTION.
     ENDTRY.
   ENDIF.
 
+*&---------------------------------------------------------------------*
+*& One ADK object: GET_TABLE ZSTR_ARCH_REC → lt_disp; optional restore.
+*&---------------------------------------------------------------------*
+FORM read_process_zstr_object
+  USING VALUE(pv_handle) TYPE syst-tabix.
+
+  DATA: lt_arch   TYPE TABLE OF zstr_arch_rec,
+        ls_arch2  TYPE zstr_arch_rec,
+        lv_ins_rc TYPE i,
+        ls_log    TYPE zsp26_arch_log,
+        lv_ts_s   TYPE timestampl,
+        lv_ts_e   TYPE timestampl,
+        lv_ins    TYPE i,
+        lv_ief    TYPE i,
+        lv_tn_cmp TYPE tabname,
+        lv_tn_row TYPE tabname.
+
+  REFRESH lt_arch.
+
+  CALL FUNCTION 'ARCHIVE_GET_TABLE'
+    EXPORTING
+      archive_handle           = pv_handle
+      record_structure         = 'ZSTR_ARCH_REC'
+      all_records_of_object    = 'X'
+    TABLES
+      table                    = lt_arch
+    EXCEPTIONS
+      end_of_object            = 1
+      internal_error           = 2
+      wrong_access_to_archive  = 3
+      OTHERS                   = 4.
+
+  IF sy-subrc <> 0 OR lt_arch IS INITIAL.
+    WRITE: / |SKIP OBJECT: GET_TABLE ZSTR_ARCH_REC RC={ sy-subrc } rows={ lines( lt_arch ) }|.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_arch INTO ls_arch2.
+    CHECK ls_arch2-rec_type = 'D'.
+    IF p_table IS NOT INITIAL.
+      lv_tn_row = ls_arch2-table_name.
+      CONDENSE lv_tn_row.
+      TRANSLATE lv_tn_row TO UPPER CASE.
+      lv_tn_cmp = p_table.
+      TRANSLATE lv_tn_cmp TO UPPER CASE.
+      IF lv_tn_row <> lv_tn_cmp.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+    CLEAR ls_disp.
+    ls_disp-table_name = ls_arch2-table_name.
+    ls_disp-key_vals   = ls_arch2-key_vals.
+    ls_disp-data_json  = ls_arch2-data_json.
+    APPEND ls_disp TO lt_disp.
+  ENDLOOP.
+
+  IF p_rest = 'X'.
+    GET TIME STAMP FIELD lv_ts_s.
+    CLEAR: lv_ins, lv_ief.
+    LOOP AT lt_disp INTO ls_disp.
+      CREATE DATA gr_dyn TYPE (ls_disp-table_name).
+      ASSIGN gr_dyn->* TO FIELD-SYMBOL(<rec_dyn>).
+      TRY.
+          /ui2/cl_json=>deserialize(
+            EXPORTING json = CONV string( ls_disp-data_json )
+            CHANGING  data = <rec_dyn> ).
+          INSERT (ls_disp-table_name) FROM <rec_dyn>.
+          IF sy-subrc = 0.
+            ADD 1 TO lv_ins.
+          ELSE.
+            ADD 1 TO lv_ief.
+          ENDIF.
+        CATCH cx_root.
+          ADD 1 TO lv_ief.
+      ENDTRY.
+    ENDLOOP.
+    lv_ins_rc = COND #( WHEN lv_ief = 0 THEN 0 ELSE 4 ).
+    IF lv_ins > 0.
+      COMMIT WORK.
+    ENDIF.
+    GET TIME STAMP FIELD lv_ts_e.
+    TRY. ls_log-log_id = cl_system_uuid=>create_uuid_x16_static( ).
+    CATCH cx_uuid_error. ENDTRY.
+    SELECT SINGLE config_id FROM zsp26_arch_cfg INTO @ls_log-config_id
+      WHERE table_name = @p_table AND is_active = 'X'.
+    ls_log-table_name = p_table.
+    ls_log-action     = 'RESTORE'.
+    ls_log-rec_count  = lv_ins.
+    ls_log-status     = COND #( WHEN lv_ief = 0 THEN 'S' ELSE 'W' ).
+    ls_log-start_time = lv_ts_s.
+    ls_log-end_time   = lv_ts_e.
+    ls_log-exec_user  = sy-uname.
+    ls_log-exec_date  = sy-datum.
+    ls_log-message    = |RESTORE generic: { lv_ins } rows. RC={ lv_ins_rc }|.
+    INSERT zsp26_arch_log FROM ls_log.
+    COMMIT WORK.
+    MESSAGE |Restored { lv_ins } rows| TYPE 'S'.
+  ENDIF.
+
+ENDFORM.
+
 *----------------------------------------------------------------------*
 FORM run_read_legacy_json.
   DATA: lv_arch_h_loc TYPE syst-tabix.
@@ -243,7 +293,7 @@ FORM run_read_legacy_json.
   DO.
     CALL FUNCTION 'ARCHIVE_GET_NEXT_OBJECT'
       EXPORTING
-        archive_handle = gv_arch_handle
+        archive_handle = lv_arch_h_loc
       EXCEPTIONS
         end_of_file    = 1
         OTHERS         = 2.
@@ -255,7 +305,7 @@ FORM run_read_legacy_json.
       CLEAR ls_arec.
       CALL FUNCTION 'ARCHIVE_GET_NEXT_RECORD'
         EXPORTING
-          archive_handle = gv_arch_handle
+          archive_handle = lv_arch_h_loc
         IMPORTING
           record         = ls_arec
         EXCEPTIONS
@@ -280,7 +330,7 @@ FORM run_read_legacy_json.
 
   CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
     EXPORTING
-      archive_handle = gv_arch_handle
+      archive_handle = lv_arch_h_loc
     EXCEPTIONS
       OTHERS         = 1.
 

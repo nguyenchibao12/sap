@@ -807,8 +807,12 @@ ENDFORM.
 *& FORM DO_RESTORE_VIA_ADK — gọi ADK Read Program (từ lcl_handler)
 *&---------------------------------------------------------------------*
 FORM do_restore_via_adk.
+  DATA(lv_rtab) TYPE tabname.
+  lv_rtab = gv_tabname.
+  CONDENSE lv_rtab.
+  TRANSLATE lv_rtab TO UPPER CASE.
   SUBMIT z_arch_ekk_read
-    WITH p_table = gv_tabname
+    WITH p_table = lv_rtab
     WITH p_rest  = 'X'
     AND RETURN.
 ENDFORM.
@@ -920,9 +924,12 @@ ENDFORM.
 *& FORM DO_RESTORE_PREVIEW — Phase 4: Mở ADK Read Program
 *&---------------------------------------------------------------------*
 FORM do_restore_preview.
-  " Launch ADK Read/Restore program — shows archived records from file
+  DATA(lv_rtab) TYPE tabname.
+  lv_rtab = gv_tabname.
+  CONDENSE lv_rtab.
+  TRANSLATE lv_rtab TO UPPER CASE.
   SUBMIT z_arch_ekk_read
-    WITH p_table = gv_tabname
+    WITH p_table = lv_rtab
     WITH p_rest  = ' '
     AND RETURN.
 ENDFORM.
