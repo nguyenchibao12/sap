@@ -814,10 +814,8 @@ FORM do_restore_from_hub.
       titlebar       = 'Restore from archive'
       text_question  = |Chọn file .ARC ở màn hình tiếp theo. Ghi dữ liệu vào bảng { gv_tabname }?|
       text_button_1  = 'Yes, restore'
-      text_button_2  = 'Cancel'
+      text_button_2  = 'No, back'
       default_button = '2'
-      icon_button_1  = 'ICON_OKAY'
-      icon_button_2  = 'ICON_CANCEL'
     IMPORTING
       answer         = lv_ans
     EXCEPTIONS
@@ -832,14 +830,28 @@ ENDFORM.
 *& FORM DO_RESTORE_VIA_ADK — gọi ADK Read Program (p_rest=X → INSERT DB)
 *&---------------------------------------------------------------------*
 FORM do_restore_via_adk.
-  DATA: lv_rtab TYPE tabname.
+  DATA: lv_rtab TYPE tabname,
+        lv_doc  TYPE admi_run-document.
   lv_rtab = gv_tabname.
   CONDENSE lv_rtab.
   TRANSLATE lv_rtab TO UPPER CASE.
-  SUBMIT z_arch_ekk_read
-    WITH p_table = lv_rtab
-    WITH p_rest  = 'X'
-    AND RETURN.
+  CLEAR lv_doc.
+  IF gs_del_admi-document IS NOT INITIAL.
+    lv_doc = gs_del_admi-document.
+  ENDIF.
+  " Chỉ WITH p_doc khi có session — WITH p_doc = space ghi đè giá trị từ MEMORY (INITIALIZATION).
+  IF lv_doc IS NOT INITIAL.
+    SUBMIT z_arch_ekk_read
+      WITH p_table = lv_rtab
+      WITH p_rest  = 'X'
+      WITH p_doc   = lv_doc
+      AND RETURN.
+  ELSE.
+    SUBMIT z_arch_ekk_read
+      WITH p_table = lv_rtab
+      WITH p_rest  = 'X'
+      AND RETURN.
+  ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -1447,10 +1459,8 @@ FORM check_dependencies
       titlebar       = 'Dependency Check Warning'
       text_question  = |{ gv_tabname } has dependent child records ({ lv_total } total). Archive anyway?|
       text_button_1  = 'Yes, Archive'
-      text_button_2  = 'Cancel'
+      text_button_2  = 'No, back'
       default_button = '2'
-      icon_button_1  = 'ICON_OKAY'
-      icon_button_2  = 'ICON_CANCEL'
     IMPORTING
       answer         = lv_answer
     EXCEPTIONS

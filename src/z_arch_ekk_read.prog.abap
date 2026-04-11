@@ -34,11 +34,19 @@ FIELD-SYMBOLS: <lt_dyn> TYPE ANY TABLE.
 PARAMETERS: p_table TYPE tabname DEFAULT 'ZSP26_EKKO'.
 PARAMETERS: p_rest  TYPE c       AS CHECKBOX DEFAULT ' '.
 PARAMETERS: p_json  TYPE c       AS CHECKBOX DEFAULT ' '.
+PARAMETERS: p_doc   TYPE admi_run-document.
 
 *----------------------------------------------------------------------*
 INITIALIZATION.
 *----------------------------------------------------------------------*
-  g_scr_r0 = 'F4 = ZSP26_ARCH_CFG. P_REST restores after list. P_JSON = old JSON archive format.'.
+  g_scr_r0 = 'F4=ZSP26_ARCH_CFG. P_REST=restore. P_DOC=session (optional). P_JSON=legacy JSON.'.
+
+  DATA ls_ra TYPE admi_run.
+  IMPORT read_admi = ls_ra FROM MEMORY ID 'Z_GSP18_ARCH_READ_DOC'.
+  IF sy-subrc = 0 AND ls_ra-document IS NOT INITIAL.
+    p_doc = ls_ra-document.
+  ENDIF.
+  FREE MEMORY ID 'Z_GSP18_ARCH_READ_DOC'.
 
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
@@ -54,21 +62,40 @@ START-OF-SELECTION.
     EXIT.
   ENDIF.
 
-  CALL FUNCTION 'ARCHIVE_OPEN_FOR_READ'
-    EXPORTING
-      object = 'Z_ARCH_EKK'
-    IMPORTING
-      archive_handle = lv_arch_h
-    EXCEPTIONS
-      file_already_open             = 1
-      file_io_error                 = 2
-      internal_error                = 3
-      no_files_available            = 4
-      object_not_found              = 5
-      open_error                    = 6
-      not_authorized                = 7
-      archiving_standard_violation  = 8
-      OTHERS                        = 9.
+  IF p_doc IS NOT INITIAL.
+    CALL FUNCTION 'ARCHIVE_OPEN_FOR_READ'
+      EXPORTING
+        object             = 'Z_ARCH_EKK'
+        archive_document   = p_doc
+      IMPORTING
+        archive_handle = lv_arch_h
+      EXCEPTIONS
+        file_already_open             = 1
+        file_io_error                 = 2
+        internal_error                = 3
+        no_files_available            = 4
+        object_not_found              = 5
+        open_error                    = 6
+        not_authorized                = 7
+        archiving_standard_violation  = 8
+        OTHERS                        = 9.
+  ELSE.
+    CALL FUNCTION 'ARCHIVE_OPEN_FOR_READ'
+      EXPORTING
+        object = 'Z_ARCH_EKK'
+      IMPORTING
+        archive_handle = lv_arch_h
+      EXCEPTIONS
+        file_already_open             = 1
+        file_io_error                 = 2
+        internal_error                = 3
+        no_files_available            = 4
+        object_not_found              = 5
+        open_error                    = 6
+        not_authorized                = 7
+        archiving_standard_violation  = 8
+        OTHERS                        = 9.
+  ENDIF.
   IF sy-subrc <> 0.
     MESSAGE 'Cannot open archive Z_ARCH_EKK for read (check session / .ARC file selection).'
             TYPE 'S' DISPLAY LIKE 'E'.
@@ -190,7 +217,11 @@ FORM read_process_zstr_object
         lv_ins    TYPE i,
         lv_ief    TYPE i,
         lv_tn_cmp TYPE tabname,
-        lv_tn_row TYPE tabname.
+        lv_tn_row TYPE tabname,
+        lv_disp0  TYPE i,
+        lv_from   TYPE syst-tabix.
+
+  lv_disp0 = lines( lt_disp ).
 
   REFRESH lt_arch.
 
@@ -232,9 +263,13 @@ FORM read_process_zstr_object
   ENDLOOP.
 
   IF p_rest = 'X'.
+    IF lines( lt_disp ) <= lv_disp0.
+      RETURN.
+    ENDIF.
+    lv_from = lv_disp0 + 1.
     GET TIME STAMP FIELD lv_ts_s.
     CLEAR: lv_ins, lv_ief.
-    LOOP AT lt_disp INTO ls_disp.
+    LOOP AT lt_disp INTO ls_disp FROM lv_from.
       CREATE DATA gr_dyn TYPE (ls_disp-table_name).
       ASSIGN gr_dyn->* TO FIELD-SYMBOL(<rec_dyn>).
       TRY.
@@ -280,12 +315,22 @@ ENDFORM.
 FORM run_read_legacy_json.
   DATA: lv_arch_h_loc TYPE syst-tabix.
 
-  CALL FUNCTION 'ARCHIVE_OPEN_FOR_READ'
-    EXPORTING
-      object = 'Z_ARCH_EKK'
-    IMPORTING
-      archive_handle = lv_arch_h_loc
-    EXCEPTIONS OTHERS = 1.
+  IF p_doc IS NOT INITIAL.
+    CALL FUNCTION 'ARCHIVE_OPEN_FOR_READ'
+      EXPORTING
+        object             = 'Z_ARCH_EKK'
+        archive_document   = p_doc
+      IMPORTING
+        archive_handle = lv_arch_h_loc
+      EXCEPTIONS OTHERS = 1.
+  ELSE.
+    CALL FUNCTION 'ARCHIVE_OPEN_FOR_READ'
+      EXPORTING
+        object = 'Z_ARCH_EKK'
+      IMPORTING
+        archive_handle = lv_arch_h_loc
+      EXCEPTIONS OTHERS = 1.
+  ENDIF.
   IF sy-subrc <> 0.
     MESSAGE 'Cannot open archive for read (legacy).' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
