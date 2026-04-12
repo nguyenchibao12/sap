@@ -398,7 +398,7 @@ MODULE user_command_0500 INPUT.
 
   CASE lv_u5.
     WHEN 'BT_EDIT' OR 'EDIT_BTN'.
-      PERFORM arch_edit_write_variant_0500.
+      PERFORM zsp26_hub_edit_wvar_0500.
 
     WHEN 'BT_START' OR 'START_BTN'.
       PERFORM maintenance_start_date.

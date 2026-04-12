@@ -1502,16 +1502,16 @@ FORM f4_gv_tabname_dynp.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Màn 0500 — Edit: popup Create hoặc Change / Delete / Copy (không mở
-*& selection screen “trần” khi variant chưa có).
+*& Màn 0500 — Edit variant: Create / Change / Delete / Copy (chỉ POPUP_TO_CONFIRM).
+*& Tên form đổi để tránh trùng bản cũ trên SAP còn gọi POPUP_TO_DECIDE.
 *&---------------------------------------------------------------------*
-FORM arch_edit_write_variant_0500.
+FORM zsp26_hub_edit_wvar_0500.
   DATA: lv_vtech TYPE variant,
         lv_vok   TYPE abap_bool,
         lv_rc    TYPE sy-subrc,
         lv_run   TYPE variant,
         lv_ans   TYPE char1,
-        lv_act   TYPE char1,
+        lv_ans2  TYPE char1,
         lv_ok    TYPE abap_bool,
         lv_msg   TYPE string.
 
@@ -1590,45 +1590,59 @@ FORM arch_edit_write_variant_0500.
     RETURN.
   ENDIF.
 
-  CALL FUNCTION 'POPUP_TO_DECIDE'
+  lv_msg = |{ gv_variant } (SAP: { lv_run }) — open for change on selection screen?|.
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
-      titel         = 'Variant'
-      text_question = |{ gv_variant } (SAP: { lv_run }) — choose action|
-      text_option1  = 'Change'
-      text_option2  = 'Delete'
-      text_option3  = 'Copy variant'
+      titlebar              = 'Variant'
+      text_question         = lv_msg
+      text_button_1         = 'Change'
+      text_button_2         = 'Other actions'
+      display_cancel_button = ' '
     IMPORTING
-      answer        = lv_act
+      answer                = lv_ans
     EXCEPTIONS
       OTHERS                = 1.
   IF sy-subrc <> 0.
     RETURN.
   ENDIF.
+  IF lv_ans = '1'.
+    SUBMIT (gv_prog_write)
+      WITH p_table = gv_tabname
+      USING SELECTION-SET lv_run
+      VIA SELECTION-SCREEN
+      AND RETURN.
+    RETURN.
+  ENDIF.
 
-  CASE lv_act.
-    WHEN '1'.
-      SUBMIT (gv_prog_write)
-        WITH p_table = gv_tabname
-        USING SELECTION-SET lv_run
-        VIA SELECTION-SCREEN
-        AND RETURN.
-
-    WHEN '2'.
-      lv_msg = |Delete SAP variant { lv_run }? This cannot be undone.|.
-      CALL FUNCTION 'POPUP_TO_CONFIRM'
-        EXPORTING
-          titlebar              = 'Delete Variant'
-          text_question         = lv_msg
-          text_button_1         = 'Delete'
-          text_button_2         = 'Cancel'
-          display_cancel_button = ' '
-        IMPORTING
-          answer                = lv_ans
-        EXCEPTIONS
-          OTHERS                = 1.
-      IF lv_ans <> '1'.
-        RETURN.
-      ENDIF.
+  lv_msg = |Delete variant { lv_run }?|.
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar              = 'Variant'
+      text_question         = lv_msg
+      text_button_1         = 'Delete'
+      text_button_2         = 'Skip'
+      display_cancel_button = ' '
+    IMPORTING
+      answer                = lv_ans
+    EXCEPTIONS
+      OTHERS                = 1.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+  IF lv_ans = '1'.
+    lv_msg = |Delete SAP variant { lv_run }? This cannot be undone.|.
+    CALL FUNCTION 'POPUP_TO_CONFIRM'
+      EXPORTING
+        titlebar              = 'Delete Variant'
+        text_question         = lv_msg
+        text_button_1         = 'Delete'
+        text_button_2         = 'Cancel'
+        display_cancel_button = ' '
+      IMPORTING
+        answer                = lv_ans2
+      EXCEPTIONS
+        OTHERS                = 1.
+    IF lv_ans2 = '1'.
       CALL FUNCTION 'RS_VARIANT_DELETE'
         EXPORTING
           report             = gv_prog_write
@@ -1643,14 +1657,28 @@ FORM arch_edit_write_variant_0500.
       ELSE.
         MESSAGE |Could not delete variant { lv_run }.| TYPE 'S' DISPLAY LIKE 'E'.
       ENDIF.
+    ENDIF.
+    RETURN.
+  ENDIF.
 
-    WHEN '3'.
-      PERFORM arch_copy_write_variant_dialog
-        USING gv_prog_write gv_tabname lv_run.
+  lv_msg = |Copy variant { lv_run } to a new name?|.
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar              = 'Variant'
+      text_question         = lv_msg
+      text_button_1         = 'Copy'
+      text_button_2         = 'Cancel'
+      display_cancel_button = ' '
+    IMPORTING
+      answer                = lv_ans
+    EXCEPTIONS
+      OTHERS                = 1.
+  IF sy-subrc <> 0 OR lv_ans <> '1'.
+    RETURN.
+  ENDIF.
 
-    WHEN OTHERS.
-      RETURN.
-  ENDCASE.
+  PERFORM arch_copy_write_variant_dialog
+    USING gv_prog_write gv_tabname lv_run.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
