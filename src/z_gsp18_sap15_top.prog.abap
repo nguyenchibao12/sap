@@ -114,6 +114,32 @@ DATA: go_alv_grid    TYPE REF TO cl_gui_alv_grid,
       gs_layout      TYPE lvc_s_layo.
 
 "----------------------------------------------------------------------
+" Monitor enhanced — type + globals (Phase 2/3/4)
+"----------------------------------------------------------------------
+TYPES: BEGIN OF ty_mon_disp,
+         table_name  TYPE tabname,
+         status_icon TYPE icon_d,       " LED: green / yellow / red (monitor)
+         status_txt  TYPE char10,       " Phase 2/3: OVERDUE / WARNING / OK (technical / export)
+         live_recs   TYPE i,
+         arch_recs   TYPE i,            " Phase 2: records in archive (status=A)
+         del_recs    TYPE i,            " Phase 2: records deleted after archive
+         pct_saved   TYPE p DECIMALS 1, " Phase 2: % archived vs total
+         arch_runs   TYPE i,
+         rest_runs   TYPE i,
+         del_runs    TYPE i,
+         last_action TYPE char10,
+         last_date   TYPE d,
+         last_arch_d TYPE d,            " Phase 2: last ARCHIVE date
+         last_del_d  TYPE d,            " Phase 2: last DELETE date
+         last_user   TYPE xubname,
+         retention   TYPE i,
+         is_active   TYPE char1,
+       END OF ty_mon_disp.
+
+DATA: gt_mon_disp TYPE TABLE OF ty_mon_disp,
+      go_mon_alv  TYPE REF TO cl_salv_table.
+
+"----------------------------------------------------------------------
 " Classes — Event handler cho SALV custom buttons
 " (tương đương tab "Classes" trong SE80)
 "----------------------------------------------------------------------
@@ -124,4 +150,12 @@ CLASS lcl_handler DEFINITION.
       IMPORTING e_salv_function.
 ENDCLASS.
 
-"  lcl_handler IMPLEMENTATION is in Z_GSP18_SAP15_F01
+" Phase 4: Monitor drill-down handler
+CLASS lcl_mon_handler DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS on_func
+      FOR EVENT added_function OF cl_salv_events
+      IMPORTING e_salv_function.
+ENDCLASS.
+
+"  lcl_handler + lcl_mon_handler IMPLEMENTATION is in Z_GSP18_SAP15_F01

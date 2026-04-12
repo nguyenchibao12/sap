@@ -4,6 +4,7 @@
 *&
 *&---------------------------------------------------------------------*
 REPORT Z_GSP18_SAP15_MAIN.
+INCLUDE <icon>.
 INCLUDE Z_GSP18_SAP15_TOP.  " Global Data
 INCLUDE Z_GSP18_SAP15_F01.  " Subroutines
 INCLUDE Z_GSP18_SAP15_O01.  " PBO Modules
