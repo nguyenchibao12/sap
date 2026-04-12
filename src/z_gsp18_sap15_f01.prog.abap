@@ -1592,14 +1592,13 @@ FORM arch_edit_write_variant_0500.
 
   CALL FUNCTION 'POPUP_TO_DECIDE'
     EXPORTING
-      titel                 = 'Variant'
-      text_question         = |{ gv_variant } (SAP: { lv_run }) — choose action|
-      text_option1          = 'Change'
-      text_option2          = 'Delete'
-      text_option3          = 'Copy variant'
-      display_cancel_button = 'X'
+      titel         = 'Variant'
+      text_question = |{ gv_variant } (SAP: { lv_run }) — choose action|
+      text_option1  = 'Change'
+      text_option2  = 'Delete'
+      text_option3  = 'Copy variant'
     IMPORTING
-      answer                = lv_act
+      answer        = lv_act
     EXCEPTIONS
       OTHERS                = 1.
   IF sy-subrc <> 0.
