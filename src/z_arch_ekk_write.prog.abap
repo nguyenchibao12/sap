@@ -271,6 +271,7 @@ START-OF-SELECTION.
         lv_take     TYPE i,
         lv_val2     TYPE string,
         lv_fn2      TYPE fieldname,
+        lv_kfn      TYPE string,
         lv_kcheck   TYPE char255.
   PERFORM build_where_from_arch_cfg
     USING gs_cfg s_date-low lv_cutoff
@@ -350,6 +351,10 @@ START-OF-SELECTION.
         lv_fn2 = ls_dd_wa-fieldname.
         CONDENSE lv_fn2.
         TRANSLATE lv_fn2 TO UPPER CASE.
+        CLEAR lv_kfn.
+        lv_kfn = lv_fn2.
+        PERFORM zsp26_arch_norm_keyfname CHANGING lv_kfn.
+        lv_fn2 = lv_kfn.
         IF lv_keyvals IS NOT INITIAL.
           lv_keyvals = lv_keyvals && '|' && lv_fn2 && '=' && lv_val2.
         ELSE.

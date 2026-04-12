@@ -327,6 +327,30 @@ FORM apply_archive_rules
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& KEY_VALS segment sometimes stores glued "AND" + DDIC name (ANDMJAHR).
+*& String + lv(3) compare can fail on some stacks — use c(3) from +0(3).
+*&---------------------------------------------------------------------*
+FORM zsp26_arch_norm_keyfname CHANGING cv_kf TYPE string.
+
+  DATA: lv_l     TYPE i,
+        lv_head3 TYPE c LENGTH 3.
+
+  CONDENSE cv_kf.
+  TRANSLATE cv_kf TO UPPER CASE.
+  lv_l = strlen( cv_kf ).
+  WHILE lv_l > 3.
+    CLEAR lv_head3.
+    lv_head3 = cv_kf+0(3).
+    IF lv_head3 <> 'AND'.
+      EXIT.
+    ENDIF.
+    cv_kf = cv_kf+3.
+    CONDENSE cv_kf.
+    lv_l = strlen( cv_kf ).
+  ENDWHILE.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& F4: active ZSP26_ARCH_CFG tables (shared WRITE / READ / DELETE)
 *&---------------------------------------------------------------------*
 FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.

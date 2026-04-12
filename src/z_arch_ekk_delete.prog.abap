@@ -558,11 +558,7 @@ FORM process_delete_adk_object
         CONDENSE lv_kf_gen.
         CONDENSE lv_kv_gen.
         TRANSLATE lv_kf_gen TO UPPER CASE.
-        " KEY_VALS đôi khi có tiền tố AND dính tên cột (ANDMJAHR) → SQL ANDMJAHR invalid
-        IF strlen( lv_kf_gen ) > 7 AND lv_kf_gen(3) = 'AND'.
-          lv_kf_gen = lv_kf_gen+3.
-          CONDENSE lv_kf_gen.
-        ENDIF.
+        PERFORM zsp26_arch_norm_keyfname CHANGING lv_kf_gen.
         CHECK lv_kf_gen IS NOT INITIAL.
         IF NOT lv_kf_gen CO '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_/'.
           WRITE: / |  ERR: invalid key field in KEY_VALS: { lv_kf_gen }|.
@@ -893,6 +889,7 @@ FORM run_delete_legacy_json.
       CONDENSE lv_kf_loc.
       CONDENSE lv_kv_loc.
       TRANSLATE lv_kf_loc TO UPPER CASE.
+      PERFORM zsp26_arch_norm_keyfname CHANGING lv_kf_loc.
       CHECK lv_kf_loc IS NOT INITIAL.
       lv_kv_esc_loc = lv_kv_loc.
       PERFORM zsp26_sql_escape_quote CHANGING lv_kv_esc_loc.
