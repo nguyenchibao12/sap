@@ -581,6 +581,7 @@ FORM process_delete_adk_object
         WRITE: / |  WARN: empty KEY_VALS for { lv_del_tab }|.
         CONTINUE.
       ENDIF.
+      PERFORM zsp26_arch_fix_where_glued_and USING lv_del_tab CHANGING lv_where_gen.
       lv_mandt_q = |{ sy-mandt }|.
       lv_where_gen = |MANDT EQ '{ lv_mandt_q }' AND | && lv_where_gen.
 
@@ -896,6 +897,7 @@ FORM run_delete_legacy_json.
       IF lv_where_loc IS NOT INITIAL. lv_where_loc &&= ' AND '. ENDIF.
       lv_where_loc &&= lv_kf_loc && ` EQ '` && lv_kv_esc_loc && `'`.
     ENDLOOP.
+    PERFORM zsp26_arch_fix_where_glued_and USING ls_arec_loc-table_name CHANGING lv_where_loc.
     lv_where_loc = 'MANDT EQ ''' && sy-mandt && ''' AND ' && lv_where_loc.
 
     WRITE: / '  LEGACY ' && ls_arec_loc-table_name && ' / ' && ls_arec_loc-key_vals.

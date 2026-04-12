@@ -351,9 +351,69 @@ FORM zsp26_arch_norm_keyfname CHANGING cv_kf TYPE string.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& F4: active ZSP26_ARCH_CFG tables (shared WRITE / READ / DELETE)
+*& Dynamic WHERE sometimes shows '...'ANDMJAHR or '...' ANDMJAHR (missing
+*& space between AND and field). Fix using DDIC keys, longest name first.
+*&---------------------------------------------------------------------*
+FORM zsp26_arch_fix_where_glued_and
+  USING    VALUE(pv_tab) TYPE tabname
+  CHANGING cv_where       TYPE string.
+
+  TYPES: BEGIN OF ty_kflen,
+           kfname TYPE fieldname,
+           kflen  TYPE i,
+         END OF ty_kflen.
+
+  DATA: lt_df    TYPE TABLE OF dfies,
+        ls_df    TYPE dfies,
+        lt_kflen TYPE STANDARD TABLE OF ty_kflen WITH DEFAULT KEY,
+        ls_kf    TYPE ty_kflen,
+        lv_fn    TYPE fieldname,
+        lv_fr    TYPE string,
+        lv_to    TYPE string,
+        lv_tab   TYPE tabname.
+
+  CHECK pv_tab IS NOT INITIAL AND cv_where IS NOT INITIAL.
+
+  lv_tab = pv_tab.
+  CONDENSE lv_tab.
+  TRANSLATE lv_tab TO UPPER CASE.
+
+  CALL FUNCTION 'DDIF_FIELDINFO_GET'
+    EXPORTING  tabname   = lv_tab
+    TABLES     dfies_tab = lt_df
+    EXCEPTIONS OTHERS    = 7.
+  IF sy-subrc <> 0 OR lt_df IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  REFRESH lt_kflen.
+  LOOP AT lt_df INTO ls_df WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
+    CLEAR ls_kf.
+    ls_kf-kfname = ls_df-fieldname.
+    CONDENSE ls_kf-kfname.
+    TRANSLATE ls_kf-kfname TO UPPER CASE.
+    ls_kf-kflen = strlen( ls_kf-kfname ).
+    CHECK ls_kf-kflen > 0.
+    APPEND ls_kf TO lt_kflen.
+  ENDLOOP.
+  SORT lt_kflen BY kflen DESCENDING.
+
+  LOOP AT lt_kflen INTO ls_kf.
+    lv_fn = ls_kf-kfname.
+    lv_fr = `'` && `AND` && lv_fn.
+    lv_to = `'` && ` AND ` && lv_fn.
+    REPLACE ALL OCCURRENCES OF lv_fr IN cv_where WITH lv_to.
+    lv_fr = `'` && ` AND` && lv_fn.
+    lv_to = `'` && ` AND ` && lv_fn.
+    REPLACE ALL OCCURRENCES OF lv_fr IN cv_where WITH lv_to.
+  ENDLOOP.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& F4 help: tables from ZSP26_ARCH_CFG
 *&---------------------------------------------------------------------*
 FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.
+
   TYPES: BEGIN OF ty_sht_f4,
            table_name  TYPE tabname,
            description TYPE char80,
