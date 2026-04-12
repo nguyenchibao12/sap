@@ -6,8 +6,8 @@
 
 *&---------------------------------------------------------------------*
 *& Validate archive target table against ZSP26_ARCH_CFG + DDIC
-*& 1) Row exists, IS_ACTIVE, DATA_FIELD non-initial
-*& 2) Table exists in DDIC and DATA_FIELD is a real column
+*& 1 Row exists, IS_ACTIVE, DATA_FIELD non-initial
+*& 2 Table exists in DDIC and DATA_FIELD is a real column
 *&---------------------------------------------------------------------*
 FORM validate_table_against_cfg
   USING    VALUE(pv_table) TYPE tabname

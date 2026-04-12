@@ -30,6 +30,13 @@ MODULE user_command_0400 INPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
+*& Module F4_GV_TABNAME INPUT — POV màn 0400: hiện nút F4 + cùng nguồn ZSP26_ARCH_CFG
+*&---------------------------------------------------------------------*
+MODULE f4_gv_tabname INPUT.
+  PERFORM f4_gv_tabname_dynp.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
 *& Module USER_COMMAND_0100 INPUT
 *&---------------------------------------------------------------------*
 MODULE user_command_0100 INPUT.

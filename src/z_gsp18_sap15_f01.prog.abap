@@ -1462,3 +1462,41 @@ FORM check_dependencies
             TYPE 'S' DISPLAY LIKE 'W'.
   ENDIF.
 ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM F4_GV_TABNAME_DYNP — F4 ô GV_TABNAME (dynpro 0400), khớp ZSP26_SH_TABLES
+*&---------------------------------------------------------------------*
+FORM f4_gv_tabname_dynp.
+  TYPES: BEGIN OF ty_sht_f4,
+           table_name  TYPE tabname,
+           description TYPE char80,
+           is_active   TYPE zsp26_de_xflag,
+         END OF ty_sht_f4.
+  DATA lt_sht TYPE STANDARD TABLE OF ty_sht_f4 WITH DEFAULT KEY.
+
+  SELECT table_name, description, is_active
+    FROM zsp26_arch_cfg
+    WHERE is_active = 'X'
+    INTO CORRESPONDING FIELDS OF TABLE @lt_sht
+    UP TO 999 ROWS.
+  IF lt_sht IS INITIAL.
+    SELECT table_name, description, is_active
+      FROM zsp26_arch_cfg
+      INTO CORRESPONDING FIELDS OF TABLE @lt_sht
+      UP TO 999 ROWS.
+  ENDIF.
+  SORT lt_sht BY table_name.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'TABLE_NAME'
+      window_title = 'Tables in ZSP26_ARCH_CFG'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'GV_TABNAME'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_sht
+    EXCEPTIONS
+      OTHERS       = 0.
+ENDFORM.
