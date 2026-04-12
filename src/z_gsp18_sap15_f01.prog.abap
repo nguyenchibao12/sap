@@ -1560,7 +1560,7 @@ FORM arch_edit_write_variant_0500.
   ENDIF.
 
   IF lv_run IS INITIAL.
-    lv_msg = |Variant "{ gv_variant }" chưa tồn tại. Tạo variant SAP "{ lv_vtech }"?|.
+    lv_msg = |Variant { gv_variant } chưa tồn tại. Tạo variant SAP { lv_vtech }?|.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
         titlebar              = 'Create Variant'
@@ -1579,7 +1579,7 @@ FORM arch_edit_write_variant_0500.
       USING gv_prog_write lv_vtech gv_tabname
       CHANGING lv_ok.
     IF lv_ok = abap_false.
-      MESSAGE |Không tạo được variant "{ lv_vtech }". Kiểm tra quyền variant.| TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE |Không tạo được variant { lv_vtech }. Kiểm tra quyền variant.| TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
     SUBMIT (gv_prog_write)
@@ -1593,7 +1593,7 @@ FORM arch_edit_write_variant_0500.
   CALL FUNCTION 'POPUP_TO_DECIDE'
     EXPORTING
       titel                 = 'Variant'
-      text_question         = |"{ gv_variant }" (SAP: { lv_run }) — choose action|
+      text_question         = |{ gv_variant } (SAP: { lv_run }) — choose action|
       text_option1          = 'Change'
       text_option2          = 'Delete'
       text_option3          = 'Copy variant'
@@ -1615,7 +1615,7 @@ FORM arch_edit_write_variant_0500.
         AND RETURN.
 
     WHEN '2'.
-      lv_msg = |Delete SAP variant "{ lv_run }"? This cannot be undone.|
+      lv_msg = |Delete SAP variant { lv_run }? This cannot be undone.|.
       CALL FUNCTION 'POPUP_TO_CONFIRM'
         EXPORTING
           titlebar              = 'Delete Variant'
