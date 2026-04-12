@@ -23,6 +23,35 @@ CLASS lcl_handler IMPLEMENTATION.
 ENDCLASS.
 
 *&---------------------------------------------------------------------*
+*& Phase 4 — Monitor drill-down: Detail Log button handler
+*&---------------------------------------------------------------------*
+CLASS lcl_mon_handler IMPLEMENTATION.
+  METHOD on_func.
+    CHECK e_salv_function = 'MON_DETAIL'.
+
+    DATA: lo_sels  TYPE REF TO cl_salv_selections,
+          lt_rows  TYPE salv_t_row,
+          lv_idx   TYPE i,
+          lv_tab   TYPE tabname.
+
+    lo_sels = go_mon_alv->get_selections( ).
+    lt_rows = lo_sels->get_selected_rows( ).
+
+    IF lt_rows IS INITIAL.
+      MESSAGE 'Vui lòng chọn 1 dòng trước khi xem Detail Log.' TYPE 'S' DISPLAY LIKE 'W'.
+      RETURN.
+    ENDIF.
+
+    READ TABLE lt_rows INTO lv_idx INDEX 1.
+    READ TABLE gt_mon_disp INTO DATA(ls_row) INDEX lv_idx.
+    CHECK sy-subrc = 0.
+
+    lv_tab = ls_row-table_name.
+    PERFORM show_mon_detail USING lv_tab.
+  ENDMETHOD.
+ENDCLASS.
+
+*&---------------------------------------------------------------------*
 *& FORM DO_ARCHIVE_WRITE — Phase 2+3: Preview & Archive
 *& Đọc config → dynamic SELECT → SALV Preview → Archive Now
 *&---------------------------------------------------------------------*
@@ -1037,38 +1066,50 @@ ENDFORM.
 *& FORM DO_MONITOR — Storage Analysis & Monitoring (Feature 3)
 *& Scans all active configs → counts live+archive stats → ARCH_STAT
 *&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& FORM DO_MONITOR — Storage Analysis & Monitoring (Enhanced)
+*&   Phase 1: Fix duplicates  — GROUP BY table_name
+*&   Phase 2: Extra columns   — arch_recs, del_recs, pct_saved,
+*&                               last_arch_d, last_del_d, status_txt
+*&   Phase 3: Traffic light   — OVERDUE(red) / WARNING(yellow) / OK(green)
+*&   Phase 4: Detail Log btn  — drill-down to ZSP26_ARCH_LOG per table
+*&---------------------------------------------------------------------*
 FORM do_monitor.
-  TYPES: BEGIN OF ty_stat_disp,
-           table_name  TYPE tabname,
-           live_recs   TYPE i,
-           arch_runs   TYPE i,
-           rest_runs   TYPE i,
-           del_runs    TYPE i,
-           last_action TYPE char10,
-           last_date   TYPE d,
-           last_user   TYPE xubname,
-           retention   TYPE i,
-           is_active   TYPE char1,
-         END OF ty_stat_disp.
+  DATA: ls_disp  TYPE ty_mon_disp,
+        lv_cnt   TYPE i,
+        lv_total TYPE p DECIMALS 1,
+        ls_scol  TYPE lvc_s_scol.
 
-  DATA: lt_disp TYPE TABLE OF ty_stat_disp,
-        ls_disp TYPE ty_stat_disp,
-        lt_cfg  TYPE TABLE OF zsp26_arch_cfg,
-        lv_cnt  TYPE i.
+  CLEAR gt_mon_disp.
 
-  SELECT * FROM zsp26_arch_cfg INTO TABLE @lt_cfg ORDER BY table_name.
-  IF lt_cfg IS INITIAL.
+  " ── Phase 1: Aggregate config per table — avoid duplicate rows ───────
+  TYPES: BEGIN OF ty_cfg_sum,
+           table_name TYPE tabname,
+           retention  TYPE i,
+           is_active  TYPE char1,
+         END OF ty_cfg_sum.
+  DATA: lt_cfg_sum TYPE TABLE OF ty_cfg_sum.
+
+  SELECT table_name,
+         MAX( retention ) AS retention,
+         MAX( is_active ) AS is_active
+    FROM zsp26_arch_cfg
+    GROUP BY table_name
+    INTO TABLE @lt_cfg_sum
+    ORDER BY table_name.
+
+  IF lt_cfg_sum IS INITIAL.
     MESSAGE 'Chưa có config nào. Chạy ZSP26_LOAD_SAMPLE_DATA.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  LOOP AT lt_cfg INTO DATA(ls_cfg).
+  LOOP AT lt_cfg_sum INTO DATA(ls_cfg).
     CLEAR ls_disp.
     ls_disp-table_name = ls_cfg-table_name.
     ls_disp-retention  = ls_cfg-retention.
     ls_disp-is_active  = ls_cfg-is_active.
 
-    " Live records in source table
+    " Live records in source table (dynamic SQL)
     TRY.
       SELECT COUNT(*) FROM (ls_cfg-table_name) INTO @lv_cnt.
       ls_disp-live_recs = lv_cnt.
@@ -1076,7 +1117,22 @@ FORM do_monitor.
       ls_disp-live_recs = -1.
     ENDTRY.
 
-    " Archive/Restore/Delete runs from log
+    " ── Phase 2a: Archived & Deleted record counts ───────────────────
+    SELECT COUNT(*) FROM zsp26_arch_data INTO @lv_cnt
+      WHERE table_name = @ls_cfg-table_name AND arch_status = 'A'.
+    ls_disp-arch_recs = lv_cnt.
+
+    SELECT COUNT(*) FROM zsp26_arch_data INTO @lv_cnt
+      WHERE table_name = @ls_cfg-table_name AND arch_status = 'D'.
+    ls_disp-del_recs = lv_cnt.
+
+    " % Archived = arch_recs / (live + arch) * 100
+    lv_total = ls_disp-live_recs + ls_disp-arch_recs.
+    IF lv_total > 0 AND ls_disp-live_recs >= 0.
+      ls_disp-pct_saved = ( ls_disp-arch_recs / lv_total ) * 100.
+    ENDIF.
+
+    " Archive / Restore / Delete run counts from log
     SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_cnt
       WHERE table_name = @ls_cfg-table_name AND action = 'ARCHIVE'.
     ls_disp-arch_runs = lv_cnt.
@@ -1089,7 +1145,7 @@ FORM do_monitor.
       WHERE table_name = @ls_cfg-table_name AND action = 'DELETE'.
     ls_disp-del_runs = lv_cnt.
 
-    " Last activity
+    " Last activity overall (date + user + action)
     SELECT exec_date, exec_user, action FROM zsp26_arch_log
       INTO (@ls_disp-last_date, @ls_disp-last_user, @ls_disp-last_action)
       WHERE table_name = @ls_cfg-table_name
@@ -1097,9 +1153,49 @@ FORM do_monitor.
       EXIT.
     ENDSELECT.
 
-    APPEND ls_disp TO lt_disp.
+    " ── Phase 2b: Last ARCHIVE date (separate) ───────────────────────
+    SELECT exec_date FROM zsp26_arch_log
+      INTO @ls_disp-last_arch_d
+      WHERE table_name = @ls_cfg-table_name AND action = 'ARCHIVE'
+      ORDER BY exec_date DESCENDING.
+      EXIT.
+    ENDSELECT.
 
-    " Write snapshot to ZSP26_ARCH_STAT
+    " Last DELETE date (separate)
+    SELECT exec_date FROM zsp26_arch_log
+      INTO @ls_disp-last_del_d
+      WHERE table_name = @ls_cfg-table_name AND action = 'DELETE'
+      ORDER BY exec_date DESCENDING.
+      EXIT.
+    ENDSELECT.
+
+    " ── Phase 2c: Overdue status ─────────────────────────────────────
+    IF ls_disp-arch_runs = 0 AND ls_disp-is_active = 'X'.
+      ls_disp-status_txt = 'OVERDUE'.     " never archived while active
+    ELSEIF ls_disp-is_active = 'X'
+       AND ls_disp-last_arch_d IS NOT INITIAL
+       AND ls_disp-last_arch_d < sy-datum - 30.
+      ls_disp-status_txt = 'WARNING'.     " last archive > 30 days ago
+    ELSE.
+      ls_disp-status_txt = 'OK'.
+    ENDIF.
+
+    " ── Phase 3: Traffic light color ─────────────────────────────────
+    CLEAR ls_scol.
+    CASE ls_disp-status_txt.
+      WHEN 'OVERDUE'.
+        ls_scol-color-col = '6'.          " red
+      WHEN 'WARNING'.
+        ls_scol-color-col = '3'.          " yellow
+      WHEN OTHERS.
+        ls_scol-color-col = '5'.          " green
+    ENDCASE.
+    ls_scol-color-int = '0'.
+    APPEND ls_scol TO ls_disp-color_col.  " empty fname → whole row
+
+    APPEND ls_disp TO gt_mon_disp.
+
+    " Snapshot to ZSP26_ARCH_STAT
     DATA: ls_stat TYPE zsp26_arch_stat.
     CLEAR ls_stat.
     TRY. ls_stat-stat_id = cl_system_uuid=>create_uuid_x16_static( ).
@@ -1107,49 +1203,129 @@ FORM do_monitor.
     ls_stat-table_name = ls_cfg-table_name.
     ls_stat-stat_date  = sy-datum.
     ls_stat-total_recs = ls_disp-live_recs.
-    ls_stat-arch_recs  = ls_disp-arch_runs.
+    ls_stat-arch_recs  = ls_disp-arch_recs.
     ls_stat-rest_recs  = ls_disp-rest_runs.
-    ls_stat-del_recs   = ls_disp-del_runs.
+    ls_stat-del_recs   = ls_disp-del_recs.
     ls_stat-last_user  = ls_disp-last_user.
     INSERT zsp26_arch_stat FROM ls_stat.
   ENDLOOP.
 
   COMMIT WORK.
 
-  " SALV Display
-  DATA: lo_alv  TYPE REF TO cl_salv_table,
-        lo_cols TYPE REF TO cl_salv_columns_table,
-        lo_col  TYPE REF TO cl_salv_column_table,
-        lo_disp TYPE REF TO cl_salv_display_settings.
+  " ── SALV Display ─────────────────────────────────────────────────────
+  DATA: lo_cols  TYPE REF TO cl_salv_columns_table,
+        lo_col   TYPE REF TO cl_salv_column_table,
+        lo_disp  TYPE REF TO cl_salv_display_settings,
+        lo_funcs TYPE REF TO cl_salv_functions.
 
   TRY.
     cl_salv_table=>factory(
-      IMPORTING r_salv_table = lo_alv
-      CHANGING  t_table      = lt_disp ).
-    lo_alv->get_functions( )->set_all( abap_true ).
-    lo_cols = lo_alv->get_columns( ).
+      IMPORTING r_salv_table = go_mon_alv
+      CHANGING  t_table      = gt_mon_disp ).
+
+    lo_funcs = go_mon_alv->get_functions( ).
+    lo_funcs->set_all( abap_true ).
+
+    " ── Phase 4: Detail Log custom button ────────────────────────────
+    TRY.
+      lo_funcs->add_function(
+        name     = 'MON_DETAIL'
+        icon     = '@2I@'
+        text     = 'Detail Log'
+        tooltip  = 'Xem log chi tiết cho bảng được chọn'
+        position = if_salv_c_function_position=>right_of_salv_functions ).
+    CATCH cx_salv_method_not_supported. ENDTRY.
+    SET HANDLER lcl_mon_handler=>on_func FOR go_mon_alv->get_event( ).
+
+    lo_cols = go_mon_alv->get_columns( ).
     lo_cols->set_optimize( abap_true ).
+    lo_cols->set_color_column( 'COLOR_COL' ).   " Phase 3: register color col
 
     TRY.
+      lo_col ?= lo_cols->get_column( 'COLOR_COL' ).   lo_col->set_visible( abap_false ).
       lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( 'Table Name' ).
+      lo_col ?= lo_cols->get_column( 'STATUS_TXT' ).  lo_col->set_long_text( 'Status' ).
       lo_col ?= lo_cols->get_column( 'LIVE_RECS' ).   lo_col->set_long_text( 'Live Records' ).
+      lo_col ?= lo_cols->get_column( 'ARCH_RECS' ).   lo_col->set_long_text( 'Archived Recs' ).
+      lo_col ?= lo_cols->get_column( 'DEL_RECS' ).    lo_col->set_long_text( 'Deleted Recs' ).
+      lo_col ?= lo_cols->get_column( 'PCT_SAVED' ).   lo_col->set_long_text( '% Archived' ).
       lo_col ?= lo_cols->get_column( 'ARCH_RUNS' ).   lo_col->set_long_text( 'Archive Runs' ).
       lo_col ?= lo_cols->get_column( 'REST_RUNS' ).   lo_col->set_long_text( 'Restore Runs' ).
       lo_col ?= lo_cols->get_column( 'DEL_RUNS' ).    lo_col->set_long_text( 'Delete Runs' ).
       lo_col ?= lo_cols->get_column( 'LAST_ACTION' ). lo_col->set_long_text( 'Last Action' ).
       lo_col ?= lo_cols->get_column( 'LAST_DATE' ).   lo_col->set_long_text( 'Last Date' ).
+      lo_col ?= lo_cols->get_column( 'LAST_ARCH_D' ). lo_col->set_long_text( 'Last Archive' ).
+      lo_col ?= lo_cols->get_column( 'LAST_DEL_D' ).  lo_col->set_long_text( 'Last Delete' ).
       lo_col ?= lo_cols->get_column( 'LAST_USER' ).   lo_col->set_long_text( 'Last User' ).
       lo_col ?= lo_cols->get_column( 'RETENTION' ).   lo_col->set_long_text( 'Retention (days)' ).
       lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).   lo_col->set_long_text( 'Active' ).
     CATCH cx_salv_not_found. ENDTRY.
 
-    lo_disp = lo_alv->get_display_settings( ).
+    lo_disp = go_mon_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |STORAGE ANALYSIS & MONITORING — { lines( lt_disp ) } tables — { sy-datum }| ).
-    lo_alv->display( ).
+      |STORAGE ANALYSIS & MONITORING — { lines( gt_mon_disp ) } tables — { sy-datum }| ).
+    go_mon_alv->display( ).
 
   CATCH cx_salv_msg INTO DATA(lx).
     MESSAGE lx->get_text( ) TYPE 'E'.
+  ENDTRY.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM SHOW_MON_DETAIL — Phase 4: Detail Log popup for selected table
+*&---------------------------------------------------------------------*
+FORM show_mon_detail USING iv_table TYPE tabname.
+  TYPES: BEGIN OF ty_log_row,
+           exec_date TYPE d,
+           exec_user TYPE xubname,
+           action    TYPE char10,
+           rec_count TYPE i,
+           status    TYPE char1,
+           message   TYPE char255,
+         END OF ty_log_row.
+
+  DATA: lt_log  TYPE TABLE OF ty_log_row,
+        lo_alv  TYPE REF TO cl_salv_table,
+        lo_cols TYPE REF TO cl_salv_columns_table,
+        lo_col  TYPE REF TO cl_salv_column_table,
+        lo_disp TYPE REF TO cl_salv_display_settings.
+
+  SELECT exec_date, exec_user, action, rec_count, status, message
+    FROM zsp26_arch_log
+    INTO TABLE @lt_log
+    WHERE table_name = @iv_table
+    ORDER BY exec_date DESCENDING.
+
+  IF lt_log IS INITIAL.
+    MESSAGE |Không có log nào cho bảng { iv_table }.| TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  TRY.
+    cl_salv_table=>factory(
+      IMPORTING r_salv_table = lo_alv
+      CHANGING  t_table      = lt_log ).
+
+    lo_alv->get_functions( )->set_all( abap_true ).
+    lo_cols = lo_alv->get_columns( ).
+    lo_cols->set_optimize( abap_true ).
+
+    TRY.
+      lo_col ?= lo_cols->get_column( 'EXEC_DATE' ).  lo_col->set_long_text( 'Date' ).
+      lo_col ?= lo_cols->get_column( 'EXEC_USER' ).  lo_col->set_long_text( 'User' ).
+      lo_col ?= lo_cols->get_column( 'ACTION' ).     lo_col->set_long_text( 'Action' ).
+      lo_col ?= lo_cols->get_column( 'REC_COUNT' ).  lo_col->set_long_text( 'Records' ).
+      lo_col ?= lo_cols->get_column( 'STATUS' ).     lo_col->set_long_text( 'Status' ).
+      lo_col ?= lo_cols->get_column( 'MESSAGE' ).    lo_col->set_long_text( 'Message' ).
+    CATCH cx_salv_not_found. ENDTRY.
+
+    lo_disp = lo_alv->get_display_settings( ).
+    lo_disp->set_list_header(
+      |DETAIL LOG: { iv_table } — { lines( lt_log ) } entries| ).
+    lo_alv->display( ).
+
+  CATCH cx_salv_msg INTO DATA(lx2).
+    MESSAGE lx2->get_text( ) TYPE 'E'.
   ENDTRY.
 ENDFORM.
 
