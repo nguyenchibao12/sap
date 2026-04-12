@@ -1181,13 +1181,6 @@ FORM do_monitor.
       ls_disp-status_txt = 'OK'.
     ENDIF.
 
-    " ── Phase 3: Traffic light icon ──────────────────────────────────
-    CASE ls_disp-status_txt.
-      WHEN 'OVERDUE'. ls_disp-traffic_lgt = '@5B@'.  " red
-      WHEN 'WARNING'. ls_disp-traffic_lgt = '@5C@'.  " yellow
-      WHEN OTHERS.    ls_disp-traffic_lgt = '@5D@'.  " green
-    ENDCASE.
-
     APPEND ls_disp TO gt_mon_disp.
 
     " Snapshot to ZSP26_ARCH_STAT
@@ -1238,15 +1231,8 @@ FORM do_monitor.
     lo_cols->set_optimize( abap_true ).
 
     TRY.
-      " ── Phase 3: Traffic light icon column ─────────────────────────
-      lo_col ?= lo_cols->get_column( 'TRAFFIC_LGT' ).
-      lo_col->set_long_text( 'Status' ).
-      lo_col->set_icon( abap_true ).
-      lo_col->set_output_length( 5 ).
-      " STATUS_TXT cột chữ — ẩn đi, icon đã đủ visual
-      lo_col ?= lo_cols->get_column( 'STATUS_TXT' ).  lo_col->set_visible( abap_false ).
-
       lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( 'Table Name' ).
+      lo_col ?= lo_cols->get_column( 'STATUS_TXT' ).  lo_col->set_long_text( 'Status' ).
       lo_col ?= lo_cols->get_column( 'LIVE_RECS' ).   lo_col->set_long_text( 'Live Records' ).
       lo_col ?= lo_cols->get_column( 'ARCH_RECS' ).   lo_col->set_long_text( 'Archived Recs' ).
       lo_col ?= lo_cols->get_column( 'DEL_RECS' ).    lo_col->set_long_text( 'Deleted Recs' ).
