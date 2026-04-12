@@ -1171,15 +1171,21 @@ FORM do_monitor.
       EXIT.
     ENDSELECT.
 
-    " ── Phase 2c: Overdue status ─────────────────────────────────────
-    IF ls_disp-arch_runs = 0 AND ls_disp-is_active = 'X'.
-      ls_disp-status_txt = 'OVERDUE'.     " never archived while active
+    " ── Phase 2c/3: Status text + traffic light (INCLUDE icon in main)
+    IF ls_disp-live_recs < 0.
+      ls_disp-status_txt  = 'ERROR'.
+      ls_disp-status_icon = icon_led_red.
+    ELSEIF ls_disp-arch_runs = 0 AND ls_disp-is_active = 'X'.
+      ls_disp-status_txt  = 'OVERDUE'.
+      ls_disp-status_icon = icon_led_red.
     ELSEIF ls_disp-is_active = 'X'
        AND ls_disp-last_arch_d IS NOT INITIAL
        AND ls_disp-last_arch_d < lv_cutoff.
-      ls_disp-status_txt = 'WARNING'.     " last archive > 30 days ago
+      ls_disp-status_txt  = 'WARNING'.
+      ls_disp-status_icon = icon_led_yellow.
     ELSE.
-      ls_disp-status_txt = 'OK'.
+      ls_disp-status_txt  = 'OK'.
+      ls_disp-status_icon = icon_led_green.
     ENDIF.
 
     APPEND ls_disp TO gt_mon_disp.
@@ -1233,7 +1239,11 @@ FORM do_monitor.
 
     TRY.
       lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( 'Table Name' ).
-      lo_col ?= lo_cols->get_column( 'STATUS_TXT' ).  lo_col->set_long_text( 'Status' ).
+      lo_col ?= lo_cols->get_column( 'STATUS_ICON' ).
+      lo_col->set_long_text( 'Status' ).
+      lo_col->set_icon( if_salv_c_bool_sap=>true ).
+      lo_col ?= lo_cols->get_column( 'STATUS_TXT' ).
+      lo_col->set_visible( if_salv_c_bool_sap=>false ).
       lo_col ?= lo_cols->get_column( 'LIVE_RECS' ).   lo_col->set_long_text( 'Live Records' ).
       lo_col ?= lo_cols->get_column( 'ARCH_RECS' ).   lo_col->set_long_text( 'Archived Recs' ).
       lo_col ?= lo_cols->get_column( 'DEL_RECS' ).    lo_col->set_long_text( 'Deleted Recs' ).

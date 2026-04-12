@@ -118,7 +118,8 @@ DATA: go_alv_grid    TYPE REF TO cl_gui_alv_grid,
 "----------------------------------------------------------------------
 TYPES: BEGIN OF ty_mon_disp,
          table_name  TYPE tabname,
-         status_txt  TYPE char10,       " Phase 2/3: OVERDUE / WARNING / OK
+         status_icon TYPE icon_d,       " LED: green / yellow / red (monitor)
+         status_txt  TYPE char10,       " Phase 2/3: OVERDUE / WARNING / OK (technical / export)
          live_recs   TYPE i,
          arch_recs   TYPE i,            " Phase 2: records in archive (status=A)
          del_recs    TYPE i,            " Phase 2: records deleted after archive
