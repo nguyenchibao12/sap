@@ -1075,12 +1075,14 @@ ENDFORM.
 *&   Phase 4: Detail Log btn  — drill-down to ZSP26_ARCH_LOG per table
 *&---------------------------------------------------------------------*
 FORM do_monitor.
-  DATA: ls_disp  TYPE ty_mon_disp,
-        lv_cnt   TYPE i,
-        lv_total TYPE p DECIMALS 1,
-        ls_scol  TYPE lvc_s_scol.
+  DATA: ls_disp   TYPE ty_mon_disp,
+        lv_cnt    TYPE i,
+        lv_total  TYPE p DECIMALS 1,
+        ls_scol   TYPE lvc_s_scol,
+        lv_cutoff TYPE d.             " cutoff date for WARNING check (sy-datum - 30)
 
   CLEAR gt_mon_disp.
+  lv_cutoff = sy-datum - 30.          " compute once; sy-datum-30 is integer, not date
 
   " ── Phase 1: Aggregate config per table — avoid duplicate rows ───────
   TYPES: BEGIN OF ty_cfg_sum,
@@ -1095,8 +1097,8 @@ FORM do_monitor.
          MAX( is_active ) AS is_active
     FROM zsp26_arch_cfg
     GROUP BY table_name
-    INTO TABLE @lt_cfg_sum
-    ORDER BY table_name.
+    INTO TABLE @lt_cfg_sum.
+  SORT lt_cfg_sum BY table_name.
 
   IF lt_cfg_sum IS INITIAL.
     MESSAGE 'Chưa có config nào. Chạy ZSP26_LOAD_SAMPLE_DATA.' TYPE 'S' DISPLAY LIKE 'W'.
@@ -1174,7 +1176,7 @@ FORM do_monitor.
       ls_disp-status_txt = 'OVERDUE'.     " never archived while active
     ELSEIF ls_disp-is_active = 'X'
        AND ls_disp-last_arch_d IS NOT INITIAL
-       AND ls_disp-last_arch_d < sy-datum - 30.
+       AND ls_disp-last_arch_d < lv_cutoff.
       ls_disp-status_txt = 'WARNING'.     " last archive > 30 days ago
     ELSE.
       ls_disp-status_txt = 'OK'.
@@ -1234,12 +1236,16 @@ FORM do_monitor.
         text     = 'Detail Log'
         tooltip  = 'Xem log chi tiết cho bảng được chọn'
         position = if_salv_c_function_position=>right_of_salv_functions ).
-    CATCH cx_salv_method_not_supported. ENDTRY.
+    CATCH cx_salv_method_not_supported
+          cx_salv_wrong_call
+          cx_salv_existing. ENDTRY.
     SET HANDLER lcl_mon_handler=>on_func FOR go_mon_alv->get_event( ).
 
     lo_cols = go_mon_alv->get_columns( ).
     lo_cols->set_optimize( abap_true ).
-    lo_cols->set_color_column( 'COLOR_COL' ).   " Phase 3: register color col
+    TRY.
+      lo_cols->set_color_column( 'COLOR_COL' ).  " Phase 3: register color col
+    CATCH cx_salv_data_error. ENDTRY.            " field not found — skip color
 
     TRY.
       lo_col ?= lo_cols->get_column( 'COLOR_COL' ).   lo_col->set_visible( abap_false ).
