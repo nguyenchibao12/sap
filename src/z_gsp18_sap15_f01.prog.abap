@@ -1078,7 +1078,6 @@ FORM do_monitor.
   DATA: ls_disp   TYPE ty_mon_disp,
         lv_cnt    TYPE i,
         lv_total  TYPE p DECIMALS 1,
-        ls_scol   TYPE lvc_s_scol,
         lv_cutoff TYPE d.             " cutoff date for WARNING check (sy-datum - 30)
 
   CLEAR gt_mon_disp.
@@ -1182,19 +1181,6 @@ FORM do_monitor.
       ls_disp-status_txt = 'OK'.
     ENDIF.
 
-    " ── Phase 3: Traffic light color ─────────────────────────────────
-    CLEAR ls_scol.
-    CASE ls_disp-status_txt.
-      WHEN 'OVERDUE'.
-        ls_scol-color-col = '6'.          " red
-      WHEN 'WARNING'.
-        ls_scol-color-col = '3'.          " yellow
-      WHEN OTHERS.
-        ls_scol-color-col = '5'.          " green
-    ENDCASE.
-    ls_scol-color-int = '0'.
-    APPEND ls_scol TO ls_disp-color_col.  " empty fname → whole row
-
     APPEND ls_disp TO gt_mon_disp.
 
     " Snapshot to ZSP26_ARCH_STAT
@@ -1218,7 +1204,10 @@ FORM do_monitor.
   DATA: lo_cols  TYPE REF TO cl_salv_columns_table,
         lo_col   TYPE REF TO cl_salv_column_table,
         lo_disp  TYPE REF TO cl_salv_display_settings,
-        lo_funcs TYPE REF TO cl_salv_functions.
+        lo_funcs TYPE REF TO cl_salv_functions,
+        lo_rows  TYPE REF TO cl_salv_rows,
+        ls_colo  TYPE lvc_s_colo,
+        lv_ridx  TYPE i.
 
   TRY.
     cl_salv_table=>factory(
@@ -1241,14 +1230,26 @@ FORM do_monitor.
           cx_salv_existing. ENDTRY.
     SET HANDLER lcl_mon_handler=>on_func FOR go_mon_alv->get_event( ).
 
+    " ── Phase 3: Row color via cl_salv_rows (no deep structure needed) ─
+    lo_rows = go_mon_alv->get_rows( ).
+    lv_ridx = 1.
+    LOOP AT gt_mon_disp INTO DATA(ls_color_row).
+      CLEAR ls_colo.
+      CASE ls_color_row-status_txt.
+        WHEN 'OVERDUE'. ls_colo-col = 6.  " red
+        WHEN 'WARNING'. ls_colo-col = 3.  " yellow
+        WHEN OTHERS.    ls_colo-col = 5.  " green
+      ENDCASE.
+      TRY.
+        lo_rows->set_color( index = lv_ridx value = ls_colo ).
+      CATCH cx_salv_index_not_found. ENDTRY.
+      ADD 1 TO lv_ridx.
+    ENDLOOP.
+
     lo_cols = go_mon_alv->get_columns( ).
     lo_cols->set_optimize( abap_true ).
-    TRY.
-      lo_cols->set_color_column( 'COLOR_COL' ).  " Phase 3: register color col
-    CATCH cx_salv_data_error. ENDTRY.            " field not found — skip color
 
     TRY.
-      lo_col ?= lo_cols->get_column( 'COLOR_COL' ).   lo_col->set_visible( abap_false ).
       lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( 'Table Name' ).
       lo_col ?= lo_cols->get_column( 'STATUS_TXT' ).  lo_col->set_long_text( 'Status' ).
       lo_col ?= lo_cols->get_column( 'LIVE_RECS' ).   lo_col->set_long_text( 'Live Records' ).

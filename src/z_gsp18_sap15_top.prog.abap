@@ -117,7 +117,6 @@ DATA: go_alv_grid    TYPE REF TO cl_gui_alv_grid,
 " Monitor enhanced — type + globals (Phase 2/3/4)
 "----------------------------------------------------------------------
 TYPES: BEGIN OF ty_mon_disp,
-         color_col   TYPE lvc_t_scol,   " Phase 3: row color (lvc_t_scol)
          table_name  TYPE tabname,
          status_txt  TYPE char10,       " Phase 2: OVERDUE / WARNING / OK
          live_recs   TYPE i,
