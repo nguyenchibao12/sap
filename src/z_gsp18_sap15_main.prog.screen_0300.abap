@@ -7,8 +7,8 @@ PROCESS AFTER INPUT.
   " Xử lý các nút thoát/hủy nhanh mà không cần kiểm tra dữ liệu
   MODULE EXIT_COMMAND AT EXIT-COMMAND.
 
-* Kiểm tra Variant ngay khi người dùng nhập xong và nhấn Enter
-*  FIELD GV_VARIANT MODULE CHECK_VARIANT_0300.
-
   " Xử lý các lệnh thực thi (Execute, Save, Back)
   MODULE USER_COMMAND_0300.
+
+PROCESS ON VALUE-REQUEST.
+  FIELD gv_variant MODULE f4_gv_variant.

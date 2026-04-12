@@ -177,8 +177,10 @@ FORM show_archive_preview.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Variant Z_ARCH_EKK_WRITE — tách theo bảng (SAP chỉ có report+variant)
+*& Variant Z_ARCH_EKK_WRITE — phạm vi theo bảng (SAP: một report + nhiều variant)
+*& Logic tách bảng: PREFIX từ gv_tabname (arch_variant_tab_prefix) + ID ô nhập → tên VARID.
 *& Tên lưu VARID: {tab_prefix}_{logical} ≤14 ký tự, vd BKPF_VAR_01 / EKKO_VAR_01
+*& Thông báo/popup: luôn phân biệt ID (ô) vs tên SAP (FORM arch_variant_msg_labels).
 *&---------------------------------------------------------------------*
 FORM arch_variant_tab_prefix
   USING    iv_tabname TYPE tabname
@@ -261,6 +263,32 @@ FORM arch_build_write_var_tech
   cv_technical = CONV variant( lv_full ).
   TRANSLATE cv_technical TO UPPER CASE.
   cv_ok = abap_true.
+ENDFORM.
+
+*& Một dòng mô tả thống nhất (cùng từ vựng với nhãn dynpro "Variant ID" / VARID).
+*& Dùng cho popup/messages và F4 — luôn tách Variant ID (ô) vs tên VARID (SAP, ≤14).
+FORM arch_variant_msg_labels
+  USING    iv_tabname TYPE tabname
+           iv_logical TYPE clike
+           iv_sap     TYPE clike
+  CHANGING cv_text    TYPE string.
+
+  DATA(lv_tab) = CONV string( iv_tabname ).
+  DATA(lv_log) = CONV string( iv_logical ).
+  DATA(lv_sap) = CONV string( iv_sap ).
+  CONDENSE lv_tab NO-GAPS.
+  CONDENSE lv_log NO-GAPS.
+  CONDENSE lv_sap NO-GAPS.
+
+  CLEAR cv_text.
+  IF lv_tab IS NOT INITIAL.
+    cv_text = |Bảng { lv_tab } — variant chỉ theo bảng này. |.
+  ENDIF.
+  IF lv_sap IS INITIAL OR lv_sap = lv_log.
+    cv_text = cv_text && |Variant ID (ô nhập) = Tên VARID: { lv_log }.|.
+  ELSE.
+    cv_text = cv_text && |Variant ID (ô nhập): { lv_log }. Tên VARID (SAP): { lv_sap }.|.
+  ENDIF.
 ENDFORM.
 
 FORM arch_log_from_write_var
@@ -1516,7 +1544,7 @@ FORM zsp26_hub_edit_wvar_0500.
         lv_msg   TYPE string.
 
   IF gv_variant IS INITIAL.
-    MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
+    MESSAGE 'Vui lòng nhập Variant ID' TYPE 'I'.
     RETURN.
   ENDIF.
   IF gv_tabname IS INITIAL.
@@ -1534,7 +1562,7 @@ FORM zsp26_hub_edit_wvar_0500.
     USING gv_tabname gv_variant
     CHANGING lv_vtech lv_vok.
   IF lv_vok = abap_false.
-    MESSAGE 'Tên Variant (ID) không hợp lệ hoặc quá dài.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Variant ID không hợp lệ hoặc quá dài (tên VARID tối đa 14 ký tự, gồm tiền tố bảng).' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -1560,7 +1588,10 @@ FORM zsp26_hub_edit_wvar_0500.
   ENDIF.
 
   IF lv_run IS INITIAL.
-    lv_msg = |Variant { gv_variant } chưa tồn tại. Tạo variant SAP { lv_vtech }?|.
+    PERFORM arch_variant_msg_labels
+      USING gv_tabname gv_variant lv_vtech
+      CHANGING lv_msg.
+    lv_msg = lv_msg && | Chưa tồn tại. Tạo variant SAP?|.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
         titlebar              = 'Create Variant'
@@ -1579,7 +1610,10 @@ FORM zsp26_hub_edit_wvar_0500.
       USING gv_prog_write lv_vtech gv_tabname
       CHANGING lv_ok.
     IF lv_ok = abap_false.
-      MESSAGE |Không tạo được variant { lv_vtech }. Kiểm tra quyền variant.| TYPE 'S' DISPLAY LIKE 'E'.
+      PERFORM arch_variant_msg_labels
+        USING gv_tabname gv_variant lv_vtech
+        CHANGING lv_msg.
+      MESSAGE |Không tạo được variant. { lv_msg } Kiểm tra quyền variant.| TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
     SUBMIT (gv_prog_write)
@@ -1590,7 +1624,10 @@ FORM zsp26_hub_edit_wvar_0500.
     RETURN.
   ENDIF.
 
-  lv_msg = |{ gv_variant } (SAP: { lv_run }) — open for change on selection screen?|.
+  PERFORM arch_variant_msg_labels
+    USING gv_tabname gv_variant lv_run
+    CHANGING lv_msg.
+  lv_msg = lv_msg && | Mở màn selection để sửa?|.
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
       titlebar              = 'Variant'
@@ -1614,7 +1651,10 @@ FORM zsp26_hub_edit_wvar_0500.
     RETURN.
   ENDIF.
 
-  lv_msg = |Delete variant { lv_run }?|.
+  PERFORM arch_variant_msg_labels
+    USING gv_tabname gv_variant lv_run
+    CHANGING lv_msg.
+  lv_msg = lv_msg && | Xóa variant này?|.
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
       titlebar              = 'Variant'
@@ -1630,7 +1670,11 @@ FORM zsp26_hub_edit_wvar_0500.
     RETURN.
   ENDIF.
   IF lv_ans = '1'.
-    lv_msg = |Delete SAP variant { lv_run }? This cannot be undone.|.
+    IF lv_run = gv_variant.
+      lv_msg = |Xóa vĩnh viễn VARID: { lv_run }? Không hoàn tác.|.
+    ELSE.
+      lv_msg = |Xóa vĩnh viễn VARID: { lv_run } (Variant ID ô nhập: { gv_variant })? Không hoàn tác.|.
+    ENDIF.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
         titlebar              = 'Delete Variant'
@@ -1661,7 +1705,10 @@ FORM zsp26_hub_edit_wvar_0500.
     RETURN.
   ENDIF.
 
-  lv_msg = |Copy variant { lv_run } to a new name?|.
+  PERFORM arch_variant_msg_labels
+    USING gv_tabname gv_variant lv_run
+    CHANGING lv_msg.
+  lv_msg = lv_msg && | Copy sang ID variant mới?|.
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
       titlebar              = 'Variant'
@@ -1699,13 +1746,13 @@ FORM arch_copy_write_variant_dialog
   CLEAR ls_field.
   ls_field-tabname   = '*'.
   ls_field-fieldname = 'NEWVAR'.
-  ls_field-fieldtext = 'New variant name (logical)'.
+  ls_field-fieldtext = 'Variant ID (new, screen field)'.
   CLEAR ls_field-value.
   APPEND ls_field TO lt_fields.
 
   CALL FUNCTION 'POPUP_TO_GET_VALUES'
     EXPORTING
-      popup_title = 'Copy variant'
+      popup_title = 'Copy variant (new Variant ID → new VARID)'
     TABLES
       fields = lt_fields
     EXCEPTIONS
@@ -1728,7 +1775,7 @@ FORM arch_copy_write_variant_dialog
     USING iv_tabname lv_new
     CHANGING lv_tgt lv_ok.
   IF lv_ok = abap_false.
-    MESSAGE 'Tên variant đích không hợp lệ hoặc quá dài.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Variant ID đích không hợp lệ hoặc quá dài.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -1754,7 +1801,7 @@ FORM arch_copy_write_variant_dialog
   gv_variant = CONV variant( lv_new ).
   CONDENSE gv_variant NO-GAPS.
   TRANSLATE gv_variant TO UPPER CASE.
-  MESSAGE |Copied to variant { lv_tgt }. Update screen if needed.| TYPE 'S'.
+  MESSAGE |Đã copy. Variant ID (ô): { lv_new }. Tên VARID: { lv_tgt }.| TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

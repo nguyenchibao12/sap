@@ -132,82 +132,13 @@ MODULE exit_command INPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Module CHECK_VARIANT_0300 INPUT
-*&---------------------------------------------------------------------*
-MODULE check_variant_0300 INPUT.
-  DATA: lv_rc_chk   TYPE sy-subrc,
-        lv_ans_chk  TYPE char1,
-        lv_vtech_c  TYPE variant,
-        lv_vok_c    TYPE abap_bool,
-        lv_ok_c     TYPE abap_bool,
-        lv_q_c      TYPE string.
-
-  CHECK gv_variant IS NOT INITIAL.
-  IF gv_tabname IS INITIAL.
-    MESSAGE 'Chọn bảng archive trước khi dùng Variant' TYPE 'S' DISPLAY LIKE 'E'.
-    RETURN.
-  ENDIF.
-  IF gv_prog_write IS INITIAL. PERFORM get_archive_programs. ENDIF.
-
-  PERFORM arch_build_write_var_tech
-    USING gv_tabname gv_variant
-    CHANGING lv_vtech_c lv_vok_c.
-  IF lv_vok_c = abap_false.
-    MESSAGE 'Tên Variant (ID) không hợp lệ hoặc quá dài so với tên bảng (max 14 ký tự SAP).' TYPE 'S' DISPLAY LIKE 'E'.
-    RETURN.
-  ENDIF.
-
-  CALL FUNCTION 'RS_VARIANT_EXISTS'
-    EXPORTING
-      report  = gv_prog_write
-      variant = lv_vtech_c
-    IMPORTING
-      r_c     = lv_rc_chk.
-
-  IF lv_rc_chk <> 0.
-    lv_q_c = |Chưa có variant cho bảng { gv_tabname }. Giữ nguyên ô Variant "{ gv_variant }" (không đổi sang tên kỹ thuật). Tên lưu trong SAP: { lv_vtech_c }. Tạo mới?|.
-    CALL FUNCTION 'POPUP_TO_CONFIRM'
-      EXPORTING
-        titlebar              = 'Thông báo'
-        text_question         = lv_q_c
-        text_button_1         = 'Có'
-        text_button_2         = 'Không'
-        display_cancel_button = ' '
-      IMPORTING
-        answer                = lv_ans_chk
-      EXCEPTIONS
-        OTHERS                = 1.
-    IF lv_ans_chk = '1'.
-      PERFORM arch_ensure_write_variant
-        USING gv_prog_write lv_vtech_c gv_tabname
-        CHANGING lv_ok_c.
-      IF lv_ok_c = abap_false.
-        MESSAGE |Không tạo được variant SAP "{ lv_vtech_c }". Kiểm tra quyền variant cho report { gv_prog_write }.|
-          TYPE 'S' DISPLAY LIKE 'E'.
-        RETURN.
-      ENDIF.
-      SUBMIT (gv_prog_write)
-        WITH p_table = gv_tabname
-        USING SELECTION-SET lv_vtech_c
-        VIA SELECTION-SCREEN
-        AND RETURN.
-    ELSE.
-      CLEAR gv_variant.
-    ENDIF.
-  ENDIF.
-ENDMODULE.
-
-*&---------------------------------------------------------------------*
 *& Module USER_COMMAND_0300 INPUT
 *&---------------------------------------------------------------------*
+*& Variant / Edit: cùng một form với màn 0500 (tránh hai luồng đặt tên).
+*& Màn 0300 giữ cho tương thích dynpro; luồng chính Write từ hub là 0500.
+*&---------------------------------------------------------------------*
 MODULE user_command_0300 INPUT.
-  DATA: lv_rc_300    TYPE sy-subrc,
-        lv_ans_300   TYPE char1,
-        lv_ucomm     TYPE sy-ucomm,
-        lv_vtech_300 TYPE variant,
-        lv_vok_300   TYPE abap_bool,
-        lv_ok_300    TYPE abap_bool,
-        lv_q_300     TYPE string.
+  DATA: lv_ucomm TYPE sy-ucomm.
 
   lv_ucomm = ok_code.
   CLEAR ok_code.
@@ -217,68 +148,7 @@ MODULE user_command_0300 INPUT.
       MESSAGE 'Execute (F8) chỉ dùng ở màn Write.' TYPE 'S' DISPLAY LIKE 'W'.
 
     WHEN 'BT_EDIT' OR 'EDIT_BTN'.
-      IF gv_variant IS NOT INITIAL.
-        IF gv_tabname IS INITIAL.
-          MESSAGE 'Chọn bảng archive trước khi chỉnh Variant' TYPE 'S' DISPLAY LIKE 'E'.
-        ELSE.
-          IF gv_prog_write IS INITIAL.
-            PERFORM get_archive_programs.
-          ENDIF.
-          PERFORM arch_build_write_var_tech
-            USING gv_tabname gv_variant
-            CHANGING lv_vtech_300 lv_vok_300.
-          IF lv_vok_300 = abap_false.
-            MESSAGE 'Tên Variant (ID) không hợp lệ hoặc quá dài.' TYPE 'S' DISPLAY LIKE 'E'.
-          ELSE.
-            CALL FUNCTION 'RS_VARIANT_EXISTS'
-              EXPORTING
-                report  = gv_prog_write
-                variant = lv_vtech_300
-              IMPORTING
-                r_c     = lv_rc_300.
-
-            IF lv_rc_300 = 0.
-              SUBMIT (gv_prog_write)
-                WITH p_table = gv_tabname
-                USING SELECTION-SET lv_vtech_300
-                VIA SELECTION-SCREEN
-                AND RETURN.
-            ELSE.
-              lv_q_300 = |Variant chưa tồn tại. Ô Variant giữ "{ gv_variant }". Tên trong SAP: { lv_vtech_300 } (chỉ tham khảo). Tạo mới?|.
-              CALL FUNCTION 'POPUP_TO_CONFIRM'
-                EXPORTING
-                  titlebar              = 'Thông báo'
-                  text_question         = lv_q_300
-                  text_button_1         = 'Có'
-                  text_button_2         = 'Không'
-                  display_cancel_button = ' '
-                IMPORTING
-                  answer                = lv_ans_300
-                EXCEPTIONS
-                  OTHERS                = 1.
-              IF lv_ans_300 = '1'.
-                PERFORM arch_ensure_write_variant
-                  USING gv_prog_write lv_vtech_300 gv_tabname
-                  CHANGING lv_ok_300.
-                IF lv_ok_300 = abap_false.
-                  MESSAGE |Không tạo được variant SAP "{ lv_vtech_300 }". Kiểm tra quyền variant.|
-                    TYPE 'S' DISPLAY LIKE 'E'.
-                  RETURN.
-                ENDIF.
-                SUBMIT (gv_prog_write)
-                  WITH p_table = gv_tabname
-                  USING SELECTION-SET lv_vtech_300
-                  VIA SELECTION-SCREEN
-                  AND RETURN.
-              ELSE.
-                CLEAR gv_variant.
-              ENDIF.
-            ENDIF.
-          ENDIF.
-        ENDIF.
-      ELSE.
-        MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
-      ENDIF.
+      PERFORM zsp26_hub_edit_wvar_0500.
 
     WHEN 'BT_START' OR 'START_BTN'.
       PERFORM maintenance_start_date.
@@ -369,7 +239,7 @@ MODULE f4_gv_variant INPUT.
   DELETE ADJACENT DUPLICATES FROM lt_vf4 COMPARING variant.
 
   IF lt_vf4 IS INITIAL.
-    MESSAGE 'Chưa có variant cho bảng này (PREFIX_ID trên VARID) hoặc chưa có cho report' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'Chưa có variant cho bảng này (VARID dạng PREFIX_VariantID) hoặc chưa có trên report' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -379,7 +249,7 @@ MODULE f4_gv_variant INPUT.
       dynpprog     = sy-repid
       dynpnr       = sy-dynnr
       dynprofield  = 'GV_VARIANT'
-      window_title = 'Variants (theo bảng hiện tại)'
+      window_title = 'Variants — Variant ID (ô) / VARID (theo bảng)'
       value_org    = 'S'
     TABLES
       value_tab    = lt_vf4
@@ -475,7 +345,7 @@ MODULE user_command_0600 INPUT.
             AND RETURN.
         ENDIF.
       ELSE.
-        MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
+        MESSAGE 'Vui lòng nhập Variant ID' TYPE 'I'.
       ENDIF.
 
     WHEN 'BT_ARCH_SEL'.

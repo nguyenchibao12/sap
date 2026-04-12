@@ -84,11 +84,11 @@ DATA: gt_arch_stat TYPE TABLE OF ty_arch_stat,
       go_cont_200  TYPE REF TO cl_gui_custom_container,
       gt_fcat_200  TYPE lvc_t_fcat.
 
-" Screen 0300 / 0500 — archive / job scheduler (variant, start, spool)
+" Write flow: màn 0500 (variant / start / spool). Dynpro 0300 cùng STATUS — Edit variant gọi chung zsp26_hub_edit_wvar_0500.
 " gv_object = archive object id (AOBJ) — ví dụ Z_ARCH_EKK
-" gv_tabname = bảng DDIC đích (preview/write/delete SQL) — bổ sung cho object ở trên
+" gv_tabname = bảng DDIC đích — variant (Variant ID + tiền tố theo bảng → VARID) luôn gắn với bảng này
 DATA: gv_object     TYPE arch_obj-object,
-      gv_variant    TYPE variant, " ID do user nhập (vd VAR_01); tên SAP = {tiền_tố bảng}_{ID}
+      gv_variant    TYPE variant, " Variant ID trên ô (vd VAR_01); VARID SAP = PREFIX_ID ≤14 (arch_build_write_var_tech, theo gv_tabname)
       gv_prog_write TYPE programm,
       gv_prog_del   TYPE programm,
       gv_start_date TYPE char1,
