@@ -45,8 +45,28 @@ PARAMETERS: p_json  TYPE c AS CHECKBOX DEFAULT ' '.
 PARAMETERS: p_doc   TYPE admi_run-document.
 
 *----------------------------------------------------------------------*
+INITIALIZATION.
+*----------------------------------------------------------------------*
+  DATA lv_hub_tab TYPE tabname.
+  IMPORT arch_tabname = lv_hub_tab FROM MEMORY ID 'Z_GSP18_ARCH_TAB'.
+  IF sy-subrc = 0.
+    IF p_table IS INITIAL AND lv_hub_tab IS NOT INITIAL.
+      p_table = lv_hub_tab.
+    ENDIF.
+    FREE MEMORY ID 'Z_GSP18_ARCH_TAB'.
+  ENDIF.
+
+*----------------------------------------------------------------------*
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
+*----------------------------------------------------------------------*
+  PERFORM f4_arch_cfg_table CHANGING p_table.
+
+*----------------------------------------------------------------------*
 START-OF-SELECTION.
 *----------------------------------------------------------------------*
+
+  CONDENSE p_table.
+  TRANSLATE p_table TO UPPER CASE.
 
   WRITE: / '=== ADK Delete: Z_ARCH_EKK ===' && ' p_table=' && p_table && ' p_json=' && p_json && ' ==='.
   IF p_test = 'X'. WRITE: / '*** TEST MODE — no DB delete ***'. ENDIF.
@@ -150,15 +170,23 @@ START-OF-SELECTION.
       RETURN.
     ENDIF.
 
-    lv_where_af = |{ lv_col_doc } = '{ ls_hub_admi-document }'|.
+    DATA: lv_doc_esc TYPE string,
+          lv_obj_esc TYPE string,
+          lv_mandt_s TYPE string.
+    lv_doc_esc = |{ ls_hub_admi-document }|.
+    lv_obj_esc = |{ ls_hub_admi-object }|.
+    lv_mandt_s = |{ sy-mandt }|.
+    PERFORM zsp26_sql_escape_quote CHANGING lv_doc_esc.
+    PERFORM zsp26_sql_escape_quote CHANGING lv_obj_esc.
+    lv_where_af = |{ lv_col_doc } = '{ lv_doc_esc }'|.
 
     " Một số hệ có cột object, một số hệ không có (như spool bạn gửi)
     IF lv_col_obj IS NOT INITIAL.
-      lv_where_af = |{ lv_col_obj } = '{ ls_hub_admi-object }' AND | && lv_where_af.
+      lv_where_af = |{ lv_col_obj } = '{ lv_obj_esc }' AND | && lv_where_af.
     ENDIF.
 
     IF lv_col_cli IS NOT INITIAL.
-      lv_where_af = |{ lv_col_cli } = '{ sy-mandt }' AND | && lv_where_af.
+      lv_where_af = |{ lv_col_cli } = '{ lv_mandt_s }' AND | && lv_where_af.
     ENDIF.
 
     SELECT SINGLE archiv_key
@@ -438,6 +466,14 @@ FORM archive_adk_mark_del_obj USING VALUE(pv_handle) TYPE syst-tabix.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& Escape ' → '' for literals in dynamic Open SQL WHERE fragments.
+*&---------------------------------------------------------------------*
+FORM zsp26_sql_escape_quote CHANGING cv_txt TYPE string.
+  CHECK cv_txt IS NOT INITIAL.
+  REPLACE ALL OCCURRENCES OF `'` IN cv_txt WITH `''`.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& Process one ADK data object: GET_TABLE ZSTR_ARCH_REC + legacy DDIC rows.
 *& pv_handle = object handle from READ_OBJECT, or file handle after GET_NEXT_OBJECT.
 *&---------------------------------------------------------------------*
@@ -464,7 +500,12 @@ FORM process_delete_adk_object
         lt_cfg_loc   TYPE TABLE OF tabname,
         lv_cfg_loc   TYPE tabname,
         lv_skip_rec_fm TYPE abap_bool VALUE abap_false,
-        lv_zstr_db_del TYPE i VALUE 0.
+        lv_zstr_db_del TYPE i VALUE 0,
+        lv_del_tab     TYPE tabname,
+        lv_mandt_q     TYPE string,
+        lv_bad_key     TYPE abap_bool,
+        lo_osql        TYPE REF TO cx_sy_dynamic_osql_error,
+        lo_any         TYPE REF TO cx_root.
 
   CLEAR lv_got.
 
@@ -498,41 +539,79 @@ FORM process_delete_adk_object
         ENDIF.
       ENDIF.
 
-      CLEAR: lv_where_gen, lv_pair_gen, lv_kf_gen, lv_kv_gen, lv_kv_esc.
+      lv_del_tab = ls_arch_gen-table_name.
+      CONDENSE lv_del_tab.
+      TRANSLATE lv_del_tab TO UPPER CASE.
+      IF lv_del_tab IS INITIAL.
+        ADD 1 TO cv_err.
+        WRITE: / '  WARN: empty TABLE_NAME in ZSTR_ARCH_REC row'.
+        CONTINUE.
+      ENDIF.
+
+      CLEAR: lv_where_gen, lv_pair_gen, lv_kf_gen, lv_kv_gen, lv_kv_esc, lv_bad_key.
       REFRESH lt_pairs_gen.
       SPLIT ls_arch_gen-key_vals AT '|' INTO TABLE lt_pairs_gen.
       LOOP AT lt_pairs_gen INTO lv_pair_gen.
         SPLIT lv_pair_gen AT '=' INTO lv_kf_gen lv_kv_gen.
+        CONDENSE lv_kf_gen.
+        CONDENSE lv_kv_gen.
+        TRANSLATE lv_kf_gen TO UPPER CASE.
+        " KEY_VALS đôi khi có tiền tố AND dính tên cột (ANDMJAHR) → SQL ANDMJAHR invalid
+        IF strlen( lv_kf_gen ) > 7 AND lv_kf_gen(3) = 'AND'.
+          lv_kf_gen = lv_kf_gen+3.
+          CONDENSE lv_kf_gen.
+        ENDIF.
         CHECK lv_kf_gen IS NOT INITIAL.
+        IF NOT lv_kf_gen CO '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_/'.
+          WRITE: / |  ERR: invalid key field in KEY_VALS: { lv_kf_gen }|.
+          lv_bad_key = abap_true.
+          EXIT.
+        ENDIF.
         lv_kv_esc = lv_kv_gen.
-        REPLACE ALL OCCURRENCES OF `'` IN lv_kv_esc WITH `''`.
+        PERFORM zsp26_sql_escape_quote CHANGING lv_kv_esc.
         IF lv_where_gen IS NOT INITIAL.
           lv_where_gen = lv_where_gen && ' AND '.
         ENDIF.
         lv_where_gen = lv_where_gen && lv_kf_gen && ` EQ '` && lv_kv_esc && `'`.
       ENDLOOP.
-      IF lv_where_gen IS INITIAL.
+      IF lv_bad_key = abap_true.
         ADD 1 TO cv_err.
-        WRITE: / |  WARN: empty KEY_VALS for { ls_arch_gen-table_name }|.
         CONTINUE.
       ENDIF.
-      lv_where_gen = |MANDT EQ '{ sy-mandt }' AND | && lv_where_gen.
+      IF lv_where_gen IS INITIAL.
+        ADD 1 TO cv_err.
+        WRITE: / |  WARN: empty KEY_VALS for { lv_del_tab }|.
+        CONTINUE.
+      ENDIF.
+      lv_mandt_q = |{ sy-mandt }|.
+      lv_where_gen = |MANDT EQ '{ lv_mandt_q }' AND | && lv_where_gen.
 
       IF p_test = ' '.
-        DELETE FROM (ls_arch_gen-table_name) WHERE (lv_where_gen).
-        lv_del_rc = sy-subrc.
+        TRY.
+            DELETE FROM (lv_del_tab) WHERE (lv_where_gen).
+            lv_del_rc = sy-subrc.
+          CATCH cx_sy_dynamic_osql_error INTO lo_osql.
+            ADD 1 TO cv_err.
+            lv_del_rc = 8.
+            WRITE: / |  ERR: DELETE SQL { lv_del_tab }: { lo_osql->get_text( ) }|.
+            WRITE: / |      WHERE { lv_where_gen }|.
+          CATCH cx_root INTO lo_any.
+            ADD 1 TO cv_err.
+            lv_del_rc = 8.
+            WRITE: / |  ERR: DELETE { lv_del_tab }: { lo_any->get_text( ) }|.
+        ENDTRY.
         IF lv_del_rc = 0 OR lv_del_rc = 4.
           PERFORM archive_adk_mark_deleted_row USING pv_handle CHANGING lv_skip_rec_fm.
           ADD 1 TO lv_zstr_db_del.
           ADD 1 TO cv_cnt.
-          PERFORM del_agg_bump_legacy USING lt_del_agg ls_arch_gen-table_name.
-        ELSE.
+          PERFORM del_agg_bump_legacy USING lt_del_agg lv_del_tab.
+        ELSEIF lv_del_rc <> 8.
           ADD 1 TO cv_err.
-          WRITE: / |  ERR: DELETE { ls_arch_gen-table_name } subrc={ lv_del_rc }|.
+          WRITE: / |  ERR: DELETE { lv_del_tab } subrc={ lv_del_rc }|.
         ENDIF.
       ELSE.
         ADD 1 TO cv_cnt.
-        WRITE: / '  [TEST] Would delete ' && ls_arch_gen-table_name && ' / ' && ls_arch_gen-key_vals.
+        WRITE: / '  [TEST] Would delete ' && lv_del_tab && ' / ' && ls_arch_gen-key_vals.
       ENDIF.
     ENDLOOP.
   ELSE.
@@ -771,11 +850,15 @@ FORM run_delete_legacy_json.
         lv_pair_loc   TYPE string,
         lv_kf_loc     TYPE string,
         lv_kv_loc     TYPE string,
+        lv_kv_esc_loc TYPE string,
         lt_del_loc    TYPE ty_del_agg_htab,
         ls_del_loc    TYPE ty_del_agg,
         lv_leg_h      TYPE syst-tabix,
         lv_leg_fb     TYPE abap_bool VALUE abap_false,
-        lv_leg_del_n  TYPE i VALUE 0.
+        lv_leg_del_n  TYPE i VALUE 0,
+        lv_leg_subrc  TYPE sy-subrc,
+        lo_leg        TYPE REF TO cx_sy_dynamic_osql_error,
+        lo_leg2       TYPE REF TO cx_root.
 
   CALL FUNCTION 'ARCHIVE_OPEN_FOR_DELETE'
     IMPORTING
@@ -805,27 +888,45 @@ FORM run_delete_legacy_json.
     SPLIT ls_arec_loc-key_vals AT '|' INTO TABLE lt_pairs_loc.
     LOOP AT lt_pairs_loc INTO lv_pair_loc.
       SPLIT lv_pair_loc AT '=' INTO lv_kf_loc lv_kv_loc.
+      CONDENSE lv_kf_loc.
+      CONDENSE lv_kv_loc.
+      TRANSLATE lv_kf_loc TO UPPER CASE.
+      CHECK lv_kf_loc IS NOT INITIAL.
+      lv_kv_esc_loc = lv_kv_loc.
+      PERFORM zsp26_sql_escape_quote CHANGING lv_kv_esc_loc.
       IF lv_where_loc IS NOT INITIAL. lv_where_loc &&= ' AND '. ENDIF.
-      lv_where_loc &&= lv_kf_loc && ` EQ '` && lv_kv_loc && `'`.
+      lv_where_loc &&= lv_kf_loc && ` EQ '` && lv_kv_esc_loc && `'`.
     ENDLOOP.
     lv_where_loc = 'MANDT EQ ''' && sy-mandt && ''' AND ' && lv_where_loc.
 
     WRITE: / '  LEGACY ' && ls_arec_loc-table_name && ' / ' && ls_arec_loc-key_vals.
 
     IF p_test = ' '.
-      DELETE FROM (ls_arec_loc-table_name) WHERE (lv_where_loc).
-      IF sy-subrc = 0.
+      CLEAR lv_leg_subrc.
+      TRY.
+          DELETE FROM (ls_arec_loc-table_name) WHERE (lv_where_loc).
+          lv_leg_subrc = sy-subrc.
+        CATCH cx_sy_dynamic_osql_error INTO lo_leg.
+          ADD 1 TO lv_err_loc.
+          lv_leg_subrc = 8.
+          WRITE: / |    ERR LEGACY SQL: { lo_leg->get_text( ) }|.
+        CATCH cx_root INTO lo_leg2.
+          ADD 1 TO lv_err_loc.
+          lv_leg_subrc = 8.
+          WRITE: / |    ERR LEGACY: { lo_leg2->get_text( ) }|.
+      ENDTRY.
+      IF lv_leg_subrc = 0.
         PERFORM archive_adk_mark_deleted_row USING lv_leg_h CHANGING lv_leg_fb.
         ADD 1 TO lv_leg_del_n.
         ADD 1 TO lv_cnt_loc.
         PERFORM del_agg_bump_legacy USING lt_del_loc ls_arec_loc-table_name.
-      ELSEIF sy-subrc = 4.
+      ELSEIF lv_leg_subrc = 4.
         PERFORM archive_adk_mark_deleted_row USING lv_leg_h CHANGING lv_leg_fb.
         ADD 1 TO lv_leg_del_n.
         ADD 1 TO lv_cnt_loc.
         PERFORM del_agg_bump_legacy USING lt_del_loc ls_arec_loc-table_name.
         WRITE: / '    INFO: already deleted'.
-      ELSE.
+      ELSEIF lv_leg_subrc <> 8.
         ADD 1 TO lv_err_loc.
       ENDIF.
     ELSE.

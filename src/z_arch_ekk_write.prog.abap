@@ -82,7 +82,7 @@ INITIALIZATION.
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
 *----------------------------------------------------------------------*
-  PERFORM f4_arch_cfg_table.
+  PERFORM f4_arch_cfg_table CHANGING p_table.
 
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN.
@@ -95,6 +95,7 @@ AT SELECTION-SCREEN.
             lt_cfgraw TYPE TABLE OF zsp26_arch_cfg,
             ls_cfgraw TYPE zsp26_arch_cfg,
             lv_wh     TYPE string,
+            lv_wh_full TYPE string,
             lv_cnt2   TYPE i,
             lv_co_pop TYPE d.
 
@@ -111,12 +112,16 @@ AT SELECTION-SCREEN.
                             ELSE sy-datum - ls_cfgraw-retention ).
         ls_cfg-cutoff_date = lv_co_pop.
 
-        CLEAR: lv_cnt2, lv_wh.
+        CLEAR: lv_cnt2, lv_wh, lv_wh_full.
         PERFORM build_where_from_arch_cfg
           USING ls_cfgraw s_date-low lv_co_pop
           CHANGING lv_wh.
+        lv_wh_full = lv_wh.
+        PERFORM append_rules_eq_to_where
+          USING ls_cfgraw-config_id ls_cfgraw-table_name
+          CHANGING lv_wh_full.
         SELECT COUNT(*) FROM (ls_cfgraw-table_name) INTO @lv_cnt2
-          WHERE (lv_wh).
+          WHERE (lv_wh_full).
         ls_cfg-eligible = lv_cnt2.
 
         APPEND ls_cfg TO lt_cfg.
@@ -338,10 +343,14 @@ START-OF-SELECTION.
       ASSIGN COMPONENT ls_ddk-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<fkv2>).
       IF <fkv2> IS ASSIGNED.
         DATA(lv_val2) = CONV string( <fkv2> ).
+        DATA(lv_fn2) TYPE fieldname.
+        lv_fn2 = ls_ddk-fieldname.
+        CONDENSE lv_fn2.
+        TRANSLATE lv_fn2 TO UPPER CASE.
         IF lv_keyvals IS NOT INITIAL.
-          lv_keyvals = |{ lv_keyvals }| && '|' && |{ ls_ddk-fieldname }={ lv_val2 }|.
+          lv_keyvals = lv_keyvals && '|' && lv_fn2 && '=' && lv_val2.
         ELSE.
-          lv_keyvals = |{ ls_ddk-fieldname }={ lv_val2 }|.
+          lv_keyvals = lv_fn2 && '=' && lv_val2.
         ENDIF.
       ENDIF.
     ENDLOOP.
@@ -534,59 +543,4 @@ FORM apply_rules_to_src.
     ENDIF.
     lv_ix = lv_ix - 1.
   ENDWHILE.
-ENDFORM.
-
-*&---------------------------------------------------------------------*
-FORM f4_arch_cfg_table.
-  TYPES: BEGIN OF ty_sht_f4,
-           table_name  TYPE tabname,
-           description TYPE char80,
-         END OF ty_sht_f4.
-  DATA lt_sht TYPE STANDARD TABLE OF ty_sht_f4 WITH DEFAULT KEY.
-
-  SELECT table_name, description
-    FROM zsp26_arch_cfg
-    WHERE is_active = 'X'
-    INTO CORRESPONDING FIELDS OF TABLE @lt_sht
-    UP TO 999 ROWS.
-  IF lt_sht IS INITIAL.
-    SELECT table_name, description
-      FROM zsp26_arch_cfg
-      INTO CORRESPONDING FIELDS OF TABLE @lt_sht
-      UP TO 999 ROWS.
-  ENDIF.
-  SORT lt_sht BY table_name.
-
-  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
-    EXPORTING
-      retfield     = 'TABLE_NAME'
-      window_title = 'Tables in ZSP26_ARCH_CFG'
-      dynpprog     = sy-repid
-      dynpnr       = sy-dynnr
-      dynprofield  = 'P_TABLE'
-      value_org    = 'S'
-    TABLES
-      value_tab    = lt_sht
-    EXCEPTIONS
-      OTHERS       = 0.
-
-  DATA: lt_df TYPE TABLE OF dynpread,
-        ls_df TYPE dynpread.
-  CLEAR lt_df.
-  ls_df-fieldname = 'P_TABLE'.
-  APPEND ls_df TO lt_df.
-  CALL FUNCTION 'DYNP_VALUES_READ'
-    EXPORTING
-      dyname     = sy-repid
-      dynumb     = sy-dynnr
-    TABLES
-      dynpfields = lt_df
-    EXCEPTIONS
-      OTHERS     = 1.
-  READ TABLE lt_df INTO ls_df INDEX 1.
-  IF sy-subrc = 0 AND ls_df-fieldvalue IS NOT INITIAL.
-    p_table = CONV tabname( ls_df-fieldvalue ).
-    CONDENSE p_table.
-    TRANSLATE p_table TO UPPER CASE.
-  ENDIF.
 ENDFORM.

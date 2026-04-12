@@ -1,7 +1,7 @@
 *&---------------------------------------------------------------------*
 *& Include  Z_GSP18_ARCH_DYN
 *& Shared helpers: validate table vs ZSP26_ARCH_CFG, dynamic WHERE,
-*& apply_archive_rules (ZSP26_ARCH_RULE row evaluation)
+*& apply_archive_rules, F4 for P_TABLE (ZSP26_ARCH_CFG)
 *&---------------------------------------------------------------------*
 
 *&---------------------------------------------------------------------*
@@ -14,13 +14,28 @@ FORM validate_table_against_cfg
   CHANGING ps_cfg          TYPE zsp26_arch_cfg
            cv_ok           TYPE abap_bool.
 
-  DATA: lt_df TYPE TABLE OF dfies.
+  DATA: lt_df       TYPE TABLE OF dfies,
+        lt_cfg_pick TYPE STANDARD TABLE OF zsp26_arch_cfg WITH EMPTY KEY,
+        lv_tn       TYPE tabname.
 
   CLEAR: ps_cfg, cv_ok.
   cv_ok = abap_false.
 
-  SELECT SINGLE * FROM zsp26_arch_cfg INTO @ps_cfg
-    WHERE table_name = @pv_table AND is_active = 'X'.
+  lv_tn = pv_table.
+  CONDENSE lv_tn.
+  TRANSLATE lv_tn TO UPPER CASE.
+  IF lv_tn IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  SELECT * FROM zsp26_arch_cfg
+    INTO TABLE @lt_cfg_pick
+    WHERE table_name = @lv_tn AND is_active = 'X'.
+  IF lt_cfg_pick IS INITIAL.
+    RETURN.
+  ENDIF.
+  SORT lt_cfg_pick BY changed_on DESCENDING created_on DESCENDING config_id.
+  READ TABLE lt_cfg_pick INTO ps_cfg INDEX 1.
   IF sy-subrc <> 0.
     RETURN.
   ENDIF.
@@ -29,7 +44,7 @@ FORM validate_table_against_cfg
   ENDIF.
 
   CALL FUNCTION 'DDIF_FIELDINFO_GET'
-    EXPORTING  tabname   = pv_table
+    EXPORTING  tabname   = lv_tn
     TABLES     dfies_tab = lt_df
     EXCEPTIONS OTHERS    = 7.
   IF sy-subrc <> 0 OR lt_df IS INITIAL.
@@ -309,4 +324,61 @@ FORM apply_archive_rules
   ENDLOOP.
 
   cv_pass = lv_result.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& F4: active ZSP26_ARCH_CFG tables (shared WRITE / READ / DELETE)
+*&---------------------------------------------------------------------*
+FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.
+  TYPES: BEGIN OF ty_sht_f4,
+           table_name  TYPE tabname,
+           description TYPE char80,
+         END OF ty_sht_f4.
+  DATA lt_sht TYPE STANDARD TABLE OF ty_sht_f4 WITH DEFAULT KEY.
+
+  SELECT table_name, description
+    FROM zsp26_arch_cfg
+    WHERE is_active = 'X'
+    INTO CORRESPONDING FIELDS OF TABLE @lt_sht
+    UP TO 999 ROWS.
+  IF lt_sht IS INITIAL.
+    SELECT table_name, description
+      FROM zsp26_arch_cfg
+      INTO CORRESPONDING FIELDS OF TABLE @lt_sht
+      UP TO 999 ROWS.
+  ENDIF.
+  SORT lt_sht BY table_name.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'TABLE_NAME'
+      window_title = 'Tables in ZSP26_ARCH_CFG'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'P_TABLE'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_sht
+    EXCEPTIONS
+      OTHERS       = 0.
+
+  DATA: lt_df TYPE TABLE OF dynpread,
+        ls_df TYPE dynpread.
+  CLEAR lt_df.
+  ls_df-fieldname = 'P_TABLE'.
+  APPEND ls_df TO lt_df.
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname     = sy-repid
+      dynumb     = sy-dynnr
+    TABLES
+      dynpfields = lt_df
+    EXCEPTIONS
+      OTHERS     = 1.
+  READ TABLE lt_df INTO ls_df INDEX 1.
+  IF sy-subrc = 0 AND ls_df-fieldvalue IS NOT INITIAL.
+    cv_tabname = CONV tabname( ls_df-fieldvalue ).
+    CONDENSE cv_tabname.
+    TRANSLATE cv_tabname TO UPPER CASE.
+  ENDIF.
 ENDFORM.

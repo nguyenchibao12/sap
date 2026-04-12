@@ -1,4 +1,7 @@
 REPORT z_arch_ekk_read.
+
+INCLUDE z_gsp18_arch_dyn.
+
 *&---------------------------------------------------------------------*
 *& Report  Z_ARCH_EKK_READ
 *& ADK Read / Restore — Archive Object Z_ARCH_EKK
@@ -41,7 +44,17 @@ INITIALIZATION.
 *----------------------------------------------------------------------*
   g_scr_r0 = 'F4=ZSP26_ARCH_CFG. P_REST=restore. P_DOC=session (optional). P_JSON=legacy JSON.'.
 
-  DATA ls_ra TYPE admi_run.
+  DATA: lv_hub_tab TYPE tabname,
+        ls_ra      TYPE admi_run.
+
+  IMPORT arch_tabname = lv_hub_tab FROM MEMORY ID 'Z_GSP18_ARCH_TAB'.
+  IF sy-subrc = 0.
+    IF p_table IS INITIAL AND lv_hub_tab IS NOT INITIAL.
+      p_table = lv_hub_tab.
+    ENDIF.
+    FREE MEMORY ID 'Z_GSP18_ARCH_TAB'.
+  ENDIF.
+
   IMPORT read_admi = ls_ra FROM MEMORY ID 'Z_GSP18_ARCH_READ_DOC'.
   IF sy-subrc = 0 AND ls_ra-document IS NOT INITIAL.
     p_doc = ls_ra-document.
@@ -51,7 +64,7 @@ INITIALIZATION.
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
 *----------------------------------------------------------------------*
-  PERFORM f4_arch_cfg_table.
+  PERFORM f4_arch_cfg_table CHANGING p_table.
 
 *----------------------------------------------------------------------*
 START-OF-SELECTION.
@@ -611,57 +624,3 @@ ENDFORM.
 FORM handle_ucomm USING r_ucomm TYPE sy-ucomm rs_selfield TYPE slis_selfield.
 ENDFORM.
 
-*&---------------------------------------------------------------------*
-FORM f4_arch_cfg_table.
-  TYPES: BEGIN OF ty_sht_f4,
-          table_name  TYPE tabname,
-          description TYPE char80,
-        END OF ty_sht_f4.
-  DATA lt_sht TYPE STANDARD TABLE OF ty_sht_f4 WITH DEFAULT KEY.
-
-  SELECT table_name, description
-    FROM zsp26_arch_cfg
-    WHERE is_active = 'X'
-    INTO CORRESPONDING FIELDS OF TABLE @lt_sht
-    UP TO 999 ROWS.
-  IF lt_sht IS INITIAL.
-    SELECT table_name, description
-      FROM zsp26_arch_cfg
-      INTO CORRESPONDING FIELDS OF TABLE @lt_sht
-      UP TO 999 ROWS.
-  ENDIF.
-  SORT lt_sht BY table_name.
-
-  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
-    EXPORTING
-      retfield     = 'TABLE_NAME'
-      window_title = 'Tables in ZSP26_ARCH_CFG'
-      dynpprog     = sy-repid
-      dynpnr       = sy-dynnr
-      dynprofield  = 'P_TABLE'
-      value_org    = 'S'
-    TABLES
-      value_tab    = lt_sht
-    EXCEPTIONS
-      OTHERS       = 0.
-
-  DATA: lt_df TYPE TABLE OF dynpread,
-        ls_df TYPE dynpread.
-  CLEAR lt_df.
-  ls_df-fieldname = 'P_TABLE'.
-  APPEND ls_df TO lt_df.
-  CALL FUNCTION 'DYNP_VALUES_READ'
-    EXPORTING
-      dyname     = sy-repid
-      dynumb     = sy-dynnr
-    TABLES
-      dynpfields = lt_df
-    EXCEPTIONS
-      OTHERS     = 1.
-  READ TABLE lt_df INTO ls_df INDEX 1.
-  IF sy-subrc = 0 AND ls_df-fieldvalue IS NOT INITIAL.
-    p_table = CONV tabname( ls_df-fieldvalue ).
-    CONDENSE p_table.
-    TRANSLATE p_table TO UPPER CASE.
-  ENDIF.
-ENDFORM.
