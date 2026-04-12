@@ -191,7 +191,8 @@ START-OF-SELECTION.
           lo_funcs  TYPE REF TO cl_salv_functions,
           lo_cols   TYPE REF TO cl_salv_columns_table,
           lo_col    TYPE REF TO cl_salv_column_table,
-          lo_disp_s TYPE REF TO cl_salv_display_settings.
+          lo_disp_s TYPE REF TO cl_salv_display_settings,
+          lx_gen    TYPE REF TO cx_salv_msg.
     TRY.
       cl_salv_table=>factory(
         IMPORTING r_salv_table = lo_alv
@@ -210,7 +211,7 @@ START-OF-SELECTION.
       lo_disp_s->set_list_header(
         |GENERIC ADK — { p_table } [ { lines( lt_disp ) } ]| ).
       lo_alv->display( ).
-    CATCH cx_salv_msg INTO DATA(lx_gen).
+    CATCH cx_salv_msg INTO lx_gen.
       MESSAGE lx_gen->get_text( ) TYPE 'E'.
     ENDTRY.
   ENDIF.
@@ -483,7 +484,8 @@ FORM run_read_legacy_json.
         lo_funcs  TYPE REF TO cl_salv_functions,
         lo_cols   TYPE REF TO cl_salv_columns_table,
         lo_col    TYPE REF TO cl_salv_column_table,
-        lo_disp_s TYPE REF TO cl_salv_display_settings.
+        lo_disp_s TYPE REF TO cl_salv_display_settings,
+        lx        TYPE REF TO cx_salv_msg.
 
   TRY.
     cl_salv_table=>factory(
@@ -509,7 +511,7 @@ FORM run_read_legacy_json.
 
     lo_alv->display( ).
 
-  CATCH cx_salv_msg INTO DATA(lx).
+  CATCH cx_salv_msg INTO lx.
     MESSAGE lx->get_text( ) TYPE 'E'.
   ENDTRY.
 

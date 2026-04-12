@@ -128,7 +128,8 @@ AT SELECTION-SCREEN.
       ENDLOOP.
 
       DATA: lo_alv  TYPE REF TO cl_salv_table,
-            lo_col  TYPE REF TO cl_salv_column.
+            lo_col  TYPE REF TO cl_salv_column,
+            lo_cols TYPE REF TO cl_salv_columns_table.
       TRY.
         cl_salv_table=>factory(
           IMPORTING r_salv_table = lo_alv
@@ -136,7 +137,7 @@ AT SELECTION-SCREEN.
         lo_alv->get_functions( )->set_all( abap_true ).
         lo_alv->get_columns( )->set_optimize( abap_true ).
 
-        DATA(lo_cols) = lo_alv->get_columns( ).
+        lo_cols = lo_alv->get_columns( ).
         TRY. lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
              lo_col->set_long_text( 'Table Name' ). CATCH cx_salv_not_found. ENDTRY.
         TRY. lo_col ?= lo_cols->get_column( 'DATA_FIELD' ).
@@ -258,9 +259,19 @@ START-OF-SELECTION.
   IF p_test = 'X'. WRITE: / '*** TEST MODE — no archive I/O ***'. ENDIF.
   WRITE: /.
 
-  DATA: lv_where  TYPE string,
-        lv_where0 TYPE string,
-        lv_c0     TYPE i.
+  DATA: lv_where    TYPE string,
+        lv_where0   TYPE string,
+        lv_c0       TYPE i,
+        ls_dd_wa    TYPE dfies,
+        ls_arch_rec TYPE zstr_arch_rec,
+        lv_keyvals  TYPE char255,
+        lv_json     TYPE string,
+        lv_jlen     TYPE i,
+        lv_jpos     TYPE i,
+        lv_take     TYPE i,
+        lv_val2     TYPE string,
+        lv_fn2      TYPE fieldname,
+        lv_kcheck   TYPE char255.
   PERFORM build_where_from_arch_cfg
     USING gs_cfg s_date-low lv_cutoff
     CHANGING lv_where0.
@@ -281,10 +292,9 @@ START-OF-SELECTION.
       TABLES     dfies_tab = lt_dd
       EXCEPTIONS OTHERS    = 1.
     LOOP AT <lt_src> ASSIGNING FIELD-SYMBOL(<frow>).
-      DATA: lv_kcheck TYPE char255.
       CLEAR lv_kcheck.
-      LOOP AT lt_dd INTO DATA(ls_kdd) WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
-        ASSIGN COMPONENT ls_kdd-fieldname OF STRUCTURE <frow> TO FIELD-SYMBOL(<fkv>).
+      LOOP AT lt_dd INTO ls_dd_wa WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
+        ASSIGN COMPONENT ls_dd_wa-fieldname OF STRUCTURE <frow> TO FIELD-SYMBOL(<fkv>).
         IF <fkv> IS ASSIGNED. lv_kcheck &&= <fkv>. ENDIF.
       ENDLOOP.
       IF lv_kcheck NS p_keyf.
@@ -331,20 +341,13 @@ START-OF-SELECTION.
       OTHERS    = 1.
 
   LOOP AT <lt_src> ASSIGNING <row>.
-    DATA ls_arch_rec TYPE zstr_arch_rec.
-    DATA lv_keyvals  TYPE char255.
-    DATA lv_json     TYPE string.
-    DATA: lv_jlen TYPE i,
-          lv_jpos TYPE i,
-          lv_take TYPE i.
     CLEAR: lv_keyvals, lv_json.
 
-    LOOP AT lt_dd INTO DATA(ls_ddk) WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
-      ASSIGN COMPONENT ls_ddk-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<fkv2>).
+    LOOP AT lt_dd INTO ls_dd_wa WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
+      ASSIGN COMPONENT ls_dd_wa-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<fkv2>).
       IF <fkv2> IS ASSIGNED.
-        DATA(lv_val2) = CONV string( <fkv2> ).
-        DATA(lv_fn2) TYPE fieldname.
-        lv_fn2 = ls_ddk-fieldname.
+        MOVE <fkv2> TO lv_val2.
+        lv_fn2 = ls_dd_wa-fieldname.
         CONDENSE lv_fn2.
         TRANSLATE lv_fn2 TO UPPER CASE.
         IF lv_keyvals IS NOT INITIAL.

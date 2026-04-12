@@ -327,6 +327,7 @@ START-OF-SELECTION.
 
   " USED_CLASSES: log what is inside the archive file (generic ZSTR_ARCH_REC vs legacy table line type)
   DATA: lt_used         TYPE adk_classes,
+        ls_used_inf     LIKE LINE OF lt_used,
         lv_tab_try      TYPE tabname,
         lv_obj_h        TYPE syst-tabix,
         lv_ro_ix        TYPE i VALUE 0,
@@ -348,8 +349,8 @@ START-OF-SELECTION.
       OTHERS                  = 3.
 
   WRITE: / |GET_INFORMATION: obj={ lv_obj } arch={ lv_arch_name } doc={ lv_doc } rc={ sy-subrc }|.
-  LOOP AT lt_used REFERENCE INTO DATA(lr_inf).
-    PERFORM adk_used_row_to_tabname USING lr_inf->* CHANGING lv_tab_try.
+  LOOP AT lt_used INTO ls_used_inf.
+    PERFORM adk_used_row_to_tabname USING ls_used_inf CHANGING lv_tab_try.
     WRITE: / |  FILE_STRUCTURE: { lv_tab_try }|.
   ENDLOOP.
   WRITE: /.
@@ -501,6 +502,7 @@ FORM process_delete_adk_object
         lv_cfg_loc   TYPE tabname,
         lv_skip_rec_fm TYPE abap_bool VALUE abap_false,
         lv_zstr_db_del TYPE i VALUE 0,
+        ls_pt_used     LIKE LINE OF pt_used,
         lv_del_tab     TYPE tabname,
         lv_mandt_q     TYPE string,
         lv_bad_key     TYPE abap_bool,
@@ -624,8 +626,8 @@ FORM process_delete_adk_object
     ENDIF.
 
     IF lv_got = abap_false.
-      LOOP AT pt_used REFERENCE INTO DATA(lr_u_del).
-        PERFORM adk_used_row_to_tabname USING lr_u_del->* CHANGING lv_tab_try.
+      LOOP AT pt_used INTO ls_pt_used.
+        PERFORM adk_used_row_to_tabname USING ls_pt_used CHANGING lv_tab_try.
         CHECK lv_tab_try IS NOT INITIAL.
         CHECK lv_tab_try <> 'ZSTR_ARCH_REC'.
         PERFORM process_one_arch_table USING pv_handle lv_tab_try p_test CHANGING cv_cnt cv_err lv_got.
@@ -666,7 +668,7 @@ FORM adk_used_row_to_tabname USING    ps_row TYPE any
                                CHANGING cv_tab TYPE tabname.
 
   FIELD-SYMBOLS <fs_comp> TYPE any.
-  DATA: lt_nm TYPE STANDARD TABLE OF string WITH EMPTY KEY,
+  DATA: lt_nm TYPE STANDARD TABLE OF string WITH DEFAULT KEY,
         lv_nm TYPE string,
         lv_s  TYPE string.
 
@@ -686,7 +688,7 @@ FORM adk_used_row_to_tabname USING    ps_row TYPE any
       CONTINUE.
     ENDIF.
     TRY.
-        lv_s = CONV string( <fs_comp> ).
+        MOVE <fs_comp> TO lv_s.
       CATCH cx_root.
         CONTINUE.
     ENDTRY.
