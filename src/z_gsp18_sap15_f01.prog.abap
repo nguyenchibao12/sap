@@ -1500,3 +1500,353 @@ FORM f4_gv_tabname_dynp.
     EXCEPTIONS
       OTHERS       = 0.
 ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Màn 0500 — Edit: popup Create hoặc Change / Delete / Copy (không mở
+*& selection screen “trần” khi variant chưa có).
+*&---------------------------------------------------------------------*
+FORM arch_edit_write_variant_0500.
+  DATA: lv_vtech TYPE variant,
+        lv_vok   TYPE abap_bool,
+        lv_rc    TYPE sy-subrc,
+        lv_run   TYPE variant,
+        lv_ans   TYPE char1,
+        lv_act   TYPE char1,
+        lv_ok    TYPE abap_bool,
+        lv_msg   TYPE string.
+
+  IF gv_variant IS INITIAL.
+    MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
+    RETURN.
+  ENDIF.
+  IF gv_tabname IS INITIAL.
+    MESSAGE 'Chọn bảng archive trước khi chỉnh Variant' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+  IF gv_prog_write IS INITIAL.
+    PERFORM get_archive_programs.
+  ENDIF.
+  IF gv_prog_write IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  PERFORM arch_build_write_var_tech
+    USING gv_tabname gv_variant
+    CHANGING lv_vtech lv_vok.
+  IF lv_vok = abap_false.
+    MESSAGE 'Tên Variant (ID) không hợp lệ hoặc quá dài.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  CLEAR lv_run.
+  CALL FUNCTION 'RS_VARIANT_EXISTS'
+    EXPORTING
+      report  = gv_prog_write
+      variant = lv_vtech
+    IMPORTING
+      r_c     = lv_rc.
+  IF lv_rc = 0.
+    lv_run = lv_vtech.
+  ELSE.
+    CALL FUNCTION 'RS_VARIANT_EXISTS'
+      EXPORTING
+        report  = gv_prog_write
+        variant = gv_variant
+      IMPORTING
+        r_c     = lv_rc.
+    IF lv_rc = 0.
+      lv_run = gv_variant.
+    ENDIF.
+  ENDIF.
+
+  IF lv_run IS INITIAL.
+    lv_msg = |Variant "{ gv_variant }" chưa tồn tại. Tạo variant SAP "{ lv_vtech }"?|.
+    CALL FUNCTION 'POPUP_TO_CONFIRM'
+      EXPORTING
+        titlebar              = 'Create Variant'
+        text_question         = lv_msg
+        text_button_1         = 'Create Variant'
+        text_button_2         = 'Cancel'
+        display_cancel_button = ' '
+      IMPORTING
+        answer                = lv_ans
+      EXCEPTIONS
+        OTHERS                = 1.
+    IF lv_ans <> '1'.
+      RETURN.
+    ENDIF.
+    PERFORM arch_ensure_write_variant
+      USING gv_prog_write lv_vtech gv_tabname
+      CHANGING lv_ok.
+    IF lv_ok = abap_false.
+      MESSAGE |Không tạo được variant "{ lv_vtech }". Kiểm tra quyền variant.| TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+    SUBMIT (gv_prog_write)
+      WITH p_table = gv_tabname
+      USING SELECTION-SET lv_vtech
+      VIA SELECTION-SCREEN
+      AND RETURN.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'POPUP_TO_DECIDE'
+    EXPORTING
+      titel                 = 'Variant'
+      text_question         = |"{ gv_variant }" (SAP: { lv_run }) — choose action|
+      text_option1          = 'Change'
+      text_option2          = 'Delete'
+      text_option3          = 'Copy variant'
+      display_cancel_button = 'X'
+    IMPORTING
+      answer                = lv_act
+    EXCEPTIONS
+      OTHERS                = 1.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  CASE lv_act.
+    WHEN '1'.
+      SUBMIT (gv_prog_write)
+        WITH p_table = gv_tabname
+        USING SELECTION-SET lv_run
+        VIA SELECTION-SCREEN
+        AND RETURN.
+
+    WHEN '2'.
+      lv_msg = |Delete SAP variant "{ lv_run }"? This cannot be undone.|
+      CALL FUNCTION 'POPUP_TO_CONFIRM'
+        EXPORTING
+          titlebar              = 'Delete Variant'
+          text_question         = lv_msg
+          text_button_1         = 'Delete'
+          text_button_2         = 'Cancel'
+          display_cancel_button = ' '
+        IMPORTING
+          answer                = lv_ans
+        EXCEPTIONS
+          OTHERS                = 1.
+      IF lv_ans <> '1'.
+        RETURN.
+      ENDIF.
+      CALL FUNCTION 'RS_VARIANT_DELETE'
+        EXPORTING
+          report             = gv_prog_write
+          variant            = lv_run
+          flag_confirmscreen = 'X'
+        EXCEPTIONS
+          OTHERS             = 9.
+      IF sy-subrc = 0.
+        COMMIT WORK AND WAIT.
+        CLEAR gv_variant.
+        MESSAGE |Deleted variant { lv_run }.| TYPE 'S'.
+      ELSE.
+        MESSAGE |Could not delete variant { lv_run }.| TYPE 'S' DISPLAY LIKE 'E'.
+      ENDIF.
+
+    WHEN '3'.
+      PERFORM arch_copy_write_variant_dialog
+        USING gv_prog_write gv_tabname lv_run.
+
+    WHEN OTHERS.
+      RETURN.
+  ENDCASE.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM ARCH_COPY_WRITE_VARIANT_DIALOG — nhập tên logical mới → copy
+*&---------------------------------------------------------------------*
+FORM arch_copy_write_variant_dialog
+  USING    iv_report  TYPE programm
+           iv_tabname TYPE tabname
+           iv_src     TYPE variant.
+
+  DATA: lt_fields TYPE TABLE OF sval,
+        ls_field  TYPE sval,
+        lv_new    TYPE string,
+        lv_tgt    TYPE variant,
+        lv_ok     TYPE abap_bool,
+        lv_rc     TYPE sy-subrc.
+
+  CLEAR ls_field.
+  ls_field-tabname   = '*'.
+  ls_field-fieldname = 'NEWVAR'.
+  ls_field-fieldtext = 'New variant name (logical)'.
+  CLEAR ls_field-value.
+  APPEND ls_field TO lt_fields.
+
+  CALL FUNCTION 'POPUP_TO_GET_VALUES'
+    EXPORTING
+      popup_title = 'Copy variant'
+    TABLES
+      fields = lt_fields
+    EXCEPTIONS
+      OTHERS = 1.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  READ TABLE lt_fields INTO ls_field INDEX 1.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+  lv_new = ls_field-value.
+  CONDENSE lv_new.
+  IF lv_new IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  PERFORM arch_build_write_var_tech
+    USING iv_tabname lv_new
+    CHANGING lv_tgt lv_ok.
+  IF lv_ok = abap_false.
+    MESSAGE 'Tên variant đích không hợp lệ hoặc quá dài.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'RS_VARIANT_EXISTS'
+    EXPORTING
+      report  = iv_report
+      variant = lv_tgt
+    IMPORTING
+      r_c     = lv_rc.
+  IF lv_rc = 0.
+    MESSAGE 'Variant đích đã tồn tại.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  PERFORM arch_copy_write_variant
+    USING iv_report iv_src lv_tgt iv_tabname
+    CHANGING lv_ok.
+  IF lv_ok = abap_false.
+    MESSAGE |Copy failed for { lv_tgt }.| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  gv_variant = CONV variant( lv_new ).
+  CONDENSE gv_variant NO-GAPS.
+  TRANSLATE gv_variant TO UPPER CASE.
+  MESSAGE |Copied to variant { lv_tgt }. Update screen if needed.| TYPE 'S'.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM ARCH_COPY_WRITE_VARIANT — RS_VARIANT_CONTENTS → RS_CREATE_VARIANT
+*&---------------------------------------------------------------------*
+FORM arch_copy_write_variant
+  USING    iv_report  TYPE programm
+           iv_src     TYPE variant
+           iv_tgt     TYPE variant
+           iv_tabname TYPE tabname
+  CHANGING cv_ok      TYPE abap_bool.
+
+  DATA: lt_params TYPE TABLE OF rsparams,
+        ls_varid  TYPE varid,
+        lt_varit  TYPE TABLE OF varit,
+        ls_varit  TYPE varit,
+        lv_rep    TYPE syrepid,
+        lv_hit    TYPE abap_bool,
+        ls_param  TYPE rsparams.
+
+  FIELD-SYMBOLS <p> TYPE rsparams.
+
+  cv_ok = abap_false.
+  IF iv_report IS INITIAL OR iv_src IS INITIAL OR iv_tgt IS INITIAL OR iv_tabname IS INITIAL.
+    RETURN.
+  ENDIF.
+  lv_rep = iv_report.
+
+  CALL FUNCTION 'RS_VARIANT_CONTENTS'
+    EXPORTING
+      report  = lv_rep
+      variant = iv_src
+    TABLES
+      valutab = lt_params
+    EXCEPTIONS
+      OTHERS  = 99.
+  IF sy-subrc <> 0 OR lt_params IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lv_hit = abap_false.
+  LOOP AT lt_params ASSIGNING <p> WHERE selname = 'P_TABLE'.
+    lv_hit = abap_true.
+    <p>-kind   = 'P'.
+    <p>-sign   = 'I'.
+    <p>-option = 'EQ'.
+    <p>-low    = iv_tabname.
+  ENDLOOP.
+  IF lv_hit = abap_false.
+    CLEAR ls_param.
+    ls_param-selname = 'P_TABLE'.
+    ls_param-kind    = 'P'.
+    ls_param-sign    = 'I'.
+    ls_param-option  = 'EQ'.
+    ls_param-low     = iv_tabname.
+    APPEND ls_param TO lt_params.
+  ENDIF.
+
+  lv_hit = abap_false.
+  LOOP AT lt_params ASSIGNING <p> WHERE selname = 'P_TEST'.
+    lv_hit = abap_true.
+    <p>-kind   = 'P'.
+    <p>-sign   = 'I'.
+    <p>-option = 'EQ'.
+    IF gv_test_mode = 'X'.
+      <p>-low = 'X'.
+    ELSE.
+      CLEAR <p>-low.
+    ENDIF.
+  ENDLOOP.
+  IF lv_hit = abap_false.
+    CLEAR ls_param.
+    ls_param-selname = 'P_TEST'.
+    ls_param-kind    = 'P'.
+    ls_param-sign    = 'I'.
+    ls_param-option  = 'EQ'.
+    IF gv_test_mode = 'X'.
+      ls_param-low = 'X'.
+    ENDIF.
+    APPEND ls_param TO lt_params.
+  ENDIF.
+
+  CLEAR ls_varid.
+  ls_varid-mandt      = sy-mandt.
+  ls_varid-report     = lv_rep.
+  ls_varid-variant    = iv_tgt.
+  ls_varid-environmnt = 'A'.
+  ls_varid-aedat      = sy-datum.
+  ls_varid-aetime     = sy-uzeit.
+
+  CLEAR ls_varit.
+  ls_varit-mandt   = sy-mandt.
+  ls_varit-langu   = sy-langu.
+  ls_varit-report  = lv_rep.
+  ls_varit-variant = iv_tgt.
+  ls_varit-vtext   = |{ iv_tabname } /C { iv_src }|.
+  APPEND ls_varit TO lt_varit.
+
+  CALL FUNCTION 'RS_CREATE_VARIANT'
+    EXPORTING
+      curr_report               = lv_rep
+      curr_variant              = iv_tgt
+      vari_desc                 = ls_varid
+    TABLES
+      vari_contents             = lt_params
+      vari_text                 = lt_varit
+    EXCEPTIONS
+      illegal_report_or_variant = 1
+      illegal_variantname       = 2
+      not_authorized            = 3
+      not_executed              = 4
+      report_not_existent       = 5
+      report_not_supplied       = 6
+      variant_exists            = 7
+      variant_locked            = 8
+      OTHERS                    = 9.
+
+  IF sy-subrc = 0.
+    COMMIT WORK AND WAIT.
+    cv_ok = abap_true.
+  ENDIF.
+ENDFORM.

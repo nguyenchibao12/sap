@@ -391,70 +391,14 @@ ENDMODULE.
 *& Module USER_COMMAND_0500 INPUT — ADK create archive file (session UI)
 *&---------------------------------------------------------------------*
 MODULE user_command_0500 INPUT.
-  DATA: lv_rc_500    TYPE sy-subrc,
-        lv_u5        TYPE sy-ucomm,
-        lv_vtech_500 TYPE variant,
-        lv_vrun_500  TYPE variant,
-        lv_vok_500   TYPE abap_bool.
+  DATA lv_u5 TYPE sy-ucomm.
 
   lv_u5 = ok_code.
   CLEAR ok_code.
 
   CASE lv_u5.
     WHEN 'BT_EDIT' OR 'EDIT_BTN'.
-      IF gv_variant IS NOT INITIAL.
-        IF gv_tabname IS INITIAL.
-          MESSAGE 'Chọn bảng archive trước khi chỉnh Variant' TYPE 'S' DISPLAY LIKE 'E'.
-        ELSE.
-          IF gv_prog_write IS INITIAL.
-            PERFORM get_archive_programs.
-          ENDIF.
-          PERFORM arch_build_write_var_tech
-            USING gv_tabname gv_variant
-            CHANGING lv_vtech_500 lv_vok_500.
-          IF lv_vok_500 = abap_false.
-            MESSAGE 'Tên Variant (ID) không hợp lệ hoặc quá dài.' TYPE 'S' DISPLAY LIKE 'E'.
-          ELSE.
-            CALL FUNCTION 'RS_VARIANT_EXISTS'
-              EXPORTING
-                report  = gv_prog_write
-                variant = lv_vtech_500
-              IMPORTING
-                r_c     = lv_rc_500.
-
-            IF lv_rc_500 = 0.
-              lv_vrun_500 = lv_vtech_500.
-            ELSE.
-              CALL FUNCTION 'RS_VARIANT_EXISTS'
-                EXPORTING
-                  report  = gv_prog_write
-                  variant = gv_variant
-                IMPORTING
-                  r_c     = lv_rc_500.
-              IF lv_rc_500 = 0.
-                lv_vrun_500 = gv_variant.
-              ENDIF.
-            ENDIF.
-
-            IF lv_vrun_500 IS NOT INITIAL.
-              SUBMIT (gv_prog_write)
-                WITH p_table = gv_tabname
-                USING SELECTION-SET lv_vrun_500
-                VIA SELECTION-SCREEN
-                AND RETURN.
-            ELSE.
-              " Không auto-create tại Edit: mở selection screen chuẩn để user
-              " dùng đầy đủ chức năng Variant (Change/Copy/Delete/Save As).
-              SUBMIT (gv_prog_write)
-                WITH p_table = gv_tabname
-                VIA SELECTION-SCREEN
-                AND RETURN.
-            ENDIF.
-          ENDIF.
-        ENDIF.
-      ELSE.
-        MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
-      ENDIF.
+      PERFORM arch_edit_write_variant_0500.
 
     WHEN 'BT_START' OR 'START_BTN'.
       PERFORM maintenance_start_date.

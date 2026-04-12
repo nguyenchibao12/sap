@@ -4,5 +4,7 @@ PROCESS BEFORE OUTPUT.
 
 PROCESS AFTER INPUT.
   MODULE exit_command AT EXIT-COMMAND.
-  FIELD gv_variant MODULE f4_gv_variant ON REQUEST.
   MODULE user_command_0500.
+
+PROCESS ON VALUE-REQUEST.
+  FIELD gv_variant MODULE f4_gv_variant.
