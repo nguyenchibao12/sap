@@ -1181,6 +1181,13 @@ FORM do_monitor.
       ls_disp-status_txt = 'OK'.
     ENDIF.
 
+    " ── Phase 3: Traffic light icon ──────────────────────────────────
+    CASE ls_disp-status_txt.
+      WHEN 'OVERDUE'. ls_disp-traffic_lgt = '@5B@'.  " red
+      WHEN 'WARNING'. ls_disp-traffic_lgt = '@5C@'.  " yellow
+      WHEN OTHERS.    ls_disp-traffic_lgt = '@5D@'.  " green
+    ENDCASE.
+
     APPEND ls_disp TO gt_mon_disp.
 
     " Snapshot to ZSP26_ARCH_STAT
@@ -1204,10 +1211,7 @@ FORM do_monitor.
   DATA: lo_cols  TYPE REF TO cl_salv_columns_table,
         lo_col   TYPE REF TO cl_salv_column_table,
         lo_disp  TYPE REF TO cl_salv_display_settings,
-        lo_funcs TYPE REF TO cl_salv_functions,
-        lo_rows  TYPE REF TO cl_salv_rows,
-        ls_colo  TYPE lvc_s_colo,
-        lv_ridx  TYPE i.
+        lo_funcs TYPE REF TO cl_salv_functions.
 
   TRY.
     cl_salv_table=>factory(
@@ -1230,28 +1234,19 @@ FORM do_monitor.
           cx_salv_existing. ENDTRY.
     SET HANDLER lcl_mon_handler=>on_func FOR go_mon_alv->get_event( ).
 
-    " ── Phase 3: Row color via cl_salv_rows (no deep structure needed) ─
-    lo_rows = go_mon_alv->get_rows( ).
-    lv_ridx = 1.
-    LOOP AT gt_mon_disp INTO DATA(ls_color_row).
-      CLEAR ls_colo.
-      CASE ls_color_row-status_txt.
-        WHEN 'OVERDUE'. ls_colo-col = 6.  " red
-        WHEN 'WARNING'. ls_colo-col = 3.  " yellow
-        WHEN OTHERS.    ls_colo-col = 5.  " green
-      ENDCASE.
-      TRY.
-        lo_rows->set_color( index = lv_ridx value = ls_colo ).
-      CATCH cx_salv_index_not_found. ENDTRY.
-      ADD 1 TO lv_ridx.
-    ENDLOOP.
-
     lo_cols = go_mon_alv->get_columns( ).
     lo_cols->set_optimize( abap_true ).
 
     TRY.
+      " ── Phase 3: Traffic light icon column ─────────────────────────
+      lo_col ?= lo_cols->get_column( 'TRAFFIC_LGT' ).
+      lo_col->set_long_text( 'Status' ).
+      lo_col->set_icon( abap_true ).
+      lo_col->set_output_length( 5 ).
+      " STATUS_TXT cột chữ — ẩn đi, icon đã đủ visual
+      lo_col ?= lo_cols->get_column( 'STATUS_TXT' ).  lo_col->set_visible( abap_false ).
+
       lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( 'Table Name' ).
-      lo_col ?= lo_cols->get_column( 'STATUS_TXT' ).  lo_col->set_long_text( 'Status' ).
       lo_col ?= lo_cols->get_column( 'LIVE_RECS' ).   lo_col->set_long_text( 'Live Records' ).
       lo_col ?= lo_cols->get_column( 'ARCH_RECS' ).   lo_col->set_long_text( 'Archived Recs' ).
       lo_col ?= lo_cols->get_column( 'DEL_RECS' ).    lo_col->set_long_text( 'Deleted Recs' ).
