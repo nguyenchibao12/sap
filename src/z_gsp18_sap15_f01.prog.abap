@@ -1119,12 +1119,13 @@ FORM do_monitor.
     ENDTRY.
 
     " ── Phase 2a: Archived & Deleted record counts ───────────────────
-    SELECT COUNT(*) FROM zsp26_arch_data INTO @lv_cnt
-      WHERE table_name = @ls_cfg-table_name AND arch_status = 'A'.
+    " SUM(rec_count) từ log — ZSP26_ARCH_DATA chỉ có data khi ADK write thực
+    SELECT SUM( rec_count ) FROM zsp26_arch_log INTO @lv_cnt
+      WHERE table_name = @ls_cfg-table_name AND action = 'ARCHIVE'.
     ls_disp-arch_recs = lv_cnt.
 
-    SELECT COUNT(*) FROM zsp26_arch_data INTO @lv_cnt
-      WHERE table_name = @ls_cfg-table_name AND arch_status = 'D'.
+    SELECT SUM( rec_count ) FROM zsp26_arch_log INTO @lv_cnt
+      WHERE table_name = @ls_cfg-table_name AND action = 'DELETE'.
     ls_disp-del_recs = lv_cnt.
 
     " % Archived = arch_recs / (live + arch) * 100
@@ -1191,9 +1192,9 @@ FORM do_monitor.
     ls_stat-table_name = ls_cfg-table_name.
     ls_stat-stat_date  = sy-datum.
     ls_stat-total_recs = ls_disp-live_recs.
-    ls_stat-arch_recs  = ls_disp-arch_recs.
+    ls_stat-arch_recs  = ls_disp-arch_recs.   " SUM rec_count ARCHIVE
     ls_stat-rest_recs  = ls_disp-rest_runs.
-    ls_stat-del_recs   = ls_disp-del_recs.
+    ls_stat-del_recs   = ls_disp-del_recs.    " SUM rec_count DELETE
     ls_stat-last_user  = ls_disp-last_user.
     INSERT zsp26_arch_stat FROM ls_stat.
   ENDLOOP.
