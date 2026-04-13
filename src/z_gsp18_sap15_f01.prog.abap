@@ -1405,13 +1405,13 @@ FORM show_hub_btc_job_list.
 
   CLEAR gt_btc_rows.
 
-  SELECT jobname jobcount status sdluname strtdate strttime
+  SELECT jobname, jobcount, status, sdluname, strtdate, strttime
     FROM tbtco
+    UP TO 80 ROWS
     WHERE jobname LIKE 'ZARCH%'
       AND ( sdluname = @sy-uname OR authckman = @sy-uname )
     ORDER BY strtdate DESCENDING, strttime DESCENDING
-    INTO TABLE @lt_co
-    UP TO 80 ROWS.
+    INTO TABLE @lt_co.
 
   LOOP AT lt_co INTO ls_co.
     CLEAR ls_btc.
@@ -1591,18 +1591,18 @@ FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
   IF lv_tn IS NOT INITIAL.
     SELECT exec_date, table_name, exec_user, action, rec_count, status, message
       FROM zsp26_arch_log
+      UP TO 200 ROWS
       INTO TABLE @lt_lr
       WHERE table_name = @lv_tn
-      ORDER BY exec_date DESCENDING
-      UP TO 200 ROWS.
+      ORDER BY exec_date DESCENDING.
   ELSE.
     SELECT exec_date, table_name, exec_user, action, rec_count, status, message
       FROM zsp26_arch_log
+      UP TO 200 ROWS
       INTO TABLE @lt_lr
       WHERE exec_user = @sy-uname
         AND ( action = 'ARCHIVE' OR action = 'DELETE' )
-      ORDER BY exec_date DESCENDING
-      UP TO 200 ROWS.
+      ORDER BY exec_date DESCENDING.
   ENDIF.
 
   IF lt_lr IS INITIAL.
