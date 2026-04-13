@@ -268,11 +268,14 @@ START-OF-SELECTION.
   INSERT zsp26_arch_cfg FROM ls_cfg.
   IF sy-subrc = 0.
     COMMIT WORK.
+    DATA: lv_years TYPE p DECIMALS 1.
+    lv_years = p_ret / 365.
     SKIP.
     WRITE: / |✓ Đã đăng ký bảng { p_table } vào hệ thống archive.|.
     WRITE: / |  Config ID : { lv_uuid }|.
     WRITE: / |  Data Field: { p_datfld }|.
-    WRITE: / |  Retention : { p_ret } ngày ({ p_ret / 365 DECIMALS 1 } năm)|.
+    WRITE: / |  Retention : { p_ret } ngày (|.
+    WRITE: lv_years. WRITE: 'năm)'.
     WRITE: / |  Active    : { p_active }|.
     SKIP.
     WRITE: / 'Tiếp theo: Vào Z_GSP18_SAP15_MAIN → chọn bảng → Preview → Archive.'.
