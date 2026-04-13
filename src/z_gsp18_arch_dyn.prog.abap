@@ -74,7 +74,8 @@ FORM build_where_from_arch_cfg
         lt_df   TYPE TABLE OF dfies,
         lv_ae   TYPE abap_bool,
         lv_be   TYPE abap_bool,
-        lv_tab  TYPE tabname.
+        lv_tab  TYPE tabname,
+        lv_ff   TYPE string.
 
   IF pv_dhigh IS NOT INITIAL.
     lv_hi = pv_dhigh.
@@ -122,6 +123,17 @@ FORM build_where_from_arch_cfg
       cv_where = |{ ps_cfg-data_field } GE '{ pv_dlow }' AND { ps_cfg-data_field } LE '{ lv_hi }'|.
     ELSE.
       cv_where = |{ ps_cfg-data_field } LE '{ lv_hi }'|.
+    ENDIF.
+  ENDIF.
+
+  " FRESH_FIELD: nếu cấu hình → thêm điều kiện AND vào WHERE
+  " Chỉ archive nếu fresh_field = '00000000' (chưa có update) HOẶC fresh_field <= cutoff
+  IF ps_cfg-fresh_field IS NOT INITIAL.
+    lv_ff = ps_cfg-fresh_field.
+    CONDENSE lv_ff.
+    TRANSLATE lv_ff TO UPPER CASE.
+    IF strlen( lv_ff ) > 0.
+      cv_where &&= | AND ( { lv_ff } EQ '00000000' OR { lv_ff } LE '{ lv_hi }' )|.
     ENDIF.
   ENDIF.
 ENDFORM.
