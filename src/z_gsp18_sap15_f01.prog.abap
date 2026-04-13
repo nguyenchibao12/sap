@@ -1416,8 +1416,8 @@ FORM show_hub_admi_session_groups.
   SELECT *
     FROM admi_run
     INTO TABLE @lt_run_src UP TO 500 ROWS
-    WHERE client = sy-mandt
-      AND object = lv_obj
+    WHERE client = @sy-mandt
+      AND object = @lv_obj
     ORDER BY creat_date DESCENDING, document DESCENDING.
 
   IF lt_run_src IS INITIAL.
