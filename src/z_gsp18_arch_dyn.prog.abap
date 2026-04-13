@@ -438,8 +438,7 @@ FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.
     FROM dd02v
     INTO CORRESPONDING FIELDS OF TABLE @lt_sht
     WHERE tabname  LIKE 'Z%'
-      AND tabclass = 'TRANSP'
-      AND as4local = 'A'.
+      AND tabclass = 'TRANSP'.
 
   " Bước 3: Đánh dấu bảng đã config
   LOOP AT lt_sht ASSIGNING FIELD-SYMBOL(<row>).
