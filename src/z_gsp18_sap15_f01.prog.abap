@@ -1411,8 +1411,7 @@ FORM show_hub_admi_session_groups.
         lv_stat_t  TYPE c LENGTH 40,
         lv_arch_n  TYPE i,
         lv_del_n   TYPE i,
-        lv_gap_n   TYPE i,
-        lv_pending_left TYPE i.
+        lv_gap_n   TYPE i.
 
   lv_obj = gv_object.
   IF lv_obj IS INITIAL.
@@ -1451,8 +1450,6 @@ FORM show_hub_admi_session_groups.
     ENDIF.
   ENDIF.
 
-  lv_pending_left = lv_gap_n.
-
   LOOP AT lt_run_src INTO ls_run_src.
     CLEAR ls_run.
     ls_run-document   = ls_run_src-document.
@@ -1479,16 +1476,9 @@ FORM show_hub_admi_session_groups.
        OR lv_stat_t CS 'COMPLETE'
        OR lv_stat_t CS 'FINISHED'
        OR lv_stat_t CS 'SUCCESS'.
-      IF gv_tabname IS NOT INITIAL AND lv_pending_left > 0.
-        ls_run-grp_ord  = 2.
-        ls_run-grp_text = 'Incomplete Archiving Sessions (Pending Delete)'.
-        ls_run-grp_icon = icon_led_yellow.
-        lv_pending_left = lv_pending_left - 1.
-      ELSE.
-        ls_run-grp_ord  = 3.
-        ls_run-grp_text = 'Complete Archiving Sessions'.
-        ls_run-grp_icon = icon_led_green.
-      ENDIF.
+      ls_run-grp_ord  = 3.
+      ls_run-grp_text = 'Complete Archiving Sessions'.
+      ls_run-grp_icon = icon_led_green.
     ELSE.
       ls_run-grp_ord  = 2.
       ls_run-grp_text = 'Incomplete Archiving Sessions'.
@@ -1531,7 +1521,7 @@ FORM show_hub_admi_session_groups.
 
       lo_disp = lo_alv->get_display_settings( ).
       lo_disp->set_list_header(
-        |Archiving Sessions ({ lv_obj }) — grouped: Errors / Incomplete / Complete| ).
+        |Archiving Sessions ({ lv_obj }) — technical status from ADMI_RUN| ).
       lo_alv->display( ).
 
     CATCH cx_salv_msg INTO DATA(lx_rs).
