@@ -1407,8 +1407,8 @@ FORM show_hub_admi_session_groups.
         lo_disp    TYPE REF TO cl_salv_display_settings,
         lo_funcs   TYPE REF TO cl_salv_functions,
         lv_obj     TYPE arch_obj-object,
-        lv_stat_k  TYPE string,
-        lv_stat_t  TYPE string.
+        lv_stat_k  TYPE c LENGTH 40,
+        lv_stat_t  TYPE c LENGTH 40.
 
   lv_obj = gv_object.
   IF lv_obj IS INITIAL.
