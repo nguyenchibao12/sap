@@ -440,7 +440,6 @@ FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.
     WHERE tabname  LIKE 'Z%'
       AND tabclass = 'TRANSP'
       AND as4local = 'A'
-    ORDER BY tabname
     UP TO 999 ROWS.
 
   " Bước 3: Đánh dấu bảng đã config
