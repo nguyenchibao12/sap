@@ -1387,20 +1387,46 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM show_hub_admi_session_groups.
 
-  TYPES: BEGIN OF ty_run_row,
+  TYPES: BEGIN OF ty_run_det,
            grp_ord    TYPE i,
            grp_icon   TYPE icon_d,
-           grp_text   TYPE char40,
+           grp_text   TYPE char50,
            document   TYPE admi_run-document,
            creat_date TYPE admi_run-creat_date,
-           status     TYPE admi_run-status,
-           user_name  TYPE admi_run-user_name,
-         END OF ty_run_row.
+           doc_num    TYPE i,
+         END OF ty_run_det.
+  TYPES: BEGIN OF ty_run_band,
+           grp_ord    TYPE i,
+           grp_icon   TYPE icon_d,
+           grp_text   TYPE char50,
+           doc_from   TYPE admi_run-document,
+           doc_to     TYPE admi_run-document,
+           doc_from_n TYPE i,
+           doc_to_n   TYPE i,
+           date_from  TYPE d,
+           date_to    TYPE d,
+           cnt        TYPE i,
+         END OF ty_run_band.
+  TYPES: BEGIN OF ty_run_view,
+           grp_ord       TYPE i,
+           line_ord      TYPE i,
+           grp_icon      TYPE icon_d,
+           session_group TYPE char60,
+           session_range TYPE char60,
+         END OF ty_run_view.
 
   DATA: lt_run_src TYPE TABLE OF admi_run,
         ls_run_src TYPE admi_run,
-        lt_run     TYPE TABLE OF ty_run_row,
-        ls_run     TYPE ty_run_row,
+        lt_det     TYPE TABLE OF ty_run_det,
+        ls_det     TYPE ty_run_det,
+        lt_band    TYPE TABLE OF ty_run_band,
+        ls_band    TYPE ty_run_band,
+        lt_view    TYPE TABLE OF ty_run_view,
+        ls_view    TYPE ty_run_view,
+        lt_grp     TYPE TABLE OF ty_run_det,
+        ls_grp     TYPE ty_run_det,
+        lt_grp_band TYPE TABLE OF ty_run_band,
+        ls_grp_band TYPE ty_run_band,
         lo_alv     TYPE REF TO cl_salv_table,
         lo_cols    TYPE REF TO cl_salv_columns_table,
         lo_col     TYPE REF TO cl_salv_column_table,
@@ -1411,7 +1437,9 @@ FORM show_hub_admi_session_groups.
         lv_stat_t  TYPE c LENGTH 40,
         lv_arch_n  TYPE i,
         lv_del_n   TYPE i,
-        lv_gap_n   TYPE i.
+        lv_gap_n   TYPE i,
+        lv_doc_i   TYPE i,
+        lv_line    TYPE i.
 
   lv_obj = gv_object.
   IF lv_obj IS INITIAL.
@@ -1451,11 +1479,9 @@ FORM show_hub_admi_session_groups.
   ENDIF.
 
   LOOP AT lt_run_src INTO ls_run_src.
-    CLEAR ls_run.
-    ls_run-document   = ls_run_src-document.
-    ls_run-creat_date = ls_run_src-creat_date.
-    ls_run-status     = ls_run_src-status.
-    ls_run-user_name  = ls_run_src-user_name.
+    CLEAR ls_det.
+    ls_det-document   = ls_run_src-document.
+    ls_det-creat_date = ls_run_src-creat_date.
 
     " Map trạng thái về 3 nhóm giống SARA.
     " Dùng cả key + text output vì domain STATUS khác nhau theo release/system.
@@ -1469,31 +1495,136 @@ FORM show_hub_admi_session_groups.
        OR lv_stat_t CS 'ERROR'
        OR lv_stat_t CS 'CANCEL'
        OR lv_stat_t CS 'ABORT'.
-      ls_run-grp_ord  = 1.
-      ls_run-grp_text = 'Archiving Sessions with Errors'.
-      ls_run-grp_icon = icon_led_red.
+      ls_det-grp_ord  = 1.
+      ls_det-grp_text = 'Archiving Sessions with Errors'.
+      ls_det-grp_icon = icon_led_red.
     ELSEIF lv_stat_k CA 'FSC'
        OR lv_stat_t CS 'COMPLETE'
        OR lv_stat_t CS 'FINISHED'
        OR lv_stat_t CS 'SUCCESS'.
-      ls_run-grp_ord  = 3.
-      ls_run-grp_text = 'Complete Archiving Sessions'.
-      ls_run-grp_icon = icon_led_green.
+      ls_det-grp_ord  = 3.
+      ls_det-grp_text = 'Complete Archiving Sessions'.
+      ls_det-grp_icon = icon_led_green.
     ELSE.
-      ls_run-grp_ord  = 2.
-      ls_run-grp_text = 'Incomplete Archiving Sessions'.
-      ls_run-grp_icon = icon_led_yellow.
+      ls_det-grp_ord  = 2.
+      ls_det-grp_text = 'Incomplete Archiving Sessions'.
+      ls_det-grp_icon = icon_led_yellow.
     ENDIF.
 
-    APPEND ls_run TO lt_run.
+    CLEAR lv_doc_i.
+    TRY.
+        lv_doc_i = ls_run_src-document.
+      CATCH cx_root.
+        lv_doc_i = 0.
+    ENDTRY.
+    ls_det-doc_num = lv_doc_i.
+
+    APPEND ls_det TO lt_det.
   ENDLOOP.
 
-  SORT lt_run BY grp_ord ASCENDING creat_date DESCENDING document DESCENDING.
+  CLEAR lt_band.
+  DO 3 TIMES.
+    REFRESH lt_grp.
+    LOOP AT lt_det INTO ls_grp WHERE grp_ord = sy-index.
+      APPEND ls_grp TO lt_grp.
+    ENDLOOP.
+    IF lt_grp IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    SORT lt_grp BY doc_num ASCENDING document ASCENDING.
+
+    CLEAR ls_band.
+    LOOP AT lt_grp INTO ls_grp.
+      IF ls_band-cnt = 0.
+        CLEAR ls_band.
+        ls_band-grp_ord  = ls_grp-grp_ord.
+        ls_band-grp_icon = ls_grp-grp_icon.
+        ls_band-grp_text = ls_grp-grp_text.
+        ls_band-doc_from = ls_grp-document.
+        ls_band-doc_to   = ls_grp-document.
+        ls_band-doc_from_n = ls_grp-doc_num.
+        ls_band-doc_to_n   = ls_grp-doc_num.
+        ls_band-date_from  = ls_grp-creat_date.
+        ls_band-date_to    = ls_grp-creat_date.
+        ls_band-cnt        = 1.
+      ELSE.
+        IF ls_grp-doc_num > 0
+           AND ls_band-doc_to_n > 0
+           AND ls_grp-doc_num = ls_band-doc_to_n + 1.
+          ls_band-doc_to   = ls_grp-document.
+          ls_band-doc_to_n = ls_grp-doc_num.
+          ls_band-cnt      = ls_band-cnt + 1.
+          IF ls_grp-creat_date < ls_band-date_from.
+            ls_band-date_from = ls_grp-creat_date.
+          ENDIF.
+          IF ls_grp-creat_date > ls_band-date_to.
+            ls_band-date_to = ls_grp-creat_date.
+          ENDIF.
+        ELSE.
+          APPEND ls_band TO lt_band.
+          CLEAR ls_band.
+          ls_band-grp_ord  = ls_grp-grp_ord.
+          ls_band-grp_icon = ls_grp-grp_icon.
+          ls_band-grp_text = ls_grp-grp_text.
+          ls_band-doc_from = ls_grp-document.
+          ls_band-doc_to   = ls_grp-document.
+          ls_band-doc_from_n = ls_grp-doc_num.
+          ls_band-doc_to_n   = ls_grp-doc_num.
+          ls_band-date_from  = ls_grp-creat_date.
+          ls_band-date_to    = ls_grp-creat_date.
+          ls_band-cnt        = 1.
+        ENDIF.
+      ENDIF.
+    ENDLOOP.
+    IF ls_band-cnt > 0.
+      APPEND ls_band TO lt_band.
+    ENDIF.
+  ENDDO.
+
+  REFRESH lt_view.
+  lv_line = 0.
+  DO 3 TIMES.
+    REFRESH lt_grp_band.
+    LOOP AT lt_band INTO ls_grp_band WHERE grp_ord = sy-index.
+      APPEND ls_grp_band TO lt_grp_band.
+    ENDLOOP.
+    IF lt_grp_band IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    SORT lt_grp_band BY doc_to_n DESCENDING doc_to DESCENDING.
+
+    ADD 1 TO lv_line.
+    CLEAR ls_view.
+    ls_view-grp_ord = sy-index.
+    ls_view-line_ord = lv_line.
+    READ TABLE lt_grp_band INTO ls_grp_band INDEX 1.
+    IF sy-subrc = 0.
+      ls_view-grp_icon = ls_grp_band-grp_icon.
+      ls_view-session_group = ls_grp_band-grp_text.
+    ENDIF.
+    APPEND ls_view TO lt_view.
+
+    LOOP AT lt_grp_band INTO ls_grp_band.
+      ADD 1 TO lv_line.
+      CLEAR ls_view.
+      ls_view-grp_ord = sy-index.
+      ls_view-line_ord = lv_line.
+      ls_view-session_group = '  >'.
+      IF ls_grp_band-doc_from = ls_grp_band-doc_to.
+        ls_view-session_range = |{ ls_grp_band-doc_from } ({ ls_grp_band-date_from })|.
+      ELSE.
+        ls_view-session_range = |{ ls_grp_band-doc_from } - { ls_grp_band-doc_to } ({ ls_grp_band-date_from } - { ls_grp_band-date_to })|.
+      ENDIF.
+      APPEND ls_view TO lt_view.
+    ENDLOOP.
+  ENDDO.
 
   TRY.
       cl_salv_table=>factory(
         IMPORTING r_salv_table = lo_alv
-        CHANGING  t_table      = lt_run ).
+        CHANGING  t_table      = lt_view ).
 
       lo_funcs = lo_alv->get_functions( ).
       lo_funcs->set_all( abap_true ).
@@ -1503,25 +1634,21 @@ FORM show_hub_admi_session_groups.
       TRY.
           lo_col ?= lo_cols->get_column( 'GRP_ORD' ).
           lo_col->set_visible( if_salv_c_bool_sap=>false ).
+          lo_col ?= lo_cols->get_column( 'LINE_ORD' ).
+          lo_col->set_visible( if_salv_c_bool_sap=>false ).
           lo_col ?= lo_cols->get_column( 'GRP_ICON' ).
           lo_col->set_long_text( ' ' ).
           lo_col->set_icon( if_salv_c_bool_sap=>true ).
-          lo_col ?= lo_cols->get_column( 'GRP_TEXT' ).
+          lo_col ?= lo_cols->get_column( 'SESSION_GROUP' ).
           lo_col->set_long_text( 'Session Group' ).
-          lo_col ?= lo_cols->get_column( 'DOCUMENT' ).
-          lo_col->set_long_text( 'Session' ).
-          lo_col ?= lo_cols->get_column( 'CREAT_DATE' ).
-          lo_col->set_long_text( 'Date' ).
-          lo_col ?= lo_cols->get_column( 'STATUS' ).
-          lo_col->set_long_text( 'Raw status' ).
-          lo_col ?= lo_cols->get_column( 'USER_NAME' ).
-          lo_col->set_long_text( 'User' ).
+          lo_col ?= lo_cols->get_column( 'SESSION_RANGE' ).
+          lo_col->set_long_text( 'Session ranges' ).
         CATCH cx_salv_not_found.
       ENDTRY.
 
       lo_disp = lo_alv->get_display_settings( ).
       lo_disp->set_list_header(
-        |Archiving Sessions ({ lv_obj }) — technical status from ADMI_RUN| ).
+        |Archiving Sessions ({ lv_obj }) — grouped ranges (Errors / Incomplete / Complete)| ).
       lo_alv->display( ).
 
     CATCH cx_salv_msg INTO DATA(lx_rs).
