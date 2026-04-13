@@ -636,6 +636,16 @@ FORM do_archive_delete_job.
     lv_sel_doc = gv_f4_sess.
   ENDIF.
 
+  " --- Ownership guard: chặn xóa session của user khác ---
+  IF gs_del_admi-document IS NOT INITIAL.
+    DATA: lv_del_adm TYPE abap_bool.
+    PERFORM is_arch_admin CHANGING lv_del_adm.
+    IF lv_del_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
+      MESSAGE |Bạn không có quyền xóa session của user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
   IF gv_variant IS NOT INITIAL.
     CALL FUNCTION 'RS_VARIANT_EXISTS'
       EXPORTING
@@ -690,6 +700,16 @@ FORM do_archive_delete_bg_job.
     lv_sel_doc = gs_del_admi-document.
   ELSEIF gv_f4_sess IS NOT INITIAL.
     lv_sel_doc = gv_f4_sess.
+  ENDIF.
+
+  " --- Ownership guard: chặn xóa session của user khác (background job) ---
+  IF gs_del_admi-document IS NOT INITIAL.
+    DATA: lv_bgdel_adm TYPE abap_bool.
+    PERFORM is_arch_admin CHANGING lv_bgdel_adm.
+    IF lv_bgdel_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
+      MESSAGE |Bạn không có quyền xóa session của user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
   ENDIF.
 
   IF gv_variant IS NOT INITIAL.
@@ -794,11 +814,22 @@ FORM arch_del_pick_session_popup.
     PERFORM get_archive_programs.
   ENDIF.
 
-  SELECT * FROM admi_run
-    WHERE client = @sy-mandt
-      AND object = @lv_obj
-    INTO TABLE @lt_run
-    UP TO 500 ROWS.
+  DATA: lv_adm_popup TYPE abap_bool.
+  PERFORM is_arch_admin CHANGING lv_adm_popup.
+  IF lv_adm_popup = abap_true.
+    SELECT * FROM admi_run
+      WHERE client = @sy-mandt
+        AND object = @lv_obj
+      INTO TABLE @lt_run
+      UP TO 500 ROWS.
+  ELSE.
+    SELECT * FROM admi_run
+      WHERE client    = @sy-mandt
+        AND object    = @lv_obj
+        AND user_name = @sy-uname
+      INTO TABLE @lt_run
+      UP TO 500 ROWS.
+  ENDIF.
 
   IF lt_run IS INITIAL.
     MESSAGE 'Không có session trên ADMI_RUN cho AOBJ này (đã archive/write chưa?).' TYPE 'S' DISPLAY LIKE 'W'.
@@ -910,6 +941,16 @@ ENDFORM.
 *& FORM DO_RESTORE_FROM_HUB — Restore từ archive (xác nhận → ADK + p_rest=X)
 *&---------------------------------------------------------------------*
 FORM do_restore_from_hub.
+  " --- Ownership guard: chặn restore session của user khác ---
+  IF gs_del_admi-document IS NOT INITIAL.
+    DATA: lv_rst_adm TYPE abap_bool.
+    PERFORM is_arch_admin CHANGING lv_rst_adm.
+    IF lv_rst_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
+      MESSAGE |Bạn không có quyền restore session của user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
   DATA: lv_ans TYPE c LENGTH 1.
 
   CALL FUNCTION 'POPUP_TO_CONFIRM'
@@ -1486,12 +1527,24 @@ FORM show_hub_admi_session_groups.
     lv_obj = 'Z_ARCH_EKK'.
   ENDIF.
 
-  SELECT *
-    FROM admi_run
-    INTO TABLE @lt_run_src UP TO 500 ROWS
-    WHERE client = @sy-mandt
-      AND object = @lv_obj
-    ORDER BY creat_date DESCENDING, document DESCENDING.
+  DATA: lv_adm_hub TYPE abap_bool.
+  PERFORM is_arch_admin CHANGING lv_adm_hub.
+  IF lv_adm_hub = abap_true.
+    SELECT *
+      FROM admi_run
+      INTO TABLE @lt_run_src UP TO 500 ROWS
+      WHERE client = @sy-mandt
+        AND object = @lv_obj
+      ORDER BY creat_date DESCENDING, document DESCENDING.
+  ELSE.
+    SELECT *
+      FROM admi_run
+      INTO TABLE @lt_run_src UP TO 500 ROWS
+      WHERE client    = @sy-mandt
+        AND object    = @lv_obj
+        AND user_name = @sy-uname
+      ORDER BY creat_date DESCENDING, document DESCENDING.
+  ENDIF.
 
   IF lt_run_src IS INITIAL.
     MESSAGE 'Không có archiving session trong ADMI_RUN cho object này.' TYPE 'S' DISPLAY LIKE 'W'.
@@ -2997,4 +3050,19 @@ FORM arch_copy_write_variant
     COMMIT WORK AND WAIT.
     cv_ok = abap_true.
   ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM IS_ARCH_ADMIN — Kiểm tra user có quyền Archive Admin không
+*&  Tra bảng ZSP26_ARCH_ADMIN — thêm/xóa user admin bằng SE16N/SM30
+*&  Admin: thấy và thao tác tất cả session
+*&  User thường: chỉ thấy và thao tác session của chính mình
+*&---------------------------------------------------------------------*
+FORM is_arch_admin CHANGING cv_admin TYPE abap_bool.
+  SELECT SINGLE uname FROM zsp26_arch_admin
+    INTO @DATA(lv_u)
+    WHERE mandt = @sy-mandt
+      AND uname = @sy-uname.
+  cv_admin = COND abap_bool( WHEN sy-subrc = 0 THEN abap_true
+                              ELSE abap_false ).
 ENDFORM.
