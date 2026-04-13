@@ -130,53 +130,11 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_datfld.
 * F4: FRESH_FIELD — chỉ hiện DATE field của bảng đang chọn (giống p_datfld)
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_frsf.
-  DATA: lt_dd3f  TYPE TABLE OF dfies,
-        lt_ret3  TYPE TABLE OF ddshretval,
-        ls_ret3  TYPE ddshretval.
-
   IF p_table IS INITIAL.
     MESSAGE 'Nhập Table Name trước khi chọn Freshness Field.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
-
-  CALL FUNCTION 'DDIF_FIELDINFO_GET'
-    EXPORTING  tabname   = p_table
-    TABLES     dfies_tab = lt_dd3f
-    EXCEPTIONS OTHERS    = 1.
-
-  IF sy-subrc <> 0.
-    MESSAGE |Không đọc được cấu trúc bảng { p_table }.| TYPE 'S' DISPLAY LIKE 'E'.
-    RETURN.
-  ENDIF.
-
-  " Chỉ giữ DATE fields, loại MANDT — dùng trực tiếp dfies (DDIC type, không conflict FM)
-  DELETE lt_dd3f WHERE inttype <> 'D' OR fieldname = 'MANDT'.
-
-  IF lt_dd3f IS INITIAL.
-    MESSAGE |Bảng { p_table } không có field kiểu DATE.| TYPE 'S' DISPLAY LIKE 'E'.
-    RETURN.
-  ENDIF.
-
-  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
-    EXPORTING
-      retfield     = 'FIELDNAME'
-      dynpprog     = sy-repid
-      dynpnr       = sy-dynnr
-      dynprofield  = 'P_FRSF'
-      window_title = |Freshness Date Fields của { p_table }|
-      value_org    = 'S'
-    TABLES
-      value_tab    = lt_dd3f
-      return_tab   = lt_ret3
-    EXCEPTIONS
-      OTHERS       = 0.
-
-  READ TABLE lt_ret3 INTO ls_ret3 INDEX 1.
-  IF sy-subrc = 0 AND ls_ret3-fieldval IS NOT INITIAL.
-    p_frsf = CONV fieldname( ls_ret3-fieldval ).
-    CONDENSE p_frsf.
-    TRANSLATE p_frsf TO UPPER CASE.
-  ENDIF.
+  PERFORM f4_pick_date_field USING p_table 'P_FRSF' CHANGING p_frsf.
 
 *----------------------------------------------------------------------*
 * START-OF-SELECTION: Validate + INSERT ZSP26_ARCH_CFG
@@ -368,3 +326,68 @@ START-OF-SELECTION.
   ELSE.
     WRITE: / |✗ Lỗi INSERT ZSP26_ARCH_CFG (sy-subrc={ sy-subrc }).|.
   ENDIF.
+
+*&---------------------------------------------------------------------*
+*& FORM F4_PICK_DATE_FIELD
+*& Dùng chung cho p_datfld và p_frsf — trong FORM, local type hoạt động đúng
+*& pv_dynpfld: tên field trên selection screen để trả giá trị về
+*&---------------------------------------------------------------------*
+FORM f4_pick_date_field
+  USING    pv_tab    TYPE tabname
+           pv_dynpfld TYPE char20
+  CHANGING cv_out    TYPE fieldname.
+
+  TYPES: BEGIN OF lty_fldrow,
+           fieldname TYPE fieldname,
+           ddtext    TYPE as4text,
+         END OF lty_fldrow.
+
+  DATA: lt_all  TYPE TABLE OF dfies,
+        ls_all  TYPE dfies,
+        lt_rows TYPE TABLE OF lty_fldrow,
+        ls_row  TYPE lty_fldrow,
+        lt_ret  TYPE TABLE OF ddshretval,
+        ls_ret  TYPE ddshretval.
+
+  IF pv_tab IS INITIAL. RETURN. ENDIF.
+
+  CALL FUNCTION 'DDIF_FIELDINFO_GET'
+    EXPORTING  tabname   = pv_tab
+    TABLES     dfies_tab = lt_all
+    EXCEPTIONS OTHERS    = 1.
+  IF sy-subrc <> 0. RETURN. ENDIF.
+
+  LOOP AT lt_all INTO ls_all
+    WHERE inttype = 'D' AND fieldname <> 'MANDT'.
+    CLEAR ls_row.
+    ls_row-fieldname = ls_all-fieldname.
+    ls_row-ddtext    = ls_all-fieldtext.
+    APPEND ls_row TO lt_rows.
+  ENDLOOP.
+
+  IF lt_rows IS INITIAL.
+    MESSAGE |Bảng { pv_tab } không có field kiểu DATE.| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'FIELDNAME'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = pv_dynpfld
+      window_title = |Date Fields của { pv_tab }|
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_rows
+      return_tab   = lt_ret
+    EXCEPTIONS
+      OTHERS       = 0.
+
+  READ TABLE lt_ret INTO ls_ret INDEX 1.
+  IF sy-subrc = 0 AND ls_ret-fieldval IS NOT INITIAL.
+    cv_out = CONV fieldname( ls_ret-fieldval ).
+    CONDENSE cv_out.
+    TRANSLATE cv_out TO UPPER CASE.
+  ENDIF.
+ENDFORM.
