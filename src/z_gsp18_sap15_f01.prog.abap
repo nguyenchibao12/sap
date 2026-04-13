@@ -1406,7 +1406,9 @@ FORM show_hub_admi_session_groups.
         lo_col     TYPE REF TO cl_salv_column_table,
         lo_disp    TYPE REF TO cl_salv_display_settings,
         lo_funcs   TYPE REF TO cl_salv_functions,
-        lv_obj     TYPE arch_obj-object.
+        lv_obj     TYPE arch_obj-object,
+        lv_stat_k  TYPE string,
+        lv_stat_t  TYPE string.
 
   lv_obj = gv_object.
   IF lv_obj IS INITIAL.
@@ -1432,12 +1434,25 @@ FORM show_hub_admi_session_groups.
     ls_run-status     = ls_run_src-status.
     ls_run-user_name  = ls_run_src-user_name.
 
-    " Map trạng thái về 3 nhóm giống SARA (rule thực dụng cho nhiều release)
-    IF ls_run-status CA 'EX'.
+    " Map trạng thái về 3 nhóm giống SARA.
+    " Dùng cả key + text output vì domain STATUS khác nhau theo release/system.
+    CLEAR: lv_stat_k, lv_stat_t.
+    lv_stat_k = ls_run_src-status.
+    TRANSLATE lv_stat_k TO UPPER CASE.
+    WRITE ls_run_src-status TO lv_stat_t.
+    TRANSLATE lv_stat_t TO UPPER CASE.
+
+    IF lv_stat_k CA 'EX'
+       OR lv_stat_t CS 'ERROR'
+       OR lv_stat_t CS 'CANCEL'
+       OR lv_stat_t CS 'ABORT'.
       ls_run-grp_ord  = 1.
       ls_run-grp_text = 'Archiving Sessions with Errors'.
       ls_run-grp_icon = icon_led_red.
-    ELSEIF ls_run-status CA 'FSC'.
+    ELSEIF lv_stat_k CA 'FSC'
+       OR lv_stat_t CS 'COMPLETE'
+       OR lv_stat_t CS 'FINISHED'
+       OR lv_stat_t CS 'SUCCESS'.
       ls_run-grp_ord  = 3.
       ls_run-grp_text = 'Complete Archiving Sessions'.
       ls_run-grp_icon = icon_led_green.
