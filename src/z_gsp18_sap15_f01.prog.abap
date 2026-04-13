@@ -1379,7 +1379,117 @@ ENDFORM.
 *& Hub: job ZARCH* + log DB — không cần mở SM37/SARA
 *&---------------------------------------------------------------------*
 FORM show_hub_run_diagnostics.
-  PERFORM show_hub_btc_job_list.
+  PERFORM show_hub_admi_session_groups.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& ADMI_RUN sessions grouped like SARA: Errors / Incomplete / Complete
+*&---------------------------------------------------------------------*
+FORM show_hub_admi_session_groups.
+
+  TYPES: BEGIN OF ty_run_row,
+           grp_ord    TYPE i,
+           grp_icon   TYPE icon_d,
+           grp_text   TYPE char40,
+           document   TYPE admi_run-document,
+           creat_date TYPE admi_run-creat_date,
+           status     TYPE admi_run-status,
+           user_name  TYPE admi_run-user_name,
+         END OF ty_run_row.
+
+  DATA: lt_run_src TYPE TABLE OF admi_run,
+        ls_run_src TYPE admi_run,
+        lt_run     TYPE TABLE OF ty_run_row,
+        ls_run     TYPE ty_run_row,
+        lo_alv     TYPE REF TO cl_salv_table,
+        lo_cols    TYPE REF TO cl_salv_columns_table,
+        lo_col     TYPE REF TO cl_salv_column_table,
+        lo_disp    TYPE REF TO cl_salv_display_settings,
+        lo_funcs   TYPE REF TO cl_salv_functions,
+        lv_obj     TYPE arch_obj-object.
+
+  lv_obj = gv_object.
+  IF lv_obj IS INITIAL.
+    lv_obj = 'Z_ARCH_EKK'.
+  ENDIF.
+
+  SELECT *
+    FROM admi_run
+    INTO TABLE lt_run_src UP TO 500 ROWS
+    WHERE client = sy-mandt
+      AND object = lv_obj
+    ORDER BY creat_date DESCENDING, document DESCENDING.
+
+  IF lt_run_src IS INITIAL.
+    MESSAGE 'Không có archiving session trong ADMI_RUN cho object này.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_run_src INTO ls_run_src.
+    CLEAR ls_run.
+    ls_run-document   = ls_run_src-document.
+    ls_run-creat_date = ls_run_src-creat_date.
+    ls_run-status     = ls_run_src-status.
+    ls_run-user_name  = ls_run_src-user_name.
+
+    " Map trạng thái về 3 nhóm giống SARA (rule thực dụng cho nhiều release)
+    IF ls_run-status CA 'EX'.
+      ls_run-grp_ord  = 1.
+      ls_run-grp_text = 'Archiving Sessions with Errors'.
+      ls_run-grp_icon = icon_led_red.
+    ELSEIF ls_run-status CA 'FSC'.
+      ls_run-grp_ord  = 3.
+      ls_run-grp_text = 'Complete Archiving Sessions'.
+      ls_run-grp_icon = icon_led_green.
+    ELSE.
+      ls_run-grp_ord  = 2.
+      ls_run-grp_text = 'Incomplete Archiving Sessions'.
+      ls_run-grp_icon = icon_led_yellow.
+    ENDIF.
+
+    APPEND ls_run TO lt_run.
+  ENDLOOP.
+
+  SORT lt_run BY grp_ord ASCENDING creat_date DESCENDING document DESCENDING.
+
+  TRY.
+      cl_salv_table=>factory(
+        IMPORTING r_salv_table = lo_alv
+        CHANGING  t_table      = lt_run ).
+
+      lo_funcs = lo_alv->get_functions( ).
+      lo_funcs->set_all( abap_true ).
+
+      lo_cols = lo_alv->get_columns( ).
+      lo_cols->set_optimize( abap_true ).
+      TRY.
+          lo_col ?= lo_cols->get_column( 'GRP_ORD' ).
+          lo_col->set_visible( if_salv_c_bool_sap=>false ).
+          lo_col ?= lo_cols->get_column( 'GRP_ICON' ).
+          lo_col->set_long_text( ' ' ).
+          lo_col->set_icon( if_salv_c_bool_sap=>true ).
+          lo_col ?= lo_cols->get_column( 'GRP_TEXT' ).
+          lo_col->set_long_text( 'Session Group' ).
+          lo_col ?= lo_cols->get_column( 'DOCUMENT' ).
+          lo_col->set_long_text( 'Session' ).
+          lo_col ?= lo_cols->get_column( 'CREAT_DATE' ).
+          lo_col->set_long_text( 'Date' ).
+          lo_col ?= lo_cols->get_column( 'STATUS' ).
+          lo_col->set_long_text( 'Raw status' ).
+          lo_col ?= lo_cols->get_column( 'USER_NAME' ).
+          lo_col->set_long_text( 'User' ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      lo_disp = lo_alv->get_display_settings( ).
+      lo_disp->set_list_header(
+        |Archiving Sessions ({ lv_obj }) — grouped: Errors / Incomplete / Complete| ).
+      lo_alv->display( ).
+
+    CATCH cx_salv_msg INTO DATA(lx_rs).
+      MESSAGE lx_rs->get_text( ) TYPE 'E'.
+  ENDTRY.
+
 ENDFORM.
 
 *&---------------------------------------------------------------------*
