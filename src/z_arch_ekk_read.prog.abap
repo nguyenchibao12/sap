@@ -67,6 +67,11 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
   PERFORM f4_arch_cfg_table CHANGING p_table.
 
 *----------------------------------------------------------------------*
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_doc.
+*----------------------------------------------------------------------*
+  PERFORM f4_arch_doc_user CHANGING p_doc.
+
+*----------------------------------------------------------------------*
 START-OF-SELECTION.
 *----------------------------------------------------------------------*
 
@@ -624,5 +629,75 @@ ENDFORM.
 
 *&---------------------------------------------------------------------*
 FORM handle_ucomm USING r_ucomm TYPE sy-ucomm rs_selfield TYPE slis_selfield.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM F4_ARCH_DOC_USER — F4 cho p_doc: admin thấy tất cả, user thấy của mình
+*&---------------------------------------------------------------------*
+FORM f4_arch_doc_user CHANGING cv_doc TYPE admi_run-document.
+  TYPES: BEGIN OF ty_doc_f4,
+           document   TYPE admi_run-document,
+           creat_date TYPE admi_run-creat_date,
+           status     TYPE admi_run-status,
+           user_name  TYPE admi_run-user_name,
+         END OF ty_doc_f4.
+
+  DATA: lt_f4  TYPE TABLE OF ty_doc_f4,
+        ls_f4  TYPE ty_doc_f4,
+        lt_run TYPE TABLE OF admi_run,
+        ls_run TYPE admi_run,
+        lt_ret TYPE TABLE OF ddshretval,
+        ls_ret TYPE ddshretval,
+        lv_obj TYPE arch_obj-object VALUE 'Z_ARCH_EKK',
+        lv_is_admin TYPE abap_bool.
+
+  " Kiểm tra admin qua bảng ZSP26_ARCH_ADMIN
+  SELECT SINGLE uname FROM zsp26_arch_admin
+    INTO @DATA(lv_u)
+    WHERE uname = @sy-uname.
+  lv_is_admin = COND abap_bool( WHEN sy-subrc = 0 THEN abap_true ELSE abap_false ).
+
+  IF lv_is_admin = abap_true.
+    SELECT * FROM admi_run
+      WHERE object = @lv_obj
+      INTO TABLE @lt_run
+      UP TO 500 ROWS.
+  ELSE.
+    SELECT * FROM admi_run
+      WHERE object    = @lv_obj
+        AND user_name = @sy-uname
+      INTO TABLE @lt_run
+      UP TO 500 ROWS.
+  ENDIF.
+
+  SORT lt_run BY creat_date DESCENDING document DESCENDING.
+
+  LOOP AT lt_run INTO ls_run.
+    CLEAR ls_f4.
+    ls_f4-document   = ls_run-document.
+    ls_f4-creat_date = ls_run-creat_date.
+    ls_f4-status     = ls_run-status.
+    ls_f4-user_name  = ls_run-user_name.
+    APPEND ls_f4 TO lt_f4.
+  ENDLOOP.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'DOCUMENT'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'P_DOC'
+      window_title = 'Archive Sessions — Select for Restore'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_f4
+      return_tab   = lt_ret
+    EXCEPTIONS
+      OTHERS       = 0.
+
+  READ TABLE lt_ret INTO ls_ret INDEX 1.
+  IF sy-subrc = 0 AND ls_ret-fieldval IS NOT INITIAL.
+    cv_doc = CONV admi_run-document( ls_ret-fieldval ).
+  ENDIF.
 ENDFORM.
 
