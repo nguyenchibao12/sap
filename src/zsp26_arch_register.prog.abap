@@ -13,7 +13,6 @@ REPORT zsp26_arch_register.
 PARAMETERS:
   p_table  TYPE tabname   OBLIGATORY,
   p_datfld TYPE fieldname OBLIGATORY,
-  p_frsf   TYPE fieldname,               " Freshness field — date cập nhật gần nhất (tuỳ chọn)
   p_ret    TYPE i         DEFAULT 1825,   " days — mặc định 5 năm
   p_desc   TYPE char80,
   p_active TYPE char1     AS CHECKBOX DEFAULT 'X'.
@@ -31,14 +30,10 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
         lt_ret  TYPE TABLE OF ddshretval,
         ls_ret  TYPE ddshretval.
 
-  " Chỉ lấy bảng Z TRANSP có ít nhất 1 field DATE (inttype='D') — tránh chọn bảng không archive được
-  SELECT DISTINCT d2~tabname, d2~ddtext
-    FROM dd02v AS d2
-    INNER JOIN dd03l AS d3 ON d3~tabname = d2~tabname
+  SELECT tabname, ddtext FROM dd02v
     INTO CORRESPONDING FIELDS OF TABLE @lt_dd
-    WHERE d2~tabname  LIKE 'Z%'
-      AND d2~tabclass = 'TRANSP'
-      AND d3~inttype  = 'D'.
+    WHERE tabname  LIKE 'Z%'
+      AND tabclass = 'TRANSP'.
 
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
@@ -127,26 +122,14 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_datfld.
   ENDIF.
 
 *----------------------------------------------------------------------*
-* F4: FRESH_FIELD — chỉ hiện DATE field của bảng đang chọn (giống p_datfld)
-*----------------------------------------------------------------------*
-AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_frsf.
-  IF p_table IS INITIAL.
-    MESSAGE 'Nhập Table Name trước khi chọn Freshness Field.' TYPE 'S' DISPLAY LIKE 'W'.
-    RETURN.
-  ENDIF.
-  PERFORM f4_pick_date_field USING p_table 'P_FRSF' CHANGING p_frsf.
-
-*----------------------------------------------------------------------*
 * START-OF-SELECTION: Validate + INSERT ZSP26_ARCH_CFG
 *----------------------------------------------------------------------*
 START-OF-SELECTION.
 
   CONDENSE p_table  NO-GAPS.
   CONDENSE p_datfld NO-GAPS.
-  CONDENSE p_frsf   NO-GAPS.
   TRANSLATE p_table  TO UPPER CASE.
   TRANSLATE p_datfld TO UPPER CASE.
-  TRANSLATE p_frsf   TO UPPER CASE.
 
   DATA: lt_fields  TYPE TABLE OF dfies,
         ls_field   TYPE dfies,
@@ -236,27 +219,6 @@ START-OF-SELECTION.
   ENDIF.
 
   " ---------------------------------------------------------------
-  " Bước 5b: Kiểm tra FRESH_FIELD nếu có nhập
-  " ---------------------------------------------------------------
-  IF p_frsf IS NOT INITIAL AND p_frsf <> p_datfld.
-    LOOP AT lt_fields INTO ls_field WHERE fieldname = p_frsf.
-      IF ls_field-inttype = 'D'.
-        WRITE: / |✓ Freshness field { p_frsf } tồn tại và kiểu DATE.|.
-      ELSE.
-        WRITE: / |✗ Freshness field { p_frsf } không phải kiểu DATE (type: { ls_field-inttype }).|.
-        lv_ok = abap_false.
-      ENDIF.
-      EXIT.
-    ENDLOOP.
-    IF sy-subrc <> 0.
-      WRITE: / |✗ Freshness field { p_frsf } không tồn tại trong bảng { p_table }.|.
-      lv_ok = abap_false.
-    ENDIF.
-  ELSEIF p_frsf = p_datfld AND p_frsf IS NOT INITIAL.
-    WRITE: / |⚠ FRESH_FIELD = DATA_FIELD ({ p_frsf }) — không có tác dụng, nên để trống.|.
-  ENDIF.
-
-  " ---------------------------------------------------------------
   " Bước 6: Kiểm tra config trùng
   " ---------------------------------------------------------------
   DATA: lv_dup TYPE abap_bool VALUE abap_false.
@@ -299,7 +261,6 @@ START-OF-SELECTION.
   ls_cfg-description = p_desc.
   ls_cfg-retention  = p_ret.
   ls_cfg-data_field = p_datfld.
-  ls_cfg-fresh_field = p_frsf.
   ls_cfg-is_active  = p_active.
   ls_cfg-created_by = sy-uname.
   ls_cfg-created_on = sy-datum.
@@ -312,12 +273,7 @@ START-OF-SELECTION.
     SKIP.
     WRITE: / |✓ Đã đăng ký bảng { p_table } vào hệ thống archive.|.
     WRITE: / |  Config ID : { lv_uuid }|.
-    WRITE: / |  Data Field : { p_datfld }|.
-    IF p_frsf IS NOT INITIAL.
-      WRITE: / |  Fresh Field: { p_frsf } (chỉ archive nếu field này cũng đủ tuổi)|.
-    ELSE.
-      WRITE: / '  Fresh Field: (không cấu hình — chỉ dùng Data Field)'.
-    ENDIF.
+    WRITE: / |  Data Field: { p_datfld }|.
     WRITE: / |  Retention : { p_ret } ngày (|.
     WRITE: lv_years. WRITE: 'năm)'.
     WRITE: / |  Active    : { p_active }|.
@@ -326,68 +282,3 @@ START-OF-SELECTION.
   ELSE.
     WRITE: / |✗ Lỗi INSERT ZSP26_ARCH_CFG (sy-subrc={ sy-subrc }).|.
   ENDIF.
-
-*&---------------------------------------------------------------------*
-*& FORM F4_PICK_DATE_FIELD
-*& Dùng chung cho p_datfld và p_frsf — trong FORM, local type hoạt động đúng
-*& pv_dynpfld: tên field trên selection screen để trả giá trị về
-*&---------------------------------------------------------------------*
-FORM f4_pick_date_field
-  USING    pv_tab    TYPE tabname
-           pv_dynpfld TYPE char20
-  CHANGING cv_out    TYPE fieldname.
-
-  TYPES: BEGIN OF lty_fldrow,
-           fieldname TYPE fieldname,
-           ddtext    TYPE as4text,
-         END OF lty_fldrow.
-
-  DATA: lt_all  TYPE TABLE OF dfies,
-        ls_all  TYPE dfies,
-        lt_rows TYPE TABLE OF lty_fldrow,
-        ls_row  TYPE lty_fldrow,
-        lt_ret  TYPE TABLE OF ddshretval,
-        ls_ret  TYPE ddshretval.
-
-  IF pv_tab IS INITIAL. RETURN. ENDIF.
-
-  CALL FUNCTION 'DDIF_FIELDINFO_GET'
-    EXPORTING  tabname   = pv_tab
-    TABLES     dfies_tab = lt_all
-    EXCEPTIONS OTHERS    = 1.
-  IF sy-subrc <> 0. RETURN. ENDIF.
-
-  LOOP AT lt_all INTO ls_all
-    WHERE inttype = 'D' AND fieldname <> 'MANDT'.
-    CLEAR ls_row.
-    ls_row-fieldname = ls_all-fieldname.
-    ls_row-ddtext    = ls_all-fieldtext.
-    APPEND ls_row TO lt_rows.
-  ENDLOOP.
-
-  IF lt_rows IS INITIAL.
-    MESSAGE |Bảng { pv_tab } không có field kiểu DATE.| TYPE 'S' DISPLAY LIKE 'E'.
-    RETURN.
-  ENDIF.
-
-  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
-    EXPORTING
-      retfield     = 'FIELDNAME'
-      dynpprog     = sy-repid
-      dynpnr       = sy-dynnr
-      dynprofield  = pv_dynpfld
-      window_title = |Date Fields của { pv_tab }|
-      value_org    = 'S'
-    TABLES
-      value_tab    = lt_rows
-      return_tab   = lt_ret
-    EXCEPTIONS
-      OTHERS       = 0.
-
-  READ TABLE lt_ret INTO ls_ret INDEX 1.
-  IF sy-subrc = 0 AND ls_ret-fieldval IS NOT INITIAL.
-    cv_out = CONV fieldname( ls_ret-fieldval ).
-    CONDENSE cv_out.
-    TRANSLATE cv_out TO UPPER CASE.
-  ENDIF.
-ENDFORM.

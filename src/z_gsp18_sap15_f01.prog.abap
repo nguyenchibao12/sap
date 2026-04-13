@@ -180,13 +180,8 @@ FORM show_archive_preview.
   ENDLOOP.
 
   " Phân loại từng record
-  DATA: lv_rule_pass  TYPE abap_bool,
-        lv_fail_cnt   TYPE i VALUE 0,
-        lv_cutoff_prv TYPE d,
-        lv_fresh_date TYPE d,
-        lv_fresh_ok   TYPE abap_bool.
-
-  lv_cutoff_prv = sy-datum - gs_cfg-retention.
+  DATA: lv_rule_pass TYPE abap_bool,
+        lv_fail_cnt  TYPE i VALUE 0.
 
   LOOP AT <lt_all> ASSIGNING FIELD-SYMBOL(<row>).
     CLEAR ls_prev.
@@ -211,30 +206,10 @@ FORM show_archive_preview.
       ADD 1 TO lv_fail_cnt.
       ADD 1 TO gv_skp_cnt.
     ELSEIF ls_prev-age_days >= gs_cfg-retention.
-      " FRESH_FIELD check: nếu có cấu hình → kiểm tra ngày cập nhật gần nhất
-      lv_fresh_ok = abap_true.
-      IF gs_cfg-fresh_field IS NOT INITIAL.
-        CLEAR lv_fresh_date.
-        ASSIGN COMPONENT gs_cfg-fresh_field OF STRUCTURE <row> TO FIELD-SYMBOL(<ffd>).
-        IF <ffd> IS ASSIGNED.
-          lv_fresh_date = <ffd>.
-          " Nếu freshness date có giá trị VÀ vẫn còn trong retention → chưa đủ điều kiện archive
-          IF lv_fresh_date <> '00000000' AND lv_fresh_date > lv_cutoff_prv.
-            lv_fresh_ok = abap_false.
-          ENDIF.
-        ENDIF.
-      ENDIF.
-
-      IF lv_fresh_ok = abap_true.
-        ls_prev-status = 'READY'.
-        ls_prev-detail = |Eligible: { ls_prev-age_days } days ≥ { gs_cfg-retention }d|.
-        ADD 1 TO gv_rdy_cnt.
-        INSERT <row> INTO TABLE <lt_ready>.
-      ELSE.
-        ls_prev-status = 'STILL ACTIVE'.
-        ls_prev-detail = |{ gs_cfg-fresh_field } = { lv_fresh_date } — updated within retention period|.
-        ADD 1 TO gv_skp_cnt.
-      ENDIF.
+      ls_prev-status = 'READY'.
+      ls_prev-detail = |Eligible: { ls_prev-age_days } days ≥ { gs_cfg-retention }d|.
+      ADD 1 TO gv_rdy_cnt.
+      INSERT <row> INTO TABLE <lt_ready>.
     ELSE.
       ls_prev-status = 'TOO NEW'.
       ls_prev-detail = |Only { ls_prev-age_days } / { gs_cfg-retention } days|.
