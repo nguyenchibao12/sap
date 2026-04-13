@@ -1660,11 +1660,11 @@ FORM show_hub_admi_session_groups.
           lo_col->set_long_text( ' ' ).
           lo_col->set_icon( if_salv_c_bool_sap=>true ).
           lo_col ?= lo_cols->get_column( 'SESSION_GROUP' ).
-          lo_col->set_short_text( 'Session Group' ).
+          lo_col->set_short_text( 'Group' ).
           lo_col->set_medium_text( 'Session Group' ).
           lo_col->set_long_text( 'Session Group' ).
           lo_col ?= lo_cols->get_column( 'SESSION_RANGE' ).
-          lo_col->set_short_text( 'Session ranges' ).
+          lo_col->set_short_text( 'Ranges' ).
           lo_col->set_medium_text( 'Session ranges' ).
           lo_col->set_long_text( 'Session ranges' ).
         CATCH cx_salv_not_found.
