@@ -130,10 +130,7 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_datfld.
 * F4: FRESH_FIELD — chỉ hiện DATE field của bảng đang chọn (giống p_datfld)
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_frsf.
-  DATA: lt_fldsb TYPE TABLE OF ty_fld_f4,
-        ls_fldb  TYPE ty_fld_f4,
-        lt_dd3   TYPE TABLE OF dfies,
-        ls_dd3   TYPE dfies,
+  DATA: lt_dd3f  TYPE TABLE OF dfies,
         lt_ret3  TYPE TABLE OF ddshretval,
         ls_ret3  TYPE ddshretval.
 
@@ -144,7 +141,7 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_frsf.
 
   CALL FUNCTION 'DDIF_FIELDINFO_GET'
     EXPORTING  tabname   = p_table
-    TABLES     dfies_tab = lt_dd3
+    TABLES     dfies_tab = lt_dd3f
     EXCEPTIONS OTHERS    = 1.
 
   IF sy-subrc <> 0.
@@ -152,15 +149,10 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_frsf.
     RETURN.
   ENDIF.
 
-  LOOP AT lt_dd3 INTO ls_dd3
-    WHERE inttype = 'D' AND fieldname <> 'MANDT'.
-    CLEAR ls_fldb.
-    ls_fldb-fieldname = ls_dd3-fieldname.
-    ls_fldb-ddtext    = ls_dd3-fieldtext.
-    APPEND ls_fldb TO lt_fldsb.
-  ENDLOOP.
+  " Chỉ giữ DATE fields, loại MANDT — dùng trực tiếp dfies (DDIC type, không conflict FM)
+  DELETE lt_dd3f WHERE inttype <> 'D' OR fieldname = 'MANDT'.
 
-  IF lt_fldsb IS INITIAL.
+  IF lt_dd3f IS INITIAL.
     MESSAGE |Bảng { p_table } không có field kiểu DATE.| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
@@ -174,7 +166,7 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_frsf.
       window_title = |Freshness Date Fields của { p_table }|
       value_org    = 'S'
     TABLES
-      value_tab    = lt_fldsb
+      value_tab    = lt_dd3f
       return_tab   = lt_ret3
     EXCEPTIONS
       OTHERS       = 0.
