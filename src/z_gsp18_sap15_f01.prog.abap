@@ -103,9 +103,7 @@ CLASS lcl_run_handler IMPLEMENTATION.
 
     DATA: lo_sel     TYPE REF TO cl_salv_selections,
           lt_rows    TYPE salv_t_row,
-          lv_idx     TYPE i,
-          ls_view    TYPE ty_run_view_hub,
-          lv_doc_str TYPE admi_run-document.
+          lv_idx     TYPE i.
 
     CHECK e_salv_function = 'RUN_OPEN'.
     lo_sel = go_run_alv->get_selections( ).
@@ -116,34 +114,13 @@ CLASS lcl_run_handler IMPLEMENTATION.
     ENDIF.
 
     READ TABLE lt_rows INTO lv_idx INDEX 1.
-    READ TABLE gt_run_view_hub INTO ls_view INDEX lv_idx.
-    IF sy-subrc <> 0.
-      RETURN.
-    ENDIF.
+    PERFORM run_open_selected_range USING lv_idx.
 
-    IF ls_view-is_header = 'X'.
-      MESSAGE 'Đây là dòng group. Hãy chọn dòng range bên dưới.' TYPE 'S' DISPLAY LIKE 'W'.
-      RETURN.
-    ENDIF.
-    IF ls_view-doc_from_n IS INITIAL OR ls_view-doc_to_n IS INITIAL.
-      MESSAGE 'Dòng này không có session để mở.' TYPE 'S' DISPLAY LIKE 'W'.
-      RETURN.
-    ENDIF.
+  ENDMETHOD.
 
-    IF ls_view-doc_from_n = ls_view-doc_to_n.
-      PERFORM run_docnum_to_document USING ls_view-doc_from_n CHANGING lv_doc_str.
-      IF lv_doc_str IS INITIAL.
-        MESSAGE 'Không resolve được session document.' TYPE 'S' DISPLAY LIKE 'E'.
-        RETURN.
-      ENDIF.
-      PERFORM run_open_document USING lv_doc_str.
-    ELSE.
-      PERFORM run_pick_document_in_range USING ls_view-doc_from_n ls_view-doc_to_n CHANGING lv_doc_str.
-      IF lv_doc_str IS INITIAL.
-        RETURN.
-      ENDIF.
-      PERFORM run_open_document USING lv_doc_str.
-    ENDIF.
+  METHOD on_dblclick.
+    CHECK row > 0.
+    PERFORM run_open_selected_range USING row.
 
   ENDMETHOD.
 ENDCLASS.
@@ -1488,6 +1465,7 @@ FORM show_hub_admi_session_groups.
         lo_col     TYPE REF TO cl_salv_column_table,
         lo_disp    TYPE REF TO cl_salv_display_settings,
         lo_funcs   TYPE REF TO cl_salv_functions,
+        lo_evt_run TYPE REF TO cl_salv_events_table,
         lv_obj     TYPE arch_obj-object,
         lv_stat_k  TYPE c LENGTH 40,
         lv_stat_t  TYPE c LENGTH 40,
@@ -1562,8 +1540,16 @@ FORM show_hub_admi_session_groups.
       ls_det-grp_ord  = 1.
       ls_det-grp_text = 'Archiving Sessions with Errors'.
       ls_det-grp_icon = icon_led_red.
+    ELSEIF lv_stat_t CS 'INCOMPLETE'
+       OR lv_stat_t CS 'NOT COMPLETE'
+       OR lv_stat_t CS 'PENDING'
+       OR lv_stat_t CS 'ACTIVE'
+       OR lv_stat_t CS 'OPEN'.
+      ls_det-grp_ord  = 2.
+      ls_det-grp_text = 'Incomplete Archiving Sessions'.
+      ls_det-grp_icon = icon_led_yellow.
     ELSEIF lv_stat_k CA 'FSC'
-       OR lv_stat_t CS 'COMPLETE'
+       OR ( lv_stat_t CS 'COMPLETE' AND lv_stat_t NS 'INCOMPLETE' )
        OR lv_stat_t CS 'FINISHED'
        OR lv_stat_t CS 'SUCCESS'.
       ls_det-grp_ord  = 3.
@@ -1757,6 +1743,8 @@ FORM show_hub_admi_session_groups.
               cx_salv_existing.
       ENDTRY.
       SET HANDLER lcl_run_handler=>on_func FOR lo_alv->get_event( ).
+      lo_evt_run ?= lo_alv->get_event( ).
+      SET HANDLER lcl_run_handler=>on_dblclick FOR lo_evt_run.
 
       lo_cols = lo_alv->get_columns( ).
       lo_cols->set_optimize( abap_true ).
@@ -1794,6 +1782,41 @@ FORM show_hub_admi_session_groups.
       MESSAGE lx_rs->get_text( ) TYPE 'E'.
   ENDTRY.
 
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+FORM run_open_selected_range USING VALUE(pv_idx) TYPE i.
+  DATA: ls_view    TYPE ty_run_view_hub,
+        lv_doc_str TYPE admi_run-document.
+
+  READ TABLE gt_run_view_hub INTO ls_view INDEX pv_idx.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  IF ls_view-is_header = 'X'.
+    MESSAGE 'Đây là dòng group. Hãy chọn dòng range bên dưới.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+  IF ls_view-doc_from_n IS INITIAL OR ls_view-doc_to_n IS INITIAL.
+    MESSAGE 'Dòng này không có session để mở.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  IF ls_view-doc_from_n = ls_view-doc_to_n.
+    PERFORM run_docnum_to_document USING ls_view-doc_from_n CHANGING lv_doc_str.
+    IF lv_doc_str IS INITIAL.
+      MESSAGE 'Không resolve được session document.' TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+    PERFORM run_open_document USING lv_doc_str.
+  ELSE.
+    PERFORM run_pick_document_in_range USING ls_view-doc_from_n ls_view-doc_to_n CHANGING lv_doc_str.
+    IF lv_doc_str IS INITIAL.
+      RETURN.
+    ENDIF.
+    PERFORM run_open_document USING lv_doc_str.
+  ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
