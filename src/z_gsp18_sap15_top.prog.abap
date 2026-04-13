@@ -139,6 +139,22 @@ TYPES: BEGIN OF ty_mon_disp,
 DATA: gt_mon_disp TYPE TABLE OF ty_mon_disp,
       go_mon_alv  TYPE REF TO cl_salv_table.
 
+" Hub — Run log: background jobs ZARCH* + SALV handlers
+TYPES: BEGIN OF ty_btc_row,
+         jobname    TYPE tbtcjob-jobname,
+         jobcount   TYPE tbtcjob-jobcount,
+         status     TYPE tbtcjob-status,
+         status_txt TYPE char24,
+         sdluname   TYPE syuname,
+         progname   TYPE programm,
+         listident  TYPE char14,
+         strtdate   TYPE d,
+         strttime   TYPE t,
+       END OF ty_btc_row.
+
+DATA: gt_btc_rows TYPE TABLE OF ty_btc_row,
+      go_btc_alv  TYPE REF TO cl_salv_table.
+
 "----------------------------------------------------------------------
 " Classes — Event handler cho SALV custom buttons
 " (tương đương tab "Classes" trong SE80)
@@ -158,4 +174,11 @@ CLASS lcl_mon_handler DEFINITION.
       IMPORTING e_salv_function.
 ENDCLASS.
 
-"  lcl_handler + lcl_mon_handler IMPLEMENTATION is in Z_GSP18_SAP15_F01
+CLASS lcl_btc_handler DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS on_func
+      FOR EVENT added_function OF cl_salv_events
+      IMPORTING e_salv_function.
+ENDCLASS.
+
+"  lcl_handler + lcl_mon_handler + lcl_btc_handler IMPLEMENTATION is in Z_GSP18_SAP15_F01

@@ -245,6 +245,21 @@
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>PUSH</TYPE>
+       <NAME>RUN_LOG_BUTTON</NAME>
+       <TEXT>Run_log_jobs_______________________</TEXT>
+       <LINE>012</LINE>
+       <COLUMN>013</COLUMN>
+       <LENGTH>035</LENGTH>
+       <VISLENGTH>035</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <PUSH_FCODE>BT_RUN_LOG</PUSH_FCODE>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>OKCODE</TYPE>
        <NAME>OK_CODE</NAME>
        <TEXT>____________________</TEXT>
@@ -1012,6 +1027,15 @@
       <INFO_TEXT>Archive Monitor and Statistics</INFO_TEXT>
      </RSMPE_FUNT>
      <RSMPE_FUNT>
+      <CODE>BT_RUN_LOG</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <TEXT_NAME>ICON_LIST</TEXT_NAME>
+      <ICON_ID>@3E@</ICON_ID>
+      <FUN_TEXT>Run log</FUN_TEXT>
+      <INFO_TEXT>Job ZARCH* + job protocol + ZSP26_ARCH_LOG (no SM37/SARA)</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
       <CODE>BT_CONTINUE</CODE>
       <TEXTNO>001</TEXTNO>
       <TEXT_TYPE>S</TEXT_TYPE>
@@ -1131,6 +1155,10 @@
      <RSMPE_STAF>
       <STATUS>STATUS_100</STATUS>
       <FUNCTION>BT_MONITOR</FUNCTION>
+     </RSMPE_STAF>
+     <RSMPE_STAF>
+      <STATUS>STATUS_100</STATUS>
+      <FUNCTION>BT_RUN_LOG</FUNCTION>
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STATUS_100</STATUS>

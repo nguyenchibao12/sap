@@ -51,6 +51,53 @@ CLASS lcl_mon_handler IMPLEMENTATION.
   ENDMETHOD.
 ENDCLASS.
 
+CLASS lcl_btc_handler IMPLEMENTATION.
+  METHOD on_func.
+
+    DATA: lo_sel  TYPE REF TO cl_salv_selections,
+          lt_rows TYPE salv_t_row,
+          lv_idx  TYPE i,
+          ls_b    TYPE ty_btc_row.
+
+    CASE e_salv_function.
+      WHEN 'BTC_PROT'.
+        lo_sel = go_btc_alv->get_selections( ).
+        lt_rows = lo_sel->get_selected_rows( ).
+        IF lines( lt_rows ) <> 1.
+          MESSAGE 'Chọn đúng 1 job, rồi bấm Job protocol (log SM37).' TYPE 'S' DISPLAY LIKE 'W'.
+          RETURN.
+        ENDIF.
+        READ TABLE lt_rows INTO lv_idx INDEX 1.
+        READ TABLE gt_btc_rows INTO ls_b INDEX lv_idx.
+        IF sy-subrc <> 0.
+          RETURN.
+        ENDIF.
+        PERFORM show_btc_job_protocol USING ls_b-jobname ls_b-jobcount.
+
+      WHEN 'BTC_SPOOL'.
+        lo_sel = go_btc_alv->get_selections( ).
+        lt_rows = lo_sel->get_selected_rows( ).
+        IF lines( lt_rows ) <> 1.
+          MESSAGE 'Chọn đúng 1 job.' TYPE 'S' DISPLAY LIKE 'W'.
+          RETURN.
+        ENDIF.
+        READ TABLE lt_rows INTO lv_idx INDEX 1.
+        READ TABLE gt_btc_rows INTO ls_b INDEX lv_idx.
+        IF sy-subrc <> 0 OR ls_b-listident IS INITIAL.
+          MESSAGE 'Không có spool list id cho step job này.' TYPE 'S' DISPLAY LIKE 'W'.
+          RETURN.
+        ENDIF.
+        PERFORM show_btc_spool_popup USING ls_b-listident.
+
+      WHEN 'BTC_Z26LOG'.
+        PERFORM show_hub_arch_log_recent USING gv_tabname.
+
+      WHEN OTHERS.
+    ENDCASE.
+
+  ENDMETHOD.
+ENDCLASS.
+
 *&---------------------------------------------------------------------*
 *& FORM DO_ARCHIVE_WRITE — Phase 2+3: Preview & Archive
 *& Đọc config → dynamic SELECT → SALV Preview → Archive Now
@@ -1326,6 +1373,270 @@ FORM show_mon_detail USING iv_table TYPE tabname.
   CATCH cx_salv_msg INTO DATA(lx2).
     MESSAGE lx2->get_text( ) TYPE 'E'.
   ENDTRY.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Hub: job ZARCH* + log DB — không cần mở SM37/SARA
+*&---------------------------------------------------------------------*
+FORM show_hub_run_diagnostics.
+  PERFORM show_hub_btc_job_list.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+FORM show_hub_btc_job_list.
+
+  TYPES: BEGIN OF ty_co_sel,
+           jobname  TYPE tbtcjob-jobname,
+           jobcount TYPE tbtcjob-jobcount,
+           status   TYPE tbtcjob-status,
+           sdluname TYPE syuname,
+           strtdate TYPE d,
+           strttime TYPE t,
+         END OF ty_co_sel.
+
+  DATA: lo_funcs TYPE REF TO cl_salv_functions,
+        lo_cols  TYPE REF TO cl_salv_columns_table,
+        lo_col   TYPE REF TO cl_salv_column_table,
+        lo_disp  TYPE REF TO cl_salv_display_settings,
+        lt_co    TYPE TABLE OF ty_co_sel,
+        ls_co    TYPE ty_co_sel,
+        ls_btc   TYPE ty_btc_row,
+        lv_ix    TYPE sy-tabix.
+
+  CLEAR gt_btc_rows.
+
+  SELECT jobname jobcount status sdluname strtdate strttime
+    FROM tbtco
+    WHERE jobname LIKE 'ZARCH%'
+      AND ( sdluname = @sy-uname OR authckman = @sy-uname )
+    ORDER BY strtdate DESCENDING, strttime DESCENDING
+    INTO TABLE @lt_co
+    UP TO 80 ROWS.
+
+  LOOP AT lt_co INTO ls_co.
+    CLEAR ls_btc.
+    ls_btc-jobname  = ls_co-jobname.
+    ls_btc-jobcount = ls_co-jobcount.
+    ls_btc-status   = ls_co-status.
+    ls_btc-sdluname = ls_co-sdluname.
+    ls_btc-strtdate = ls_co-strtdate.
+    ls_btc-strttime = ls_co-strttime.
+    CASE ls_co-status.
+      WHEN 'F'. ls_btc-status_txt = 'Finished'.
+      WHEN 'A'. ls_btc-status_txt = 'Scheduled'.
+      WHEN 'R'. ls_btc-status_txt = 'Running'.
+      WHEN 'P'. ls_btc-status_txt = 'Released'.
+      WHEN 'X'. ls_btc-status_txt = 'Canceled'.
+      WHEN OTHERS. ls_btc-status_txt = ls_co-status.
+    ENDCASE.
+    APPEND ls_btc TO gt_btc_rows.
+  ENDLOOP.
+
+  LOOP AT gt_btc_rows INTO ls_btc.
+    lv_ix = sy-tabix.
+    SELECT SINGLE progname, listident
+      FROM tbtcp
+      WHERE jobname = @ls_btc-jobname
+        AND jobcount = @ls_btc-jobcount
+        AND listident <> @space
+      INTO (@ls_btc-progname, @ls_btc-listident).
+    MODIFY gt_btc_rows FROM ls_btc INDEX lv_ix.
+  ENDLOOP.
+
+  IF gt_btc_rows IS INITIAL.
+    MESSAGE 'Chưa có job nền ZARCH* của user này (hoặc đã bị xóa khỏi TBTCO).' TYPE 'S' DISPLAY LIKE 'W'.
+  ENDIF.
+
+  TRY.
+      cl_salv_table=>factory(
+        IMPORTING r_salv_table = go_btc_alv
+        CHANGING  t_table      = gt_btc_rows ).
+
+      lo_funcs = go_btc_alv->get_functions( ).
+      lo_funcs->set_all( abap_true ).
+      TRY.
+          lo_funcs->add_function(
+            name     = 'BTC_PROT'
+            icon     = '@12@'
+            text     = 'Job protocol'
+            tooltip  = 'Đọc job log (BP_JOBLOG_READ) — tương đương SM37 log'
+            position = if_salv_c_function_position=>right_of_salv_functions ).
+          lo_funcs->add_function(
+            name     = 'BTC_SPOOL'
+            icon     = '@0X@'
+            text     = 'Spool ID'
+            tooltip  = 'Xem List ID spool của step (nếu có)'
+            position = if_salv_c_function_position=>right_of_salv_functions ).
+          lo_funcs->add_function(
+            name     = 'BTC_Z26LOG'
+            icon     = '@3W@'
+            text     = 'ZSP26_ARCH_LOG'
+            tooltip  = 'Log ứng dụng ARCHIVE/DELETE theo bảng hub hoặc user'
+            position = if_salv_c_function_position=>right_of_salv_functions ).
+        CATCH cx_salv_method_not_supported
+              cx_salv_wrong_call
+              cx_salv_existing. ENDTRY.
+
+      SET HANDLER lcl_btc_handler=>on_func FOR go_btc_alv->get_event( ).
+
+      lo_cols = go_btc_alv->get_columns( ).
+      lo_cols->set_optimize( abap_true ).
+      TRY.
+          lo_col ?= lo_cols->get_column( 'JOBNAME' ).    lo_col->set_long_text( 'Job name' ).
+          lo_col ?= lo_cols->get_column( 'JOBCOUNT' ). lo_col->set_long_text( 'Count' ).
+          lo_col ?= lo_cols->get_column( 'STATUS' ).   lo_col->set_long_text( 'St' ).
+          lo_col ?= lo_cols->get_column( 'STATUS_TXT' ). lo_col->set_long_text( 'Status' ).
+          lo_col ?= lo_cols->get_column( 'SDLUNAME' ).  lo_col->set_long_text( 'User' ).
+          lo_col ?= lo_cols->get_column( 'PROGNAME' ). lo_col->set_long_text( 'Step program' ).
+          lo_col ?= lo_cols->get_column( 'LISTIDENT' ). lo_col->set_long_text( 'Spool list ID' ).
+          lo_col ?= lo_cols->get_column( 'STRTDATE' ). lo_col->set_long_text( 'Start date' ).
+          lo_col ?= lo_cols->get_column( 'STRTTIME' ). lo_col->set_long_text( 'Start time' ).
+        CATCH cx_salv_not_found. ENDTRY.
+
+      lo_disp = go_btc_alv->get_display_settings( ).
+      lo_disp->set_list_header( |Background jobs ZARCH* — { sy-uname } — { lines( gt_btc_rows ) } rows| ).
+      go_btc_alv->display( ).
+
+    CATCH cx_salv_msg INTO DATA(lx_b).
+      MESSAGE lx_b->get_text( ) TYPE 'E'.
+  ENDTRY.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+FORM show_btc_job_protocol
+  USING    VALUE(pv_name) TYPE tbtcjob-jobname
+           VALUE(pv_cnt)  TYPE tbtcjob-jobcount.
+
+  DATA: lt_log TYPE TABLE OF tbtc5,
+        lo_alv TYPE REF TO cl_salv_table,
+        lo_f   TYPE REF TO cl_salv_functions,
+        lo_d   TYPE REF TO cl_salv_display_settings.
+
+  CALL FUNCTION 'BP_JOBLOG_READ'
+    EXPORTING
+      client    = sy-mandt
+      jobname   = pv_name
+      jobcount  = pv_cnt
+    TABLES
+      joblogtbl = lt_log
+    EXCEPTIONS
+      OTHERS    = 9.
+
+  IF sy-subrc <> 0 OR lt_log IS INITIAL.
+    MESSAGE |Không đọc được job log { pv_name }/{ pv_cnt } (đã xóa, chưa ghi log, hoặc quyền).|
+            TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  TRY.
+      cl_salv_table=>factory(
+        IMPORTING r_salv_table = lo_alv
+        CHANGING  t_table      = lt_log ).
+      lo_f = lo_alv->get_functions( ).
+      lo_f->set_all( abap_true ).
+      lo_d = lo_alv->get_display_settings( ).
+      lo_d->set_list_header( |Job protocol: { pv_name } / { pv_cnt }| ).
+      lo_alv->get_columns( )->set_optimize( abap_true ).
+      lo_alv->display( ).
+    CATCH cx_salv_msg INTO DATA(lx_p).
+      MESSAGE lx_p->get_text( ) TYPE 'E'.
+  ENDTRY.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+FORM show_btc_spool_popup USING VALUE(pv_list) TYPE clike.
+
+  DATA: lv_text TYPE string.
+
+  lv_text = |List ID (spool): { pv_list }|.
+  CALL FUNCTION 'POPUP_TO_INFORM'
+    EXPORTING
+      titel = 'Spool list'
+      txt1  = lv_text
+      txt2  = 'SP01/SP02: nhập List ID ở trên để xem list (cần quyền spool).'
+      txt3  = ''
+    EXCEPTIONS
+      OTHERS = 1.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& ZSP26_ARCH_LOG — theo GV_TABNAME hoặc user (ARCHIVE/DELETE gần đây)
+*&---------------------------------------------------------------------*
+FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
+
+  TYPES: BEGIN OF ty_lr,
+           exec_date  TYPE d,
+           table_name TYPE tabname,
+           exec_user  TYPE xubname,
+           action     TYPE char10,
+           rec_count  TYPE i,
+           status     TYPE char1,
+           message    TYPE char255,
+         END OF ty_lr.
+
+  DATA: lt_lr  TYPE TABLE OF ty_lr,
+        lo_alv TYPE REF TO cl_salv_table,
+        lo_c   TYPE REF TO cl_salv_columns_table,
+        lo_col TYPE REF TO cl_salv_column_table,
+        lo_d   TYPE REF TO cl_salv_display_settings,
+        lv_tn  TYPE tabname.
+
+  lv_tn = pv_tab.
+  CONDENSE lv_tn.
+  TRANSLATE lv_tn TO UPPER CASE.
+
+  IF lv_tn IS NOT INITIAL.
+    SELECT exec_date, table_name, exec_user, action, rec_count, status, message
+      FROM zsp26_arch_log
+      INTO TABLE @lt_lr
+      WHERE table_name = @lv_tn
+      ORDER BY exec_date DESCENDING
+      UP TO 200 ROWS.
+  ELSE.
+    SELECT exec_date, table_name, exec_user, action, rec_count, status, message
+      FROM zsp26_arch_log
+      INTO TABLE @lt_lr
+      WHERE exec_user = @sy-uname
+        AND ( action = 'ARCHIVE' OR action = 'DELETE' )
+      ORDER BY exec_date DESCENDING
+      UP TO 200 ROWS.
+  ENDIF.
+
+  IF lt_lr IS INITIAL.
+    MESSAGE 'Không có dòng ZSP26_ARCH_LOG phù hợp.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  TRY.
+      cl_salv_table=>factory(
+        IMPORTING r_salv_table = lo_alv
+        CHANGING  t_table      = lt_lr ).
+      lo_alv->get_functions( )->set_all( abap_true ).
+      lo_c = lo_alv->get_columns( ).
+      lo_c->set_optimize( abap_true ).
+      TRY.
+          lo_col ?= lo_c->get_column( 'EXEC_DATE' ).  lo_col->set_long_text( 'Date' ).
+          lo_col ?= lo_c->get_column( 'TABLE_NAME' ). lo_col->set_long_text( 'Table' ).
+          lo_col ?= lo_c->get_column( 'EXEC_USER' ). lo_col->set_long_text( 'User' ).
+          lo_col ?= lo_c->get_column( 'ACTION' ).    lo_col->set_long_text( 'Action' ).
+          lo_col ?= lo_c->get_column( 'REC_COUNT' ). lo_col->set_long_text( 'Records' ).
+          lo_col ?= lo_c->get_column( 'STATUS' ).    lo_col->set_long_text( 'Status' ).
+          lo_col ?= lo_c->get_column( 'MESSAGE' ).   lo_col->set_long_text( 'Message' ).
+        CATCH cx_salv_not_found. ENDTRY.
+      lo_d = lo_alv->get_display_settings( ).
+      IF lv_tn IS NOT INITIAL.
+        lo_d->set_list_header( |ZSP26_ARCH_LOG — { lv_tn } — { lines( lt_lr ) }| ).
+      ELSE.
+        lo_d->set_list_header( |ZSP26_ARCH_LOG — user { sy-uname } — { lines( lt_lr ) }| ).
+      ENDIF.
+      lo_alv->display( ).
+    CATCH cx_salv_msg INTO DATA(lx_z).
+      MESSAGE lx_z->get_text( ) TYPE 'E'.
+  ENDTRY.
+
 ENDFORM.
 
 *&---------------------------------------------------------------------*

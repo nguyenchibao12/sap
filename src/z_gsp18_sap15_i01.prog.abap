@@ -91,6 +91,9 @@ MODULE user_command_0100 INPUT.
     WHEN 'BT_MANAGE'.
       PERFORM do_config.
 
+    WHEN 'BT_RUN_LOG'.
+      PERFORM show_hub_run_diagnostics.
+
   ENDCASE.
 ENDMODULE.
 
