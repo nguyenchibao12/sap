@@ -1555,6 +1555,13 @@ FORM show_hub_admi_session_groups.
       ls_det-grp_ord  = 3.
       ls_det-grp_text = 'Complete Archiving Sessions'.
       ls_det-grp_icon = icon_led_green.
+    ELSEIF lv_stat_t CS 'ERR'
+       OR lv_stat_t CS 'FAIL'
+       OR lv_stat_t CS 'PROBLEM'
+       OR lv_stat_t CS 'NOT OK'.
+      ls_det-grp_ord  = 1.
+      ls_det-grp_text = 'Archiving Sessions with Errors'.
+      ls_det-grp_icon = icon_led_red.
     ELSE.
       ls_det-grp_ord  = 2.
       ls_det-grp_text = 'Incomplete Archiving Sessions'.
@@ -1896,11 +1903,45 @@ ENDFORM.
 
 *&---------------------------------------------------------------------*
 FORM run_open_document USING VALUE(pv_doc) TYPE admi_run-document.
-  DATA lv_tab TYPE tabname.
+  DATA: lv_tab    TYPE tabname,
+        lv_obj    TYPE arch_obj-object,
+        lv_h      TYPE syst-tabix,
+        lv_openrc TYPE sy-subrc.
 
   lv_tab = gv_tabname.
   IF lv_tab IS INITIAL.
     lv_tab = 'ZSP26_EKKO'.
+  ENDIF.
+
+  lv_obj = gv_object.
+  IF lv_obj IS INITIAL.
+    lv_obj = 'Z_ARCH_EKK'.
+  ENDIF.
+
+  CALL FUNCTION 'ARCHIVE_OPEN_FOR_READ'
+    EXPORTING
+      object           = lv_obj
+      archive_document = pv_doc
+    IMPORTING
+      archive_handle   = lv_h
+    EXCEPTIONS
+      file_already_open            = 1
+      file_io_error                = 2
+      internal_error               = 3
+      no_files_available           = 4
+      object_not_found             = 5
+      open_error                   = 6
+      not_authorized               = 7
+      archiving_standard_violation = 8
+      OTHERS                       = 9.
+  lv_openrc = sy-subrc.
+  IF lv_openrc = 0.
+    CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+      EXPORTING archive_handle = lv_h
+      EXCEPTIONS OTHERS = 1.
+  ELSE.
+    PERFORM run_show_document_detail USING pv_doc lv_openrc.
+    RETURN.
   ENDIF.
 
   SUBMIT z_arch_ekk_read
@@ -1909,6 +1950,74 @@ FORM run_open_document USING VALUE(pv_doc) TYPE admi_run-document.
     WITH p_rest  = space
     WITH p_json  = space
     AND RETURN.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+FORM run_show_document_detail
+  USING VALUE(pv_doc) TYPE admi_run-document
+        VALUE(pv_rc)  TYPE sy-subrc.
+
+  TYPES: BEGIN OF ty_det,
+           item  TYPE char30,
+           value TYPE char255,
+         END OF ty_det.
+
+  DATA: lt_det TYPE TABLE OF ty_det,
+        ls_det TYPE ty_det,
+        ls_run TYPE admi_run,
+        lv_obj TYPE arch_obj-object.
+
+  lv_obj = gv_object.
+  IF lv_obj IS INITIAL.
+    lv_obj = 'Z_ARCH_EKK'.
+  ENDIF.
+
+  SELECT SINGLE *
+    FROM admi_run
+    INTO ls_run
+    WHERE client = sy-mandt
+      AND object = lv_obj
+      AND document = pv_doc.
+
+  CLEAR ls_det.
+  ls_det-item = 'Session'.
+  ls_det-value = pv_doc.
+  APPEND ls_det TO lt_det.
+
+  CLEAR ls_det.
+  ls_det-item = 'Open RC'.
+  ls_det-value = pv_rc.
+  APPEND ls_det TO lt_det.
+
+  IF sy-subrc = 0.
+    CLEAR ls_det.
+    ls_det-item = 'Status'.
+    WRITE ls_run-status TO ls_det-value.
+    APPEND ls_det TO lt_det.
+
+    CLEAR ls_det.
+    ls_det-item = 'Create date'.
+    ls_det-value = ls_run-creat_date.
+    APPEND ls_det TO lt_det.
+
+    CLEAR ls_det.
+    ls_det-item = 'User'.
+    ls_det-value = ls_run-user_name.
+    APPEND ls_det TO lt_det.
+  ENDIF.
+
+  TRY.
+      DATA lo_alv_det TYPE REF TO cl_salv_table.
+      cl_salv_table=>factory(
+        IMPORTING r_salv_table = lo_alv_det
+        CHANGING  t_table      = lt_det ).
+      lo_alv_det->get_functions( )->set_all( abap_true ).
+      lo_alv_det->get_columns( )->set_optimize( abap_true ).
+      lo_alv_det->get_display_settings( )->set_list_header(
+        |Session { pv_doc }: no readable archive payload (rc={ pv_rc })| ).
+      lo_alv_det->display( ).
+    CATCH cx_salv_msg.
+  ENDTRY.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
