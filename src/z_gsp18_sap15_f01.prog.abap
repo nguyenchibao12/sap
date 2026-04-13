@@ -98,6 +98,56 @@ CLASS lcl_btc_handler IMPLEMENTATION.
   ENDMETHOD.
 ENDCLASS.
 
+CLASS lcl_run_handler IMPLEMENTATION.
+  METHOD on_func.
+
+    DATA: lo_sel     TYPE REF TO cl_salv_selections,
+          lt_rows    TYPE salv_t_row,
+          lv_idx     TYPE i,
+          ls_view    TYPE ty_run_view_hub,
+          lv_doc_str TYPE admi_run-document.
+
+    CHECK e_salv_function = 'RUN_OPEN'.
+    lo_sel = go_run_alv->get_selections( ).
+    lt_rows = lo_sel->get_selected_rows( ).
+    IF lines( lt_rows ) <> 1.
+      MESSAGE 'Chọn đúng 1 dòng session/range rồi bấm Open Session.' TYPE 'S' DISPLAY LIKE 'W'.
+      RETURN.
+    ENDIF.
+
+    READ TABLE lt_rows INTO lv_idx INDEX 1.
+    READ TABLE gt_run_view_hub INTO ls_view INDEX lv_idx.
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    IF ls_view-is_header = 'X'.
+      MESSAGE 'Đây là dòng group. Hãy chọn dòng range bên dưới.' TYPE 'S' DISPLAY LIKE 'W'.
+      RETURN.
+    ENDIF.
+    IF ls_view-doc_from_n IS INITIAL OR ls_view-doc_to_n IS INITIAL.
+      MESSAGE 'Dòng này không có session để mở.' TYPE 'S' DISPLAY LIKE 'W'.
+      RETURN.
+    ENDIF.
+
+    IF ls_view-doc_from_n = ls_view-doc_to_n.
+      PERFORM run_docnum_to_document USING ls_view-doc_from_n CHANGING lv_doc_str.
+      IF lv_doc_str IS INITIAL.
+        MESSAGE 'Không resolve được session document.' TYPE 'S' DISPLAY LIKE 'E'.
+        RETURN.
+      ENDIF.
+      PERFORM run_open_document USING lv_doc_str.
+    ELSE.
+      PERFORM run_pick_document_in_range USING ls_view-doc_from_n ls_view-doc_to_n CHANGING lv_doc_str.
+      IF lv_doc_str IS INITIAL.
+        RETURN.
+      ENDIF.
+      PERFORM run_open_document USING lv_doc_str.
+    ENDIF.
+
+  ENDMETHOD.
+ENDCLASS.
+
 *&---------------------------------------------------------------------*
 *& FORM DO_ARCHIVE_WRITE — Phase 2+3: Preview & Archive
 *& Đọc config → dynamic SELECT → SALV Preview → Archive Now
@@ -1393,6 +1443,8 @@ FORM show_hub_admi_session_groups.
            grp_text   TYPE char50,
            document   TYPE admi_run-document,
            creat_date TYPE admi_run-creat_date,
+           status     TYPE admi_run-status,
+           user_name  TYPE admi_run-user_name,
            doc_num    TYPE i,
          END OF ty_run_det.
   TYPES: BEGIN OF ty_run_band,
@@ -1408,12 +1460,15 @@ FORM show_hub_admi_session_groups.
            cnt        TYPE i,
          END OF ty_run_band.
   TYPES: BEGIN OF ty_run_view,
-           grp_ord       TYPE i,
-           line_ord      TYPE i,
-           grp_icon      TYPE icon_d,
-           session_group TYPE char60,
-           session_range TYPE char60,
-         END OF ty_run_view.
+          grp_ord       TYPE i,
+          line_ord      TYPE i,
+          grp_icon      TYPE icon_d,
+          session_group TYPE char60,
+          session_range TYPE char60,
+          is_header     TYPE char1,
+          doc_from_n    TYPE i,
+          doc_to_n      TYPE i,
+        END OF ty_run_view.
 
   DATA: lt_run_src TYPE TABLE OF admi_run,
         ls_run_src TYPE admi_run,
@@ -1427,6 +1482,7 @@ FORM show_hub_admi_session_groups.
         ls_grp     TYPE ty_run_det,
         lt_grp_band TYPE TABLE OF ty_run_band,
         ls_grp_band TYPE ty_run_band,
+        ls_src_hub TYPE ty_run_src_hub,
         lo_alv     TYPE REF TO cl_salv_table,
         lo_cols    TYPE REF TO cl_salv_columns_table,
         lo_col     TYPE REF TO cl_salv_column_table,
@@ -1441,7 +1497,11 @@ FORM show_hub_admi_session_groups.
         lv_doc_i   TYPE i,
         lv_line    TYPE i,
         lv_hdr_txt TYPE char50,
-        lv_hdr_icn TYPE icon_d.
+        lv_hdr_icn TYPE icon_d,
+        lv_dfrom   TYPE c LENGTH 10,
+        lv_dto     TYPE c LENGTH 10,
+        lv_sfrom   TYPE c LENGTH 20,
+        lv_sto     TYPE c LENGTH 20.
 
   lv_obj = gv_object.
   IF lv_obj IS INITIAL.
@@ -1484,6 +1544,8 @@ FORM show_hub_admi_session_groups.
     CLEAR ls_det.
     ls_det-document   = ls_run_src-document.
     ls_det-creat_date = ls_run_src-creat_date.
+    ls_det-status     = ls_run_src-status.
+    ls_det-user_name  = ls_run_src-user_name.
 
     " Map trạng thái về 3 nhóm giống SARA.
     " Dùng cả key + text output vì domain STATUS khác nhau theo release/system.
@@ -1553,8 +1615,7 @@ FORM show_hub_admi_session_groups.
       ELSE.
         IF ls_grp-doc_num > 0
            AND ls_band-doc_to_n > 0
-           AND ls_grp-doc_num = ls_band-doc_to_n + 1
-           AND ls_band-cnt < 24.
+           AND ls_grp-doc_num = ls_band-doc_to_n + 1.
           ls_band-doc_to   = ls_grp-document.
           ls_band-doc_to_n = ls_grp-doc_num.
           ls_band-cnt      = ls_band-cnt + 1.
@@ -1585,6 +1646,18 @@ FORM show_hub_admi_session_groups.
     ENDIF.
   ENDDO.
 
+  REFRESH: lt_view, gt_run_src_hub.
+  LOOP AT lt_det INTO ls_det.
+    CLEAR ls_src_hub.
+    ls_src_hub-document = ls_det-document.
+    ls_src_hub-creat_date = ls_det-creat_date.
+    ls_src_hub-status = ls_det-status.
+    ls_src_hub-user_name = ls_det-user_name.
+    ls_src_hub-doc_num = ls_det-doc_num.
+    ls_src_hub-grp_ord = ls_det-grp_ord.
+    APPEND ls_src_hub TO gt_run_src_hub.
+  ENDLOOP.
+
   REFRESH lt_view.
   lv_line = 0.
   DO 3 TIMES.
@@ -1597,6 +1670,8 @@ FORM show_hub_admi_session_groups.
     CLEAR ls_view.
     ls_view-grp_ord = sy-index.
     ls_view-line_ord = lv_line.
+    ls_view-is_header = 'X'.
+    CLEAR: ls_view-doc_from_n, ls_view-doc_to_n.
     CLEAR: lv_hdr_txt, lv_hdr_icn.
     CASE sy-index.
       WHEN 1.
@@ -1619,6 +1694,9 @@ FORM show_hub_admi_session_groups.
       ls_view-grp_ord = sy-index.
       ls_view-line_ord = lv_line.
       ls_view-session_group = '  >'.
+      ls_view-is_header = space.
+      ls_view-doc_from_n = 0.
+      ls_view-doc_to_n = 0.
       ls_view-session_range = '(none)'.
       APPEND ls_view TO lt_view.
       CONTINUE.
@@ -1632,22 +1710,53 @@ FORM show_hub_admi_session_groups.
       ls_view-grp_ord = sy-index.
       ls_view-line_ord = lv_line.
       ls_view-session_group = '  >'.
-      IF ls_grp_band-doc_from = ls_grp_band-doc_to.
-        ls_view-session_range = |{ ls_grp_band-doc_from } ({ ls_grp_band-date_from })|.
+      ls_view-is_header = space.
+      ls_view-doc_from_n = ls_grp_band-doc_from_n.
+      ls_view-doc_to_n   = ls_grp_band-doc_to_n.
+      CLEAR: lv_dfrom, lv_dto, lv_sfrom, lv_sto.
+      lv_dfrom = |{ ls_grp_band-date_from(4) }.{ ls_grp_band-date_from+4(2) }.{ ls_grp_band-date_from+6(2) }|.
+      lv_dto   = |{ ls_grp_band-date_to(4) }.{ ls_grp_band-date_to+4(2) }.{ ls_grp_band-date_to+6(2) }|.
+      IF ls_grp_band-doc_from_n > 0.
+        lv_sfrom = |{ ls_grp_band-doc_from_n }|.
       ELSE.
-        ls_view-session_range = |{ ls_grp_band-doc_from } - { ls_grp_band-doc_to } ({ ls_grp_band-date_from } - { ls_grp_band-date_to })|.
+        lv_sfrom = ls_grp_band-doc_from.
+      ENDIF.
+      IF ls_grp_band-doc_to_n > 0.
+        lv_sto = |{ ls_grp_band-doc_to_n }|.
+      ELSE.
+        lv_sto = ls_grp_band-doc_to.
+      ENDIF.
+      IF ls_grp_band-doc_from = ls_grp_band-doc_to.
+        ls_view-session_range = |{ lv_sfrom } ({ lv_dfrom })|.
+      ELSE.
+        ls_view-session_range = |{ lv_sfrom } - { lv_sto } ({ lv_dfrom } - { lv_dto })|.
       ENDIF.
       APPEND ls_view TO lt_view.
     ENDLOOP.
   ENDDO.
 
+  gt_run_view_hub = lt_view.
+
   TRY.
       cl_salv_table=>factory(
-        IMPORTING r_salv_table = lo_alv
+        IMPORTING r_salv_table = go_run_alv
         CHANGING  t_table      = lt_view ).
 
+      lo_alv = go_run_alv.
       lo_funcs = lo_alv->get_functions( ).
       lo_funcs->set_all( abap_true ).
+      TRY.
+          lo_funcs->add_function(
+            name     = 'RUN_OPEN'
+            icon     = '@2L@'
+            text     = 'Open Session'
+            tooltip  = 'Mở session được chọn (hoặc chọn 1 session trong range)'
+            position = if_salv_c_function_position=>right_of_salv_functions ).
+        CATCH cx_salv_method_not_supported
+              cx_salv_wrong_call
+              cx_salv_existing.
+      ENDTRY.
+      SET HANDLER lcl_run_handler=>on_func FOR lo_alv->get_event( ).
 
       lo_cols = lo_alv->get_columns( ).
       lo_cols->set_optimize( abap_true ).
@@ -1655,6 +1764,12 @@ FORM show_hub_admi_session_groups.
           lo_col ?= lo_cols->get_column( 'GRP_ORD' ).
           lo_col->set_visible( if_salv_c_bool_sap=>false ).
           lo_col ?= lo_cols->get_column( 'LINE_ORD' ).
+          lo_col->set_visible( if_salv_c_bool_sap=>false ).
+          lo_col ?= lo_cols->get_column( 'IS_HEADER' ).
+          lo_col->set_visible( if_salv_c_bool_sap=>false ).
+          lo_col ?= lo_cols->get_column( 'DOC_FROM_N' ).
+          lo_col->set_visible( if_salv_c_bool_sap=>false ).
+          lo_col ?= lo_cols->get_column( 'DOC_TO_N' ).
           lo_col->set_visible( if_salv_c_bool_sap=>false ).
           lo_col ?= lo_cols->get_column( 'GRP_ICON' ).
           lo_col->set_long_text( ' ' ).
@@ -1679,6 +1794,98 @@ FORM show_hub_admi_session_groups.
       MESSAGE lx_rs->get_text( ) TYPE 'E'.
   ENDTRY.
 
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+FORM run_docnum_to_document
+  USING    VALUE(pv_docnum) TYPE i
+  CHANGING cv_doc           TYPE admi_run-document.
+
+  DATA ls_src TYPE ty_run_src_hub.
+
+  CLEAR cv_doc.
+  READ TABLE gt_run_src_hub INTO ls_src WITH KEY doc_num = pv_docnum.
+  IF sy-subrc = 0.
+    cv_doc = ls_src-document.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+FORM run_pick_document_in_range
+  USING    VALUE(pv_from) TYPE i
+           VALUE(pv_to)   TYPE i
+  CHANGING cv_doc         TYPE admi_run-document.
+
+  TYPES: BEGIN OF ty_pick,
+           document   TYPE admi_run-document,
+           creat_date TYPE admi_run-creat_date,
+           status     TYPE admi_run-status,
+           user_name  TYPE admi_run-user_name,
+         END OF ty_pick.
+
+  DATA: lt_pick TYPE TABLE OF ty_pick,
+        ls_pick TYPE ty_pick,
+        lt_ret  TYPE TABLE OF ddshretval,
+        ls_ret  TYPE ddshretval,
+        lv_from TYPE i,
+        lv_to   TYPE i,
+        ls_src  TYPE ty_run_src_hub.
+
+  CLEAR cv_doc.
+  lv_from = pv_from.
+  lv_to = pv_to.
+  IF lv_from > lv_to.
+    lv_from = pv_to.
+    lv_to = pv_from.
+  ENDIF.
+
+  LOOP AT gt_run_src_hub INTO ls_src
+    WHERE doc_num >= lv_from AND doc_num <= lv_to.
+    CLEAR ls_pick.
+    ls_pick-document = ls_src-document.
+    ls_pick-creat_date = ls_src-creat_date.
+    ls_pick-status = ls_src-status.
+    ls_pick-user_name = ls_src-user_name.
+    APPEND ls_pick TO lt_pick.
+  ENDLOOP.
+  IF lt_pick IS INITIAL.
+    MESSAGE 'Không có session trong range này.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+  SORT lt_pick BY document DESCENDING.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'DOCUMENT'
+      window_title = 'Pick Session in selected range'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_pick
+      return_tab   = lt_ret
+    EXCEPTIONS
+      OTHERS       = 0.
+
+  READ TABLE lt_ret INTO ls_ret INDEX 1.
+  IF sy-subrc = 0 AND ls_ret-fieldval IS NOT INITIAL.
+    cv_doc = ls_ret-fieldval.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+FORM run_open_document USING VALUE(pv_doc) TYPE admi_run-document.
+  DATA lv_tab TYPE tabname.
+
+  lv_tab = gv_tabname.
+  IF lv_tab IS INITIAL.
+    lv_tab = 'ZSP26_EKKO'.
+  ENDIF.
+
+  SUBMIT z_arch_ekk_read
+    WITH p_table = lv_tab
+    WITH p_doc   = pv_doc
+    WITH p_rest  = space
+    WITH p_json  = space
+    AND RETURN.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

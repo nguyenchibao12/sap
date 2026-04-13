@@ -155,6 +155,30 @@ TYPES: BEGIN OF ty_btc_row,
 DATA: gt_btc_rows TYPE TABLE OF ty_btc_row,
       go_btc_alv  TYPE REF TO cl_salv_table.
 
+TYPES: BEGIN OF ty_run_src_hub,
+         document   TYPE admi_run-document,
+         creat_date TYPE admi_run-creat_date,
+         status     TYPE admi_run-status,
+         user_name  TYPE admi_run-user_name,
+         doc_num    TYPE i,
+         grp_ord    TYPE i,
+       END OF ty_run_src_hub.
+
+TYPES: BEGIN OF ty_run_view_hub,
+         grp_ord       TYPE i,
+         line_ord      TYPE i,
+         grp_icon      TYPE icon_d,
+         session_group TYPE char60,
+         session_range TYPE char60,
+         is_header     TYPE char1,
+         doc_from_n    TYPE i,
+         doc_to_n      TYPE i,
+       END OF ty_run_view_hub.
+
+DATA: gt_run_src_hub  TYPE TABLE OF ty_run_src_hub,
+      gt_run_view_hub TYPE TABLE OF ty_run_view_hub,
+      go_run_alv      TYPE REF TO cl_salv_table.
+
 "----------------------------------------------------------------------
 " Classes — Event handler cho SALV custom buttons
 " (tương đương tab "Classes" trong SE80)
@@ -181,4 +205,11 @@ CLASS lcl_btc_handler DEFINITION.
       IMPORTING e_salv_function.
 ENDCLASS.
 
-"  lcl_handler + lcl_mon_handler + lcl_btc_handler IMPLEMENTATION is in Z_GSP18_SAP15_F01
+CLASS lcl_run_handler DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS on_func
+      FOR EVENT added_function OF cl_salv_events
+      IMPORTING e_salv_function.
+ENDCLASS.
+
+"  lcl_handler + lcl_mon_handler + lcl_btc_handler + lcl_run_handler in F01
