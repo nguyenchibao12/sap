@@ -1439,7 +1439,9 @@ FORM show_hub_admi_session_groups.
         lv_del_n   TYPE i,
         lv_gap_n   TYPE i,
         lv_doc_i   TYPE i,
-        lv_line    TYPE i.
+        lv_line    TYPE i,
+        lv_hdr_txt TYPE char50,
+        lv_hdr_icn TYPE icon_d.
 
   lv_obj = gv_object.
   IF lv_obj IS INITIAL.
@@ -1551,7 +1553,8 @@ FORM show_hub_admi_session_groups.
       ELSE.
         IF ls_grp-doc_num > 0
            AND ls_band-doc_to_n > 0
-           AND ls_grp-doc_num = ls_band-doc_to_n + 1.
+           AND ls_grp-doc_num = ls_band-doc_to_n + 1
+           AND ls_band-cnt < 24.
           ls_band-doc_to   = ls_grp-document.
           ls_band-doc_to_n = ls_grp-doc_num.
           ls_band-cnt      = ls_band-cnt + 1.
@@ -1589,22 +1592,39 @@ FORM show_hub_admi_session_groups.
     LOOP AT lt_band INTO ls_grp_band WHERE grp_ord = sy-index.
       APPEND ls_grp_band TO lt_grp_band.
     ENDLOOP.
-    IF lt_grp_band IS INITIAL.
-      CONTINUE.
-    ENDIF.
-
-    SORT lt_grp_band BY doc_to_n DESCENDING doc_to DESCENDING.
 
     ADD 1 TO lv_line.
     CLEAR ls_view.
     ls_view-grp_ord = sy-index.
     ls_view-line_ord = lv_line.
-    READ TABLE lt_grp_band INTO ls_grp_band INDEX 1.
-    IF sy-subrc = 0.
-      ls_view-grp_icon = ls_grp_band-grp_icon.
-      ls_view-session_group = ls_grp_band-grp_text.
-    ENDIF.
+    CLEAR: lv_hdr_txt, lv_hdr_icn.
+    CASE sy-index.
+      WHEN 1.
+        lv_hdr_txt = 'Archiving Sessions with Errors'.
+        lv_hdr_icn = icon_led_red.
+      WHEN 2.
+        lv_hdr_txt = 'Incomplete Archiving Sessions'.
+        lv_hdr_icn = icon_led_yellow.
+      WHEN 3.
+        lv_hdr_txt = 'Complete Archiving Sessions'.
+        lv_hdr_icn = icon_led_green.
+    ENDCASE.
+    ls_view-grp_icon = lv_hdr_icn.
+    ls_view-session_group = lv_hdr_txt.
     APPEND ls_view TO lt_view.
+
+    IF lt_grp_band IS INITIAL.
+      ADD 1 TO lv_line.
+      CLEAR ls_view.
+      ls_view-grp_ord = sy-index.
+      ls_view-line_ord = lv_line.
+      ls_view-session_group = '  >'.
+      ls_view-session_range = '(none)'.
+      APPEND ls_view TO lt_view.
+      CONTINUE.
+    ENDIF.
+
+    SORT lt_grp_band BY doc_to_n DESCENDING doc_to DESCENDING.
 
     LOOP AT lt_grp_band INTO ls_grp_band.
       ADD 1 TO lv_line.
@@ -1640,8 +1660,12 @@ FORM show_hub_admi_session_groups.
           lo_col->set_long_text( ' ' ).
           lo_col->set_icon( if_salv_c_bool_sap=>true ).
           lo_col ?= lo_cols->get_column( 'SESSION_GROUP' ).
+          lo_col->set_short_text( 'Session Group' ).
+          lo_col->set_medium_text( 'Session Group' ).
           lo_col->set_long_text( 'Session Group' ).
           lo_col ?= lo_cols->get_column( 'SESSION_RANGE' ).
+          lo_col->set_short_text( 'Session ranges' ).
+          lo_col->set_medium_text( 'Session ranges' ).
           lo_col->set_long_text( 'Session ranges' ).
         CATCH cx_salv_not_found.
       ENDTRY.
