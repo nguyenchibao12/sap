@@ -1408,7 +1408,10 @@ FORM show_hub_admi_session_groups.
         lo_funcs   TYPE REF TO cl_salv_functions,
         lv_obj     TYPE arch_obj-object,
         lv_stat_k  TYPE c LENGTH 40,
-        lv_stat_t  TYPE c LENGTH 40.
+        lv_stat_t  TYPE c LENGTH 40,
+        lv_arch_n  TYPE i,
+        lv_del_n   TYPE i,
+        lv_gap_n   TYPE i.
 
   lv_obj = gv_object.
   IF lv_obj IS INITIAL.
@@ -1425,6 +1428,26 @@ FORM show_hub_admi_session_groups.
   IF lt_run_src IS INITIAL.
     MESSAGE 'Không có archiving session trong ADMI_RUN cho object này.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
+  ENDIF.
+
+  " Chú thích nghiệp vụ: ADMI_RUN Complete != đã DELETE DB.
+  " Dựa trên log ứng dụng theo bảng hiện tại để báo pending delete.
+  IF gv_tabname IS NOT INITIAL.
+    SELECT COUNT(*)
+      FROM zsp26_arch_log
+      INTO @lv_arch_n
+      WHERE table_name = @gv_tabname
+        AND action = 'ARCHIVE'.
+    SELECT COUNT(*)
+      FROM zsp26_arch_log
+      INTO @lv_del_n
+      WHERE table_name = @gv_tabname
+        AND action = 'DELETE'.
+    lv_gap_n = lv_arch_n - lv_del_n.
+    IF lv_gap_n > 0.
+      MESSAGE |{ gv_tabname }: ARCHIVE runs={ lv_arch_n }, DELETE runs={ lv_del_n } (pending { lv_gap_n }).|
+              TYPE 'S' DISPLAY LIKE 'W'.
+    ENDIF.
   ENDIF.
 
   LOOP AT lt_run_src INTO ls_run_src.
