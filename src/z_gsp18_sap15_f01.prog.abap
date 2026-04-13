@@ -941,22 +941,26 @@ ENDFORM.
 *& FORM DO_RESTORE_FROM_HUB — Restore từ archive (xác nhận → ADK + p_rest=X)
 *&---------------------------------------------------------------------*
 FORM do_restore_from_hub.
-  " --- Ownership guard: chặn restore session của user khác ---
-  IF gs_del_admi-document IS NOT INITIAL.
-    DATA: lv_rst_adm TYPE abap_bool.
-    PERFORM is_arch_admin CHANGING lv_rst_adm.
-    IF lv_rst_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
-      MESSAGE |Bạn không có quyền restore session của user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
-      RETURN.
-    ENDIF.
+  " Bước 1: Chọn session (popup đã filter theo user / admin)
+  PERFORM arch_del_pick_session_popup.
+  IF gs_del_admi-document IS INITIAL.
+    RETURN.
   ENDIF.
 
-  DATA: lv_ans TYPE c LENGTH 1.
+  " Bước 2: Ownership guard (defense-in-depth)
+  DATA: lv_rst_adm TYPE abap_bool.
+  PERFORM is_arch_admin CHANGING lv_rst_adm.
+  IF lv_rst_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
+    MESSAGE |Bạn không có quyền restore session của user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
 
+  " Bước 3: Xác nhận
+  DATA: lv_ans TYPE c LENGTH 1.
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
       titlebar              = 'Restore from archive'
-      text_question         = |Chọn file .ARC ở màn hình tiếp theo. Ghi dữ liệu vào bảng { gv_tabname }?|
+      text_question         = |Session { gs_del_admi-document } → ghi dữ liệu vào bảng { gv_tabname }?|
       text_button_1         = 'Yes, restore'
       text_button_2         = 'No'
       default_button        = '2'
@@ -979,11 +983,12 @@ FORM do_restore_via_adk.
   lv_rtab = gv_tabname.
   CONDENSE lv_rtab.
   TRANSLATE lv_rtab TO UPPER CASE.
-  " Không truyền P_DOC từ hub: ARCHIVE_OPEN_FOR_READ + archive_document thường cần khớp đúng stack;
-  " session trên hub có thể mở file sai / EOF → GET_TABLE rỗng → Restore 0. Chọn .ARC ở màn ADK.
+  " Truyền p_doc từ session đã chọn → z_arch_ekk_read mở thẳng session đó,
+  " bỏ qua SAP standard file picker (không hiện tất cả session nữa).
   SUBMIT z_arch_ekk_read
     WITH p_table = lv_rtab
     WITH p_rest  = 'X'
+    WITH p_doc   = gs_del_admi-document
     AND RETURN.
 ENDFORM.
 
