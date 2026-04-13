@@ -3061,8 +3061,7 @@ ENDFORM.
 FORM is_arch_admin CHANGING cv_admin TYPE abap_bool.
   SELECT SINGLE uname FROM zsp26_arch_admin
     INTO @DATA(lv_u)
-    WHERE mandt = @sy-mandt
-      AND uname = @sy-uname.
+    WHERE uname = @sy-uname.
   cv_admin = COND abap_bool( WHEN sy-subrc = 0 THEN abap_true
                               ELSE abap_false ).
 ENDFORM.
