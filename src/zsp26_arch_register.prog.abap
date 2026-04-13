@@ -130,12 +130,8 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_datfld.
 * F4: FRESH_FIELD — chỉ hiện DATE field của bảng đang chọn (giống p_datfld)
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_frsf.
-  TYPES: BEGIN OF ty_fld_f4b,
-           fieldname TYPE fieldname,
-           ddtext    TYPE as4text,
-         END OF ty_fld_f4b.
-  DATA: lt_fldsb TYPE TABLE OF ty_fld_f4b,
-        ls_fldb  TYPE ty_fld_f4b,
+  DATA: lt_fldsb TYPE TABLE OF ty_fld_f4,
+        ls_fldb  TYPE ty_fld_f4,
         lt_dd3   TYPE TABLE OF dfies,
         ls_dd3   TYPE dfies,
         lt_ret3  TYPE TABLE OF ddshretval,
