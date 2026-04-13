@@ -12,27 +12,31 @@ PARAMETERS:
 
 START-OF-SELECTION.
 
-  DATA: ls_adm TYPE zsp26_arch_admin.
+  DATA: ls_adm    TYPE zsp26_arch_admin,
+        lt_admins TYPE TABLE OF zsp26_arch_admin,
+        ls_u      TYPE zsp26_arch_admin.
+
   ls_adm-mandt = sy-mandt.
   ls_adm-uname = p_uname.
 
   IF p_del = 'X'.
     " Xóa khỏi danh sách admin
     DELETE FROM zsp26_arch_admin
-      WHERE mandt = @sy-mandt
-        AND uname = @p_uname.
+      WHERE uname = @p_uname.
     IF sy-subrc = 0.
       WRITE: / |User { p_uname } đã bị XÓA khỏi danh sách admin.|.
     ELSE.
       WRITE: / |User { p_uname } không có trong danh sách admin.|.
     ENDIF.
   ELSE.
-    " Thêm vào danh sách admin (INSERT OR UPDATE)
-    MODIFY zsp26_arch_admin FROM ls_adm.
+    " Thêm vào danh sách admin
+    INSERT zsp26_arch_admin FROM ls_adm.
     IF sy-subrc = 0.
-      WRITE: / |User { p_uname } đã được thêm/cập nhật làm ADMIN.|.
+      WRITE: / |User { p_uname } đã được thêm làm ADMIN.|.
+    ELSEIF sy-subrc = 4.
+      WRITE: / |User { p_uname } đã là ADMIN rồi (không thay đổi).|.
     ELSE.
-      WRITE: / |Lỗi khi thêm user { p_uname } vào danh sách admin (sy-subrc={ sy-subrc }).|.
+      WRITE: / |Lỗi khi thêm user { p_uname } (sy-subrc={ sy-subrc }).|.
     ENDIF.
   ENDIF.
 
@@ -41,14 +45,13 @@ START-OF-SELECTION.
   " Hiển thị danh sách admin hiện tại
   SKIP.
   WRITE: / '--- Danh sách Admin hiện tại ---'.
-  SELECT uname FROM zsp26_arch_admin
-    INTO TABLE @DATA(lt_admins)
-    WHERE mandt = @sy-mandt
+  SELECT * FROM zsp26_arch_admin
+    INTO TABLE lt_admins
     ORDER BY uname.
   IF lt_admins IS INITIAL.
     WRITE: / '(Chưa có admin nào)'.
   ELSE.
-    LOOP AT lt_admins INTO DATA(ls_u).
+    LOOP AT lt_admins INTO ls_u.
       WRITE: / ls_u-uname.
     ENDLOOP.
   ENDIF.
