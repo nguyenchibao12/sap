@@ -33,10 +33,7 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
   SELECT tabname, ddtext FROM dd02v
     INTO CORRESPONDING FIELDS OF TABLE @lt_dd
     WHERE tabname  LIKE 'Z%'
-      AND tabclass = 'TRANSP'
-      AND as4local = 'A'
-    ORDER BY tabname
-    UP TO 999 ROWS.
+      AND tabclass = 'TRANSP'.
 
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
@@ -147,8 +144,7 @@ START-OF-SELECTION.
   DATA: ls_dd02 TYPE dd02v.
   SELECT SINGLE tabname, tabclass FROM dd02v
     INTO (@ls_dd02-tabname, @ls_dd02-tabclass)
-    WHERE tabname  = @p_table
-      AND as4local = 'A'.
+    WHERE tabname = @p_table.
 
   IF sy-subrc <> 0.
     WRITE: / |✗ Bảng { p_table } không tồn tại trong DDIC hoặc chưa activate.|.
