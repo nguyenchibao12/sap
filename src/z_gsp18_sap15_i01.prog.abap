@@ -111,6 +111,9 @@ MODULE user_command_0100 INPUT.
     WHEN 'BT_RUN_LOG'.
       PERFORM show_hub_run_diagnostics.
 
+    WHEN 'BT_RUN_SESS'.
+      PERFORM show_hub_admi_session_groups.
+
   ENDCASE.
 ENDMODULE.
 

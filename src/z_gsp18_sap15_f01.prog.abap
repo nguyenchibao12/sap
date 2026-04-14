@@ -1552,10 +1552,8 @@ ENDFORM.
 *& Hub: job ZARCH* + log DB — không cần mở SM37/SARA
 *&---------------------------------------------------------------------*
 FORM show_hub_run_diagnostics.
-  " Luôn mở job list trước để theo dõi WRITE/DELETE.
+  " Run log jobs = chỉ job list (SM37-style).
   PERFORM show_hub_btc_job_list.
-  " Sau khi đóng job list, mở ngay session groups để Open Session xem archived data.
-  PERFORM show_hub_admi_session_groups.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
