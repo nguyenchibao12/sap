@@ -2,6 +2,16 @@
 *& Include Z_GSP18_SAP15_O01
 *&---------------------------------------------------------------------*
 MODULE status_0400 OUTPUT.
+  DATA: lv_adm_0400 TYPE abap_bool.
+
+  PERFORM is_arch_admin CHANGING lv_adm_0400.
+  IF lv_adm_0400 = abap_true.
+    gv_hub_allowed = abap_true.
+    SET SCREEN 0100.
+    LEAVE SCREEN.
+    RETURN.
+  ENDIF.
+
   SET PF-STATUS 'STATUS_100'.
   SET TITLEBAR 'TITLE_100'.
 ENDMODULE.
