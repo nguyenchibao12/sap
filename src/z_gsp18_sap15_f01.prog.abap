@@ -955,32 +955,19 @@ FORM do_restore_from_hub.
     RETURN.
   ENDIF.
 
-  " Bước 2b: Xác nhận bổ sung cho full session restore (admin only)
-  IF lv_rst_adm = abap_true AND gv_full_restore = 'X'.
-    DATA: lv_full_ans TYPE c LENGTH 1.
-    CALL FUNCTION 'POPUP_TO_CONFIRM'
-      EXPORTING
-        titlebar              = 'Full Session Restore'
-        text_question         = |Bạn đang restore FULL SESSION { gs_del_admi-document } (tất cả bảng trong session). Tiếp tục?|
-        text_button_1         = 'Yes, full restore'
-        text_button_2         = 'No'
-        default_button        = '2'
-        display_cancel_button = ' '
-      IMPORTING
-        answer                = lv_full_ans
-      EXCEPTIONS
-        OTHERS                = 1.
-    IF lv_full_ans <> '1'.
-      RETURN.
-    ENDIF.
+  " Bước 3: Xác nhận theo role (admin = full session)
+  DATA: lv_ans TYPE c LENGTH 1,
+        lv_q   TYPE string.
+  IF lv_rst_adm = abap_true.
+    lv_q = |Session { gs_del_admi-document } → restore FULL SESSION (all tables)?|.
+  ELSE.
+    lv_q = |Session { gs_del_admi-document } → ghi dữ liệu vào bảng { gv_tabname }?|.
   ENDIF.
 
-  " Bước 3: Xác nhận
-  DATA: lv_ans TYPE c LENGTH 1.
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
       titlebar              = 'Restore from archive'
-      text_question         = |Session { gs_del_admi-document } → ghi dữ liệu vào bảng { gv_tabname }?|
+      text_question         = lv_q
       text_button_1         = 'Yes, restore'
       text_button_2         = 'No'
       default_button        = '2'
@@ -1006,7 +993,7 @@ FORM do_restore_via_adk.
 
   " Truyền p_doc từ session đã chọn → z_arch_ekk_read mở thẳng session đó,
   " bỏ qua SAP standard file picker (không hiện tất cả session nữa).
-  IF lv_rst_adm = abap_true AND gv_full_restore = 'X'.
+  IF lv_rst_adm = abap_true.
     SUBMIT z_arch_ekk_read
       WITH p_rest  = 'X'
       WITH p_doc   = gs_del_admi-document

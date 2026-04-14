@@ -15,21 +15,20 @@ MODULE status_0100 OUTPUT.
   ENDIF.
 
   PERFORM is_arch_admin CHANGING lv_adm_0100.
-  IF lv_adm_0100 = abap_false.
-    CLEAR gv_full_restore.
-  ENDIF.
+  CLEAR gv_full_restore.
 
   LOOP AT SCREEN.
     CASE screen-name.
-      WHEN 'MANAGE_BUTTON'
-        OR 'RUN_LOG_BUTTON'
-        OR 'LBL_FULL_RESTORE'
-        OR 'GV_FULL_RESTORE'.
+      WHEN 'MANAGE_BUTTON'.
         IF lv_adm_0100 = abap_true.
           screen-active = 1.
         ELSE.
           screen-active = 0.
         ENDIF.
+        MODIFY SCREEN.
+      WHEN 'LBL_FULL_RESTORE'
+        OR 'GV_FULL_RESTORE'.
+        screen-active = 0.
         MODIFY SCREEN.
     ENDCASE.
   ENDLOOP.

@@ -48,9 +48,7 @@ MODULE user_command_0100 INPUT.
   CONDENSE gv_tabname.
   TRANSLATE gv_tabname TO UPPER CASE.
   PERFORM is_arch_admin CHANGING lv_is_admin.
-  IF lv_is_admin = abap_false.
-    CLEAR gv_full_restore.
-  ENDIF.
+  CLEAR gv_full_restore.
 
   CASE lv_cmd.
     WHEN 'BACK'.
@@ -76,7 +74,9 @@ MODULE user_command_0100 INPUT.
       ENDIF.
 
     WHEN 'BT_RESTORE'.
-      IF gv_tabname IS INITIAL.
+      IF lv_is_admin = abap_true.
+        PERFORM do_restore_from_hub.
+      ELSEIF gv_tabname IS INITIAL.
         MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM do_restore_from_hub.
@@ -101,11 +101,7 @@ MODULE user_command_0100 INPUT.
       ENDIF.
 
     WHEN 'BT_RUN_LOG'.
-      IF lv_is_admin = abap_true.
-        PERFORM show_hub_run_diagnostics.
-      ELSE.
-        MESSAGE 'Chỉ admin mới được mở Run log jobs.' TYPE 'S' DISPLAY LIKE 'E'.
-      ENDIF.
+      PERFORM show_hub_run_diagnostics.
 
   ENDCASE.
 ENDMODULE.
