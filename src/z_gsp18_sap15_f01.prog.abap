@@ -852,10 +852,11 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
         APPEND ls_run TO lt_run_rst.
       ENDIF.
     ENDLOOP.
-    lt_run = lt_run_rst.
-    IF lt_run IS INITIAL.
-      MESSAGE 'Không có session nào đã qua bước DELETE để restore.' TYPE 'S' DISPLAY LIKE 'W'.
-      RETURN.
+    IF lt_run_rst IS NOT INITIAL.
+      lt_run = lt_run_rst.
+    ELSE.
+      " Legacy logs (chưa có DOC=...) vẫn cho chọn session, kiểm tra kỹ ở bước xác nhận restore.
+      MESSAGE 'Chưa có marker DOC trong log DELETE (legacy). Vẫn hiển thị session; sẽ kiểm tra thêm trước khi restore.' TYPE 'S' DISPLAY LIKE 'W'.
     ENDIF.
   ENDIF.
 
@@ -998,8 +999,38 @@ FORM do_restore_from_hub.
         AND message LIKE @lv_like_doc.
   ENDIF.
   IF lv_del_hit = 0.
-    MESSAGE |Session { gs_del_admi-document } chưa qua bước DELETE (không có log DELETE tương ứng) nên chưa được restore.| TYPE 'S' DISPLAY LIKE 'E'.
-    RETURN.
+    " Fallback cho dữ liệu cũ: log DELETE trước đây chưa gắn DOC=<session>.
+    DATA: lv_legacy_del TYPE i.
+    IF lv_rst_adm = abap_true.
+      SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_legacy_del
+        WHERE action = 'DELETE'.
+    ELSE.
+      SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_legacy_del
+        WHERE action = 'DELETE'
+          AND table_name = @gv_tabname.
+    ENDIF.
+
+    IF lv_legacy_del = 0.
+      MESSAGE |Session { gs_del_admi-document } chưa qua bước DELETE (không có log DELETE) nên chưa được restore.| TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ELSE.
+      DATA: lv_legacy_ans TYPE c LENGTH 1.
+      CALL FUNCTION 'POPUP_TO_CONFIRM'
+        EXPORTING
+          titlebar              = 'Legacy delete log'
+          text_question         = |Không tìm thấy DELETE marker theo session DOC={ gs_del_admi-document } (log cũ). Cho phép restore theo legacy delete evidence?|
+          text_button_1         = 'Yes, restore'
+          text_button_2         = 'No'
+          default_button        = '2'
+          display_cancel_button = ' '
+        IMPORTING
+          answer                = lv_legacy_ans
+        EXCEPTIONS
+          OTHERS                = 1.
+      IF lv_legacy_ans <> '1'.
+        RETURN.
+      ENDIF.
+    ENDIF.
   ENDIF.
 
   " Bước 3: Xác nhận theo role (admin = full session)
