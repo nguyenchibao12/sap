@@ -109,10 +109,15 @@ CLASS lcl_btc_handler IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    " UX giống SM37: double-click mở protocol; nếu không có thì gợi ý spool.
-    PERFORM show_btc_job_protocol USING ls_b-jobname ls_b-jobcount.
-    IF ls_b-listident IS NOT INITIAL.
+    " Double-click theo cột: LISTIDENT mở spool, cột khác mở job protocol.
+    IF column = 'LISTIDENT' OR column = 'SPOOL_ID' OR column = 'LIST ID'.
+      IF ls_b-listident IS INITIAL.
+        MESSAGE 'Dòng này không có spool list id.' TYPE 'S' DISPLAY LIKE 'W'.
+        RETURN.
+      ENDIF.
       PERFORM show_btc_spool_popup USING ls_b-listident.
+    ELSE.
+      PERFORM show_btc_job_protocol USING ls_b-jobname ls_b-jobcount.
     ENDIF.
   ENDMETHOD.
 ENDCLASS.
@@ -2416,16 +2421,9 @@ FORM show_btc_spool_popup USING VALUE(pv_list) TYPE clike.
     RETURN.
   ENDIF.
 
-  " Fallback nếu FM không có trên release hiện tại.
-  lv_text = |List ID (spool): { pv_list }|.
-  CALL FUNCTION 'POPUP_TO_INFORM'
-    EXPORTING
-      titel = 'Spool list'
-      txt1  = lv_text
-      txt2  = 'Không mở trực tiếp được spool trên release này. Dùng SP01/SP02 với List ID.'
-      txt3  = ''
-    EXCEPTIONS
-      OTHERS = 1.
+  " Fallback: không mở popup nữa, chỉ báo gọn.
+  lv_text = |Không mở trực tiếp được spool { pv_list } trên release này. Dùng SP01/SP02 với List ID.|.
+  MESSAGE lv_text TYPE 'S' DISPLAY LIKE 'W'.
 
 ENDFORM.
 
