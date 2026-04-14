@@ -2389,34 +2389,57 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM show_btc_spool_popup USING VALUE(pv_list) TYPE clike.
 
+  TYPES: ty_name30 TYPE c LENGTH 30.
+
   DATA: lv_text     TYPE string,
         lv_rqident  TYPE tsp01-rqident,
         lv_rqident_c TYPE c LENGTH 20,
         lv_fmname   TYPE rs38l_fnam,
+        lv_parname  TYPE ty_name30,
+        lt_fm_try   TYPE STANDARD TABLE OF rs38l_fnam WITH DEFAULT KEY,
+        lt_par_try  TYPE STANDARD TABLE OF ty_name30 WITH DEFAULT KEY,
         lt_params   TYPE abap_func_parmbind_tab,
         ls_param    TYPE abap_func_parmbind,
         lt_exc      TYPE abap_func_excpbind_tab,
         lv_ok_open  TYPE abap_bool.
 
   lv_rqident = pv_list.
-  lv_fmname  = 'RSPO_R_RSHOW_SPOOLREQ'.
   lv_ok_open = abap_false.
 
   " Ưu tiên mở trực tiếp spool request (trải nghiệm gần giống SM37/SP01).
-  CLEAR: lt_params, lt_exc.
-  ls_param-name  = 'RQIDENT'.
-  ls_param-kind  = abap_func_exporting.
-  GET REFERENCE OF lv_rqident INTO ls_param-value.
-  APPEND ls_param TO lt_params.
-  TRY.
-      CALL FUNCTION lv_fmname
-        PARAMETER-TABLE lt_params
-        EXCEPTION-TABLE lt_exc.
-      IF sy-subrc = 0.
-        lv_ok_open = abap_true.
-      ENDIF.
-    CATCH cx_root.
-  ENDTRY.
+  " Mỗi release có FM/tên tham số khác nhau nên thử tuần tự.
+  APPEND 'RSPO_R_RSHOW_SPOOLREQ' TO lt_fm_try.
+  APPEND 'RSPO_R_SPOOLREQ_SHOW'  TO lt_fm_try.
+  APPEND 'RSPO_DISPLAY_SPOOLREQ' TO lt_fm_try.
+  APPEND 'RSPO_SPOOLREQ_DISPLAY' TO lt_fm_try.
+
+  APPEND 'RQIDENT'       TO lt_par_try.
+  APPEND 'LISTIDENT'     TO lt_par_try.
+  APPEND 'SPOOL_REQUEST' TO lt_par_try.
+  APPEND 'SPOOLID'       TO lt_par_try.
+
+  LOOP AT lt_fm_try INTO lv_fmname.
+    LOOP AT lt_par_try INTO lv_parname.
+      CLEAR: lt_params, lt_exc, ls_param.
+      ls_param-name  = lv_parname.
+      ls_param-kind  = abap_func_exporting.
+      GET REFERENCE OF lv_rqident INTO ls_param-value.
+      APPEND ls_param TO lt_params.
+      TRY.
+          CALL FUNCTION lv_fmname
+            PARAMETER-TABLE lt_params
+            EXCEPTION-TABLE lt_exc.
+          IF sy-subrc = 0.
+            lv_ok_open = abap_true.
+            EXIT.
+          ENDIF.
+        CATCH cx_root.
+      ENDTRY.
+    ENDLOOP.
+    IF lv_ok_open = abap_true.
+      EXIT.
+    ENDIF.
+  ENDLOOP.
 
   IF lv_ok_open = abap_true.
     RETURN.
