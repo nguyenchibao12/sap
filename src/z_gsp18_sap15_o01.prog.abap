@@ -31,6 +31,7 @@ MODULE status_0100 OUTPUT.
     CASE screen-name.
       WHEN 'GV_TABNAME'.
         screen-input = 0.
+        screen-output = 1.
         MODIFY SCREEN.
       WHEN 'MANAGE_BUTTON'.
         IF lv_adm_0100 = abap_true.
@@ -45,6 +46,8 @@ MODULE status_0100 OUTPUT.
         MODIFY SCREEN.
     ENDCASE.
   ENDLOOP.
+
+  SET CURSOR FIELD 'OK_CODE'.
 
   SET PF-STATUS 'STATUS_100'.
   SET TITLEBAR 'TITLE_100'.
