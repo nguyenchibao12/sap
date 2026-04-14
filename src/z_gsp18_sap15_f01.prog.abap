@@ -99,6 +99,22 @@ CLASS lcl_btc_handler IMPLEMENTATION.
     ENDCASE.
 
   ENDMETHOD.
+
+  METHOD on_dblclick.
+    DATA: ls_b TYPE ty_btc_row.
+
+    CHECK row > 0.
+    READ TABLE gt_btc_rows INTO ls_b INDEX row.
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    " UX giống SM37: double-click mở protocol; nếu không có thì gợi ý spool.
+    PERFORM show_btc_job_protocol USING ls_b-jobname ls_b-jobcount.
+    IF ls_b-listident IS NOT INITIAL.
+      PERFORM show_btc_spool_popup USING ls_b-listident.
+    ENDIF.
+  ENDMETHOD.
 ENDCLASS.
 
 CLASS lcl_run_handler IMPLEMENTATION.
@@ -2195,6 +2211,7 @@ FORM show_hub_btc_job_list.
         lo_cols  TYPE REF TO cl_salv_columns_table,
         lo_col   TYPE REF TO cl_salv_column_table,
         lo_disp  TYPE REF TO cl_salv_display_settings,
+        lo_evt_btc TYPE REF TO cl_salv_events_table,
         lt_co    TYPE TABLE OF ty_co_sel,
         ls_co    TYPE ty_co_sel,
         ls_btc   TYPE ty_btc_row,
@@ -2291,6 +2308,8 @@ FORM show_hub_btc_job_list.
               cx_salv_existing. ENDTRY.
 
       SET HANDLER lcl_btc_handler=>on_func FOR go_btc_alv->get_event( ).
+      lo_evt_btc ?= go_btc_alv->get_event( ).
+      SET HANDLER lcl_btc_handler=>on_dblclick FOR lo_evt_btc.
 
       lo_cols = go_btc_alv->get_columns( ).
       lo_cols->set_optimize( abap_true ).

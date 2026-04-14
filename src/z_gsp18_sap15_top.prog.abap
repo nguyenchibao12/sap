@@ -205,6 +205,9 @@ CLASS lcl_btc_handler DEFINITION.
     CLASS-METHODS on_func
       FOR EVENT added_function OF cl_salv_events
       IMPORTING e_salv_function.
+    CLASS-METHODS on_dblclick
+      FOR EVENT double_click OF cl_salv_events_table
+      IMPORTING row column.
 ENDCLASS.
 
 CLASS lcl_run_handler DEFINITION.
