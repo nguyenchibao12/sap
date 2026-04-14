@@ -2386,12 +2386,14 @@ FORM show_btc_spool_popup USING VALUE(pv_list) TYPE clike.
 
   DATA: lv_text     TYPE string,
         lv_rqident  TYPE tsp01-rqident,
+        lv_fmname   TYPE rs38l_fnam,
         lt_params   TYPE abap_func_parmbind_tab,
         ls_param    TYPE abap_func_parmbind,
         lt_exc      TYPE abap_func_excpbind_tab,
         lv_ok_open  TYPE abap_bool.
 
   lv_rqident = pv_list.
+  lv_fmname  = 'RSPO_R_RSHOW_SPOOLREQ'.
   lv_ok_open = abap_false.
 
   " Ưu tiên mở trực tiếp spool request (trải nghiệm gần giống SM37/SP01).
@@ -2401,7 +2403,7 @@ FORM show_btc_spool_popup USING VALUE(pv_list) TYPE clike.
   GET REFERENCE OF lv_rqident INTO ls_param-value.
   APPEND ls_param TO lt_params.
   TRY.
-      CALL FUNCTION ('RSPO_R_RSHOW_SPOOLREQ')
+      CALL FUNCTION lv_fmname
         PARAMETER-TABLE lt_params
         EXCEPTION-TABLE lt_exc.
       IF sy-subrc = 0.
