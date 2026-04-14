@@ -804,7 +804,7 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
         lt_ret TYPE TABLE OF ddshretval,
         ls_ret TYPE ddshretval,
         lv_doc TYPE admi_run-document,
-        lv_title TYPE string.
+        lv_title TYPE c LENGTH 70.
 
   IF gv_object IS INITIAL.
     gv_object = 'Z_ARCH_EKK'.
