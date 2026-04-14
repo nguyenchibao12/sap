@@ -92,6 +92,9 @@ CLASS lcl_btc_handler IMPLEMENTATION.
       WHEN 'BTC_Z26LOG'.
         PERFORM show_hub_arch_log_recent USING gv_tabname.
 
+      WHEN 'BTC_SESS'.
+        PERFORM show_hub_admi_session_groups.
+
       WHEN OTHERS.
     ENDCASE.
 
@@ -2280,6 +2283,12 @@ FORM show_hub_btc_job_list.
             icon     = '@3W@'
             text     = 'ZSP26_ARCH_LOG'
             tooltip  = 'Log ứng dụng ARCHIVE/DELETE theo bảng hub hoặc user'
+            position = if_salv_c_function_position=>right_of_salv_functions ).
+          lo_funcs->add_function(
+            name     = 'BTC_SESS'
+            icon     = '@3I@'
+            text     = 'Archive sessions'
+            tooltip  = 'Mở danh sách session để Open Session và xem archived data'
             position = if_salv_c_function_position=>right_of_salv_functions ).
         CATCH cx_salv_method_not_supported
               cx_salv_wrong_call
