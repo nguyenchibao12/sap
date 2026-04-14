@@ -227,6 +227,12 @@ START-OF-SELECTION.
 FORM read_process_zstr_object
   USING VALUE(pv_handle) TYPE syst-tabix.
 
+  TYPES: BEGIN OF ty_tbl_stat,
+           table_name TYPE tabname,
+           cnt_ok     TYPE i,
+           cnt_err    TYPE i,
+         END OF ty_tbl_stat.
+
   DATA: lt_arch   TYPE TABLE OF zstr_arch_rec,
         ls_arch2  TYPE zstr_arch_rec,
         ls_fill   TYPE zstr_arch_rec,
@@ -240,7 +246,14 @@ FORM read_process_zstr_object
         lv_tn_row TYPE tabname,
         lv_disp0  TYPE i,
         lv_from   TYPE syst-tabix,
-        lv_gt_rc  TYPE sy-subrc.
+        lv_gt_rc  TYPE sy-subrc,
+        lt_tbl_stat TYPE TABLE OF ty_tbl_stat,
+        ls_tbl_stat TYPE ty_tbl_stat,
+        lv_mode_txt TYPE char20,
+        lv_doc_txt  TYPE char40,
+        lv_tbl_msg  TYPE string,
+        lv_tbl_seg  TYPE string,
+        lv_stat_ix  TYPE sy-tabix.
 
   DATA: BEGIN OF ls_mj,
           mj_table TYPE tabname,
@@ -357,7 +370,7 @@ FORM read_process_zstr_object
     ENDIF.
     lv_from = lv_disp0 + 1.
     GET TIME STAMP FIELD lv_ts_s.
-    CLEAR: lv_ins, lv_ief.
+    CLEAR: lv_ins, lv_ief, lt_tbl_stat, lv_tbl_msg.
     LOOP AT lt_disp INTO ls_disp FROM lv_from.
       lv_tn_row = ls_disp-table_name.
       CONDENSE lv_tn_row.
@@ -373,11 +386,47 @@ FORM read_process_zstr_object
           MODIFY (lv_tn_row) FROM <rec_dyn>.
           IF sy-subrc = 0.
             ADD 1 TO lv_ins.
+            CLEAR ls_tbl_stat.
+            READ TABLE lt_tbl_stat INTO ls_tbl_stat WITH KEY table_name = lv_tn_row.
+            lv_stat_ix = sy-tabix.
+            IF sy-subrc <> 0.
+              ls_tbl_stat-table_name = lv_tn_row.
+            ENDIF.
+            ADD 1 TO ls_tbl_stat-cnt_ok.
+            IF lv_stat_ix > 0.
+              MODIFY lt_tbl_stat FROM ls_tbl_stat INDEX lv_stat_ix.
+            ELSE.
+              APPEND ls_tbl_stat TO lt_tbl_stat.
+            ENDIF.
           ELSE.
             ADD 1 TO lv_ief.
+            CLEAR ls_tbl_stat.
+            READ TABLE lt_tbl_stat INTO ls_tbl_stat WITH KEY table_name = lv_tn_row.
+            lv_stat_ix = sy-tabix.
+            IF sy-subrc <> 0.
+              ls_tbl_stat-table_name = lv_tn_row.
+            ENDIF.
+            ADD 1 TO ls_tbl_stat-cnt_err.
+            IF lv_stat_ix > 0.
+              MODIFY lt_tbl_stat FROM ls_tbl_stat INDEX lv_stat_ix.
+            ELSE.
+              APPEND ls_tbl_stat TO lt_tbl_stat.
+            ENDIF.
           ENDIF.
         CATCH cx_root.
           ADD 1 TO lv_ief.
+          CLEAR ls_tbl_stat.
+          READ TABLE lt_tbl_stat INTO ls_tbl_stat WITH KEY table_name = lv_tn_row.
+          lv_stat_ix = sy-tabix.
+          IF sy-subrc <> 0.
+            ls_tbl_stat-table_name = lv_tn_row.
+          ENDIF.
+          ADD 1 TO ls_tbl_stat-cnt_err.
+          IF lv_stat_ix > 0.
+            MODIFY lt_tbl_stat FROM ls_tbl_stat INDEX lv_stat_ix.
+          ELSE.
+            APPEND ls_tbl_stat TO lt_tbl_stat.
+          ENDIF.
       ENDTRY.
     ENDLOOP.
     lv_ins_rc = COND #( WHEN lv_ief = 0 THEN 0 ELSE 4 ).
@@ -389,7 +438,7 @@ FORM read_process_zstr_object
     CATCH cx_uuid_error. ENDTRY.
     SELECT SINGLE config_id FROM zsp26_arch_cfg INTO @ls_log-config_id
       WHERE table_name = @p_table AND is_active = 'X'.
-    ls_log-table_name = p_table.
+    ls_log-table_name = COND tabname( WHEN p_table IS INITIAL THEN '*' ELSE p_table ).
     ls_log-action     = 'RESTORE'.
     ls_log-rec_count  = lv_ins.
     ls_log-status     = COND #( WHEN lv_ief = 0 THEN 'S' ELSE 'W' ).
@@ -397,7 +446,23 @@ FORM read_process_zstr_object
     ls_log-end_time   = lv_ts_e.
     ls_log-exec_user  = sy-uname.
     ls_log-exec_date  = sy-datum.
-    ls_log-message    = |RESTORE generic: { lv_ins } rows. RC={ lv_ins_rc }|.
+    lv_mode_txt = COND #( WHEN p_table IS INITIAL THEN 'FULL_SESSION' ELSE 'TABLE_ONLY' ).
+    lv_doc_txt  = COND #( WHEN p_doc IS INITIAL THEN 'AUTO_PICK' ELSE p_doc ).
+
+    SORT lt_tbl_stat BY table_name.
+    LOOP AT lt_tbl_stat INTO ls_tbl_stat.
+      lv_tbl_seg = |{ ls_tbl_stat-table_name }:OK={ ls_tbl_stat-cnt_ok },ERR={ ls_tbl_stat-cnt_err }|.
+      IF lv_tbl_msg IS INITIAL.
+        lv_tbl_msg = lv_tbl_seg.
+      ELSEIF strlen( lv_tbl_msg ) + strlen( lv_tbl_seg ) + 2 <= 120.
+        lv_tbl_msg = |{ lv_tbl_msg }; { lv_tbl_seg }|.
+      ELSE.
+        lv_tbl_msg = |{ lv_tbl_msg }; ...|.
+        EXIT.
+      ENDIF.
+    ENDLOOP.
+
+    ls_log-message = |RESTORE { lv_mode_txt } DOC={ lv_doc_txt } OK={ lv_ins } ERR={ lv_ief } RC={ lv_ins_rc } [{ lv_tbl_msg }]|.
     INSERT zsp26_arch_log FROM ls_log.
     COMMIT WORK.
     IF lv_ins > 0.

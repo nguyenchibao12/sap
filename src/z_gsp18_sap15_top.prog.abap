@@ -62,6 +62,7 @@ TYPES: BEGIN OF ty_log_det,
 DATA: gv_tabname TYPE zsp26_de_tabname. " Khớp DDIC màn 0400 (ROLLNAME) + F4 Search Help chuẩn
 " Chỉ cho phép vào hub 0100 sau khi user Continue từ 0400 (tránh TSTC sai DYPNO mở thẳng 0100)
 DATA: gv_hub_allowed TYPE abap_bool VALUE abap_false.
+DATA: gv_full_restore TYPE xfeld VALUE space. " Admin only: restore all tables in selected session
 
 " Archive operation globals
 DATA: gs_cfg      TYPE zsp26_arch_cfg,

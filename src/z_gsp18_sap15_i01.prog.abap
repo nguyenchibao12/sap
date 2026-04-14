@@ -40,12 +40,17 @@ ENDMODULE.
 *& Module USER_COMMAND_0100 INPUT
 *&---------------------------------------------------------------------*
 MODULE user_command_0100 INPUT.
-  DATA: lv_cmd TYPE sy-ucomm.
+  DATA: lv_cmd      TYPE sy-ucomm,
+        lv_is_admin TYPE abap_bool.
   lv_cmd = ok_code.
   CLEAR ok_code.
 
   CONDENSE gv_tabname.
   TRANSLATE gv_tabname TO UPPER CASE.
+  PERFORM is_arch_admin CHANGING lv_is_admin.
+  IF lv_is_admin = abap_false.
+    CLEAR gv_full_restore.
+  ENDIF.
 
   CASE lv_cmd.
     WHEN 'BACK'.
@@ -89,10 +94,18 @@ MODULE user_command_0100 INPUT.
       PERFORM do_monitor.
 
     WHEN 'BT_MANAGE'.
-      PERFORM do_config.
+      IF lv_is_admin = abap_true.
+        PERFORM do_config.
+      ELSE.
+        MESSAGE 'Chỉ admin mới được mở Config.' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDIF.
 
     WHEN 'BT_RUN_LOG'.
-      PERFORM show_hub_run_diagnostics.
+      IF lv_is_admin = abap_true.
+        PERFORM show_hub_run_diagnostics.
+      ELSE.
+        MESSAGE 'Chỉ admin mới được mở Run log jobs.' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDIF.
 
   ENDCASE.
 ENDMODULE.

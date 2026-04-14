@@ -7,10 +7,33 @@ MODULE status_0400 OUTPUT.
 ENDMODULE.
 
 MODULE status_0100 OUTPUT.
+  DATA: lv_adm_0100 TYPE abap_bool.
+
   IF gv_hub_allowed <> abap_true.
     SET SCREEN 0400.
     LEAVE SCREEN.
   ENDIF.
+
+  PERFORM is_arch_admin CHANGING lv_adm_0100.
+  IF lv_adm_0100 = abap_false.
+    CLEAR gv_full_restore.
+  ENDIF.
+
+  LOOP AT SCREEN.
+    CASE screen-name.
+      WHEN 'MANAGE_BUTTON'
+        OR 'RUN_LOG_BUTTON'
+        OR 'LBL_FULL_RESTORE'
+        OR 'GV_FULL_RESTORE'.
+        IF lv_adm_0100 = abap_true.
+          screen-active = 1.
+        ELSE.
+          screen-active = 0.
+        ENDIF.
+        MODIFY SCREEN.
+    ENDCASE.
+  ENDLOOP.
+
   SET PF-STATUS 'STATUS_100'.
   SET TITLEBAR 'TITLE_100'.
 ENDMODULE.

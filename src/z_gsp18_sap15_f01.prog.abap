@@ -955,6 +955,26 @@ FORM do_restore_from_hub.
     RETURN.
   ENDIF.
 
+  " Bước 2b: Xác nhận bổ sung cho full session restore (admin only)
+  IF lv_rst_adm = abap_true AND gv_full_restore = 'X'.
+    DATA: lv_full_ans TYPE c LENGTH 1.
+    CALL FUNCTION 'POPUP_TO_CONFIRM'
+      EXPORTING
+        titlebar              = 'Full Session Restore'
+        text_question         = |Bạn đang restore FULL SESSION { gs_del_admi-document } (tất cả bảng trong session). Tiếp tục?|
+        text_button_1         = 'Yes, full restore'
+        text_button_2         = 'No'
+        default_button        = '2'
+        display_cancel_button = ' '
+      IMPORTING
+        answer                = lv_full_ans
+      EXCEPTIONS
+        OTHERS                = 1.
+    IF lv_full_ans <> '1'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
   " Bước 3: Xác nhận
   DATA: lv_ans TYPE c LENGTH 1.
   CALL FUNCTION 'POPUP_TO_CONFIRM'
@@ -979,17 +999,28 @@ ENDFORM.
 *& FORM DO_RESTORE_VIA_ADK — gọi ADK Read Program (p_rest=X → INSERT DB)
 *&---------------------------------------------------------------------*
 FORM do_restore_via_adk.
-  DATA: lv_rtab TYPE tabname.
-  lv_rtab = gv_tabname.
-  CONDENSE lv_rtab.
-  TRANSLATE lv_rtab TO UPPER CASE.
+  DATA: lv_rtab    TYPE tabname,
+        lv_rst_adm TYPE abap_bool.
+
+  PERFORM is_arch_admin CHANGING lv_rst_adm.
+
   " Truyền p_doc từ session đã chọn → z_arch_ekk_read mở thẳng session đó,
   " bỏ qua SAP standard file picker (không hiện tất cả session nữa).
-  SUBMIT z_arch_ekk_read
-    WITH p_table = lv_rtab
-    WITH p_rest  = 'X'
-    WITH p_doc   = gs_del_admi-document
-    AND RETURN.
+  IF lv_rst_adm = abap_true AND gv_full_restore = 'X'.
+    SUBMIT z_arch_ekk_read
+      WITH p_rest  = 'X'
+      WITH p_doc   = gs_del_admi-document
+      AND RETURN.
+  ELSE.
+    lv_rtab = gv_tabname.
+    CONDENSE lv_rtab.
+    TRANSLATE lv_rtab TO UPPER CASE.
+    SUBMIT z_arch_ekk_read
+      WITH p_table = lv_rtab
+      WITH p_rest  = 'X'
+      WITH p_doc   = gs_del_admi-document
+      AND RETURN.
+  ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -2101,12 +2132,23 @@ FORM show_hub_btc_job_list.
 
   CLEAR gt_btc_rows.
 
-  SELECT jobname, jobcount, status, sdluname, strtdate, strttime
-    FROM tbtco
-    INTO TABLE @lt_co UP TO 80 ROWS
-    WHERE jobname LIKE 'ZARCH%'
-      AND ( sdluname = @sy-uname OR authckman = @sy-uname )
-    ORDER BY strtdate DESCENDING, strttime DESCENDING.
+  DATA: lv_btc_adm TYPE abap_bool.
+  PERFORM is_arch_admin CHANGING lv_btc_adm.
+
+  IF lv_btc_adm = abap_true.
+    SELECT jobname, jobcount, status, sdluname, strtdate, strttime
+      FROM tbtco
+      INTO TABLE @lt_co UP TO 80 ROWS
+      WHERE jobname LIKE 'ZARCH%'
+      ORDER BY strtdate DESCENDING, strttime DESCENDING.
+  ELSE.
+    SELECT jobname, jobcount, status, sdluname, strtdate, strttime
+      FROM tbtco
+      INTO TABLE @lt_co UP TO 80 ROWS
+      WHERE jobname LIKE 'ZARCH%'
+        AND ( sdluname = @sy-uname OR authckman = @sy-uname )
+      ORDER BY strtdate DESCENDING, strttime DESCENDING.
+  ENDIF.
 
   LOOP AT lt_co INTO ls_co.
     CLEAR ls_btc.
@@ -2189,7 +2231,11 @@ FORM show_hub_btc_job_list.
         CATCH cx_salv_not_found. ENDTRY.
 
       lo_disp = go_btc_alv->get_display_settings( ).
-      lo_disp->set_list_header( |Background jobs ZARCH* — { sy-uname } — { lines( gt_btc_rows ) } rows| ).
+      IF lv_btc_adm = abap_true.
+        lo_disp->set_list_header( |Background jobs ZARCH* — admin view (all users) — { lines( gt_btc_rows ) } rows| ).
+      ELSE.
+        lo_disp->set_list_header( |Background jobs ZARCH* — { sy-uname } — { lines( gt_btc_rows ) } rows| ).
+      ENDIF.
       go_btc_alv->display( ).
 
     CATCH cx_salv_msg INTO DATA(lx_b).
