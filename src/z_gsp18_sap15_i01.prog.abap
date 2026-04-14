@@ -6,12 +6,14 @@
 *& Module USER_COMMAND_0400 INPUT — chọn bảng → Continue → 0100
 *&---------------------------------------------------------------------*
 MODULE user_command_0400 INPUT.
-  DATA: lv_cmd_400 TYPE sy-ucomm.
+  DATA: lv_cmd_400    TYPE sy-ucomm,
+        lv_adm_0400_i TYPE abap_bool.
   lv_cmd_400 = ok_code.
   CLEAR ok_code.
 
   CONDENSE gv_tabname.
   TRANSLATE gv_tabname TO UPPER CASE.
+  PERFORM is_arch_admin CHANGING lv_adm_0400_i.
 
   CASE lv_cmd_400.
     WHEN 'BACK' OR 'EXIT' OR 'CANC'.
@@ -21,6 +23,9 @@ MODULE user_command_0400 INPUT.
         MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         gv_hub_allowed = abap_true.
+        IF lv_adm_0400_i = abap_true.
+          CLEAR gv_admin_pick_table.
+        ENDIF.
         " Đồng bộ P_TABLE khi mở Z_ARCH_EKK_WRITE (SE38/hub hoặc SUBMIT chưa truyền WITH)
         EXPORT arch_tabname = gv_tabname TO MEMORY ID 'Z_GSP18_ARCH_TAB'.
         SET SCREEN 0100.
@@ -61,6 +66,9 @@ MODULE user_command_0100 INPUT.
     WHEN 'BT_CHG_TAB'.
       gv_hub_allowed = abap_false.
       CLEAR gv_variant.
+      IF lv_is_admin = abap_true.
+        gv_admin_pick_table = 'X'.
+      ENDIF.
       SET SCREEN 0400.
       LEAVE SCREEN.
 

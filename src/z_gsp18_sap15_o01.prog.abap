@@ -5,7 +5,7 @@ MODULE status_0400 OUTPUT.
   DATA: lv_adm_0400 TYPE abap_bool.
 
   PERFORM is_arch_admin CHANGING lv_adm_0400.
-  IF lv_adm_0400 = abap_true.
+  IF lv_adm_0400 = abap_true AND gv_admin_pick_table IS INITIAL.
     gv_hub_allowed = abap_true.
     SET SCREEN 0100.
     LEAVE SCREEN.
@@ -32,6 +32,14 @@ MODULE status_0100 OUTPUT.
       WHEN 'GV_TABNAME'.
         screen-input = 0.
         screen-output = 1.
+        MODIFY SCREEN.
+      WHEN 'WRITE_BUTTON'
+        OR 'DELETE_BUTTON'.
+        IF gv_tabname IS INITIAL.
+          screen-active = 0.
+        ELSE.
+          screen-active = 1.
+        ENDIF.
         MODIFY SCREEN.
       WHEN 'MANAGE_BUTTON'.
         IF lv_adm_0100 = abap_true.
