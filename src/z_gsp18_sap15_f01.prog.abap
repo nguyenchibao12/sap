@@ -2384,14 +2384,43 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM show_btc_spool_popup USING VALUE(pv_list) TYPE clike.
 
-  DATA: lv_text TYPE string.
+  DATA: lv_text     TYPE string,
+        lv_rqident  TYPE tsp01-rqident,
+        lt_params   TYPE abap_func_parmbind_tab,
+        ls_param    TYPE abap_func_parmbind,
+        lt_exc      TYPE abap_func_excpbind_tab,
+        lv_ok_open  TYPE abap_bool.
 
+  lv_rqident = pv_list.
+  lv_ok_open = abap_false.
+
+  " Ưu tiên mở trực tiếp spool request (trải nghiệm gần giống SM37/SP01).
+  CLEAR: lt_params, lt_exc.
+  ls_param-name  = 'RQIDENT'.
+  ls_param-kind  = abap_func_exporting.
+  GET REFERENCE OF lv_rqident INTO ls_param-value.
+  APPEND ls_param TO lt_params.
+  TRY.
+      CALL FUNCTION ('RSPO_R_RSHOW_SPOOLREQ')
+        PARAMETER-TABLE lt_params
+        EXCEPTION-TABLE lt_exc.
+      IF sy-subrc = 0.
+        lv_ok_open = abap_true.
+      ENDIF.
+    CATCH cx_root.
+  ENDTRY.
+
+  IF lv_ok_open = abap_true.
+    RETURN.
+  ENDIF.
+
+  " Fallback nếu FM không có trên release hiện tại.
   lv_text = |List ID (spool): { pv_list }|.
   CALL FUNCTION 'POPUP_TO_INFORM'
     EXPORTING
       titel = 'Spool list'
       txt1  = lv_text
-      txt2  = 'SP01/SP02: nhập List ID ở trên để xem list (cần quyền spool).'
+      txt2  = 'Không mở trực tiếp được spool trên release này. Dùng SP01/SP02 với List ID.'
       txt3  = ''
     EXCEPTIONS
       OTHERS = 1.
