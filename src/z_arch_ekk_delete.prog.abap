@@ -37,6 +37,7 @@ DATA: ls_arec      TYPE ty_arch_rec,
       ls_hub_admi  TYPE admi_run,
       lv_open_obj  TYPE arch_obj-object,
       lv_arch_key  TYPE admi_files-archiv_key,
+      gv_del_doc_log TYPE admi_run-document,
       lv_use_p_table TYPE abap_bool VALUE abap_true.
 
 PARAMETERS: p_table TYPE tabname DEFAULT 'ZSP26_EKKO'.
@@ -74,6 +75,7 @@ START-OF-SELECTION.
 
   CLEAR: ls_hub_admi, lv_arch_key.
   lv_open_obj = lv_obj.
+  CLEAR gv_del_doc_log.
 
   IF p_doc IS NOT INITIAL.
     ls_hub_admi-object   = lv_obj.
@@ -83,6 +85,7 @@ START-OF-SELECTION.
   ENDIF.
   IF ls_hub_admi-document IS NOT INITIAL.
     lv_use_p_table = abap_false.
+    gv_del_doc_log = ls_hub_admi-document.
     DATA: lt_af_dd   TYPE TABLE OF dfies,
           ls_af_dd   TYPE dfies,
           lv_where_af TYPE string,
@@ -253,6 +256,9 @@ START-OF-SELECTION.
     ENDIF.
     FREE MEMORY ID 'Z_GSP18_ADMI_DEL'.
   ENDIF.
+  IF gv_del_doc_log IS INITIAL AND p_doc IS NOT INITIAL.
+    gv_del_doc_log = p_doc.
+  ENDIF.
   lv_obj = lv_open_obj.
   WRITE: /.
 
@@ -349,6 +355,9 @@ START-OF-SELECTION.
       OTHERS                  = 3.
 
   WRITE: / |GET_INFORMATION: obj={ lv_obj } arch={ lv_arch_name } doc={ lv_doc } rc={ sy-subrc }|.
+  IF gv_del_doc_log IS INITIAL AND lv_doc IS NOT INITIAL.
+    gv_del_doc_log = lv_doc.
+  ENDIF.
   LOOP AT lt_used INTO ls_used_inf.
     PERFORM adk_used_row_to_tabname USING ls_used_inf CHANGING lv_tab_try.
     WRITE: / |  FILE_STRUCTURE: { lv_tab_try }|.
@@ -818,7 +827,7 @@ FORM flush_arch_log_delete
       ls_log-end_time   = lv_ts.
       ls_log-exec_user  = sy-uname.
       ls_log-exec_date  = sy-datum.
-      ls_log-message    = 'ADK DELETE (GET_TABLE): ' && ls_a-cnt && ' rows, tab ' && ls_a-table_name && '. err ' && pv_err.
+      ls_log-message    = |ADK DELETE DOC={ gv_del_doc_log } (GET_TABLE): { ls_a-cnt } rows, tab { ls_a-table_name }. err { pv_err }|.
       INSERT zsp26_arch_log FROM ls_log.
     ENDLOOP.
   ELSEIF pv_err > 0.
@@ -833,7 +842,7 @@ FORM flush_arch_log_delete
     ls_log-end_time   = lv_ts.
     ls_log-exec_user  = sy-uname.
     ls_log-exec_date  = sy-datum.
-    ls_log-message    = 'ADK DELETE: errors ' && pv_err && ' (no row aggregates).'.
+    ls_log-message    = |ADK DELETE DOC={ gv_del_doc_log }: errors { pv_err } (no row aggregates).|.
     INSERT zsp26_arch_log FROM ls_log.
   ENDIF.
   COMMIT WORK.

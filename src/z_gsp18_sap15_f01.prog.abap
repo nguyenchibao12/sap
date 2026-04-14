@@ -955,6 +955,25 @@ FORM do_restore_from_hub.
     RETURN.
   ENDIF.
 
+  " Bước 2c: Chỉ cho restore khi session đã có log DELETE tương ứng
+  DATA: lv_like_doc TYPE string,
+        lv_del_hit  TYPE i.
+  lv_like_doc = |%DOC={ gs_del_admi-document }%|.
+  IF lv_rst_adm = abap_true.
+    SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_hit
+      WHERE action = 'DELETE'
+        AND message LIKE @lv_like_doc.
+  ELSE.
+    SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_hit
+      WHERE action = 'DELETE'
+        AND table_name = @gv_tabname
+        AND message LIKE @lv_like_doc.
+  ENDIF.
+  IF lv_del_hit = 0.
+    MESSAGE |Session { gs_del_admi-document } chưa qua bước DELETE (không có log DELETE tương ứng) nên chưa được restore.| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
   " Bước 3: Xác nhận theo role (admin = full session)
   DATA: lv_ans TYPE c LENGTH 1,
         lv_q   TYPE string.
