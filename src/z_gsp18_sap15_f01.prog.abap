@@ -2421,7 +2421,18 @@ FORM show_btc_spool_popup USING VALUE(pv_list) TYPE clike.
     RETURN.
   ENDIF.
 
-  " Fallback: không mở popup nữa, chỉ báo gọn.
+  " Fallback 2: mở trực tiếp SP01/SP02 (ưu tiên thao tác click là vào được ngay).
+  SET PARAMETER ID 'SPI' FIELD lv_rqident.
+  CALL TRANSACTION 'SP01' AND SKIP FIRST SCREEN.
+  IF sy-subrc = 0.
+    RETURN.
+  ENDIF.
+
+  CALL TRANSACTION 'SP02' AND SKIP FIRST SCREEN.
+  IF sy-subrc = 0.
+    RETURN.
+  ENDIF.
+
   lv_text = |Không mở trực tiếp được spool { pv_list } trên release này. Dùng SP01/SP02 với List ID.|.
   MESSAGE lv_text TYPE 'S' DISPLAY LIKE 'W'.
 
