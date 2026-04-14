@@ -788,7 +788,7 @@ ENDFORM.
 *& FORM ARCH_DEL_PICK_SESSION_POPUP — chọn session/file delete (ADMI_RUN, AOBJ)
 *&  Popup F4 nội bộ — không gọi transaction SARA
 *&---------------------------------------------------------------------*
-FORM arch_del_pick_session_popup.
+FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
   TYPES: BEGIN OF ty_arch_del_f4,
            document   TYPE admi_run-document,
            creat_date TYPE admi_run-creat_date,
@@ -803,7 +803,8 @@ FORM arch_del_pick_session_popup.
         ls_run TYPE admi_run,
         lt_ret TYPE TABLE OF ddshretval,
         ls_ret TYPE ddshretval,
-        lv_doc TYPE admi_run-document.
+        lv_doc TYPE admi_run-document,
+        lv_title TYPE string.
 
   IF gv_object IS INITIAL.
     gv_object = 'Z_ARCH_EKK'.
@@ -836,6 +837,28 @@ FORM arch_del_pick_session_popup.
     RETURN.
   ENDIF.
 
+  " Restore mode: chỉ cho chọn session đã có DELETE log tương ứng (đúng luồng nghiệp vụ).
+  IF pv_mode = 'R'.
+    DATA: lt_run_rst TYPE TABLE OF admi_run,
+          lv_like_doc TYPE string,
+          lv_del_hit  TYPE i.
+    REFRESH lt_run_rst.
+    LOOP AT lt_run INTO ls_run.
+      lv_like_doc = |%DOC={ ls_run-document }%|.
+      SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_hit
+        WHERE action = 'DELETE'
+          AND message LIKE @lv_like_doc.
+      IF lv_del_hit > 0.
+        APPEND ls_run TO lt_run_rst.
+      ENDIF.
+    ENDLOOP.
+    lt_run = lt_run_rst.
+    IF lt_run IS INITIAL.
+      MESSAGE 'Không có session nào đã qua bước DELETE để restore.' TYPE 'S' DISPLAY LIKE 'W'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
   SORT lt_run BY creat_date DESCENDING document DESCENDING.
 
   LOOP AT lt_run INTO ls_run.
@@ -848,10 +871,15 @@ FORM arch_del_pick_session_popup.
   ENDLOOP.
 
   " Popup-only return: không bind DYNPROFIELD — bind từ nút bấm thường làm SAP GUI không xác nhận (tick) được.
+  IF pv_mode = 'R'.
+    lv_title = 'Archive Administration: Select Sessions for Restore (DELETE done)'.
+  ELSE.
+    lv_title = 'Archive Administration: Select Files for Delete Program'.
+  ENDIF.
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
       retfield     = 'DOCUMENT'
-      window_title = 'Archive Administration: Select Files for Delete Program'
+      window_title = lv_title
       value_org    = 'S'
     TABLES
       value_tab    = lt_f4
@@ -942,7 +970,7 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM do_restore_from_hub.
   " Bước 1: Chọn session (popup đã filter theo user / admin)
-  PERFORM arch_del_pick_session_popup.
+  PERFORM arch_del_pick_session_popup USING 'R'.
   IF gs_del_admi-document IS INITIAL.
     RETURN.
   ENDIF.

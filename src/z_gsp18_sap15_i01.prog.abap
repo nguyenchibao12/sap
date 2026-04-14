@@ -499,7 +499,7 @@ MODULE user_command_0600 INPUT.
       ENDIF.
 
     WHEN 'BT_ARCH_SEL'.
-      PERFORM arch_del_pick_session_popup.
+      PERFORM arch_del_pick_session_popup USING 'D'.
 
     WHEN 'BT_START' OR 'START_BTN'.
       PERFORM maintenance_start_date.
