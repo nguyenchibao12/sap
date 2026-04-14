@@ -29,6 +29,9 @@ MODULE status_0100 OUTPUT.
 
   LOOP AT SCREEN.
     CASE screen-name.
+      WHEN 'GV_TABNAME'.
+        screen-input = 0.
+        MODIFY SCREEN.
       WHEN 'MANAGE_BUTTON'.
         IF lv_adm_0100 = abap_true.
           screen-active = 1.

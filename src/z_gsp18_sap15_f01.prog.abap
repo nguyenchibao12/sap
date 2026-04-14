@@ -995,6 +995,7 @@ FORM do_restore_via_adk.
   " bỏ qua SAP standard file picker (không hiện tất cả session nữa).
   IF lv_rst_adm = abap_true.
     SUBMIT z_arch_ekk_read
+      WITH p_table = space
       WITH p_rest  = 'X'
       WITH p_doc   = gs_del_admi-document
       AND RETURN.
@@ -1470,7 +1471,12 @@ ENDFORM.
 *& Hub: job ZARCH* + log DB — không cần mở SM37/SARA
 *&---------------------------------------------------------------------*
 FORM show_hub_run_diagnostics.
-  PERFORM show_hub_admi_session_groups.
+  " Ưu tiên job list để user/admin theo dõi WRITE/DELETE thành công nhanh.
+  PERFORM show_hub_btc_job_list.
+  IF gt_btc_rows IS INITIAL.
+    " Fallback khi không có job nền phù hợp: vẫn cho xem session groups.
+    PERFORM show_hub_admi_session_groups.
+  ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

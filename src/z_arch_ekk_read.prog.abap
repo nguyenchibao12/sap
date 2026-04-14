@@ -34,7 +34,7 @@ DATA: ls_arec    TYPE ty_arch_rec,
 
 FIELD-SYMBOLS: <lt_dyn> TYPE ANY TABLE.
 
-PARAMETERS: p_table TYPE tabname DEFAULT 'ZSP26_EKKO'.
+PARAMETERS: p_table TYPE tabname.
 PARAMETERS: p_rest  TYPE c       AS CHECKBOX DEFAULT ' '.
 PARAMETERS: p_json  TYPE c       AS CHECKBOX DEFAULT ' '.
 PARAMETERS: p_doc   TYPE admi_run-document.
@@ -49,7 +49,12 @@ INITIALIZATION.
 
   IMPORT arch_tabname = lv_hub_tab FROM MEMORY ID 'Z_GSP18_ARCH_TAB'.
   IF sy-subrc = 0.
-    IF p_table IS INITIAL AND lv_hub_tab IS NOT INITIAL.
+    IF p_rest = 'X' AND p_doc IS NOT INITIAL.
+      CLEAR p_table.
+    ENDIF.
+    IF p_table IS INITIAL
+       AND lv_hub_tab IS NOT INITIAL
+       AND NOT ( p_rest = 'X' AND p_doc IS NOT INITIAL ).
       p_table = lv_hub_tab.
     ENDIF.
     FREE MEMORY ID 'Z_GSP18_ARCH_TAB'.
