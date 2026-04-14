@@ -2391,6 +2391,7 @@ FORM show_btc_spool_popup USING VALUE(pv_list) TYPE clike.
 
   DATA: lv_text     TYPE string,
         lv_rqident  TYPE tsp01-rqident,
+        lv_rqident_c TYPE c LENGTH 20,
         lv_fmname   TYPE rs38l_fnam,
         lt_params   TYPE abap_func_parmbind_tab,
         ls_param    TYPE abap_func_parmbind,
@@ -2422,7 +2423,9 @@ FORM show_btc_spool_popup USING VALUE(pv_list) TYPE clike.
   ENDIF.
 
   " Fallback 2: mở trực tiếp SP01/SP02 (ưu tiên thao tác click là vào được ngay).
-  SET PARAMETER ID 'SPI' FIELD lv_rqident.
+  lv_rqident_c = lv_rqident.
+  CONDENSE lv_rqident_c NO-GAPS.
+  SET PARAMETER ID 'SPI' FIELD lv_rqident_c.
   CALL TRANSACTION 'SP01' AND SKIP FIRST SCREEN.
   IF sy-subrc = 0.
     RETURN.
