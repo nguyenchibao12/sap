@@ -39,6 +39,10 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 CLASS lcl_mon_handler IMPLEMENTATION.
   METHOD on_func.
+    IF e_salv_function = 'MON_HELP'.
+      PERFORM show_mon_help.
+      RETURN.
+    ENDIF.
     CHECK e_salv_function = 'MON_DETAIL'.
 
     DATA: lo_sels  TYPE REF TO cl_salv_selections,
@@ -1832,6 +1836,12 @@ FORM do_monitor.
         text     = 'Detail Log'
         tooltip  = 'Xem log chi tiết cho bảng được chọn'
         position = if_salv_c_function_position=>right_of_salv_functions ).
+      lo_funcs->add_function(
+        name     = 'MON_HELP'
+        icon     = '@0S@'
+        text     = 'Huong dan'
+        tooltip  = 'Giai thich cac cot va cach doc so lieu'
+        position = if_salv_c_function_position=>right_of_salv_functions ).
     CATCH cx_salv_method_not_supported
           cx_salv_wrong_call
           cx_salv_existing. ENDTRY.
@@ -1841,42 +1851,55 @@ FORM do_monitor.
     lo_cols->set_optimize( abap_true ).
 
     TRY.
-      lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( 'Table Name' ).
+      lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( 'Bang' ).
       lo_col ?= lo_cols->get_column( 'STATUS_ICON' ).
-      lo_col->set_long_text( 'Status' ).
+      lo_col->set_long_text( 'Trang thai' ).
       lo_col->set_icon( if_salv_c_bool_sap=>true ).
       lo_col ?= lo_cols->get_column( 'STATUS_TXT' ).
       lo_col->set_visible( if_salv_c_bool_sap=>false ).
-      lo_col ?= lo_cols->get_column( 'LIVE_RECS' ).   lo_col->set_long_text( 'Live Records' ).
-      lo_col ?= lo_cols->get_column( 'ARCH_RECS' ).   lo_col->set_long_text( 'Archived Recs' ).
-      lo_col ?= lo_cols->get_column( 'DEL_RECS' ).    lo_col->set_long_text( 'Deleted Recs' ).
-      lo_col ?= lo_cols->get_column( 'PCT_SAVED' ).   lo_col->set_long_text( '% Archived' ).
-      lo_col ?= lo_cols->get_column( 'ARCH_RUNS' ).   lo_col->set_long_text( 'Archive Runs' ).
-      lo_col ?= lo_cols->get_column( 'REST_RUNS' ).   lo_col->set_long_text( 'Restore Runs' ).
-      lo_col ?= lo_cols->get_column( 'DEL_RUNS' ).    lo_col->set_long_text( 'Delete Runs' ).
-      lo_col ?= lo_cols->get_column( 'LAST_ACTION' ). lo_col->set_long_text( 'Last Action' ).
-      lo_col ?= lo_cols->get_column( 'LAST_DATE' ).   lo_col->set_long_text( 'Last Date' ).
-      lo_col ?= lo_cols->get_column( 'LAST_ARCH_D' ). lo_col->set_long_text( 'Last Archive' ).
-      lo_col ?= lo_cols->get_column( 'LAST_DEL_D' ).  lo_col->set_long_text( 'Last Delete' ).
-      lo_col ?= lo_cols->get_column( 'LAST_USER' ).   lo_col->set_long_text( 'Last User' ).
-      lo_col ?= lo_cols->get_column( 'RETENTION' ).   lo_col->set_long_text( 'Retention (days)' ).
-      lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).   lo_col->set_long_text( 'Active' ).
+      lo_col ?= lo_cols->get_column( 'LIVE_RECS' ).   lo_col->set_long_text( 'So dong hien co' ).
+      lo_col ?= lo_cols->get_column( 'ARCH_RECS' ).   lo_col->set_long_text( 'Da archive' ).
+      lo_col ?= lo_cols->get_column( 'DEL_RECS' ).    lo_col->set_long_text( 'Da xoa' ).
+      lo_col ?= lo_cols->get_column( 'PCT_SAVED' ).   lo_col->set_long_text( '% da archive' ).
+      lo_col ?= lo_cols->get_column( 'ARCH_RUNS' ).   lo_col->set_long_text( 'So lan archive' ).
+      lo_col ?= lo_cols->get_column( 'REST_RUNS' ).   lo_col->set_long_text( 'So lan restore' ).
+      lo_col ?= lo_cols->get_column( 'DEL_RUNS' ).    lo_col->set_long_text( 'So lan delete' ).
+      lo_col ?= lo_cols->get_column( 'LAST_ACTION' ). lo_col->set_long_text( 'Tac vu gan nhat' ).
+      lo_col ?= lo_cols->get_column( 'LAST_DATE' ).   lo_col->set_long_text( 'Ngay gan nhat' ).
+      lo_col ?= lo_cols->get_column( 'LAST_ARCH_D' ). lo_col->set_long_text( 'Ngay archive cuoi' ).
+      lo_col ?= lo_cols->get_column( 'LAST_DEL_D' ).  lo_col->set_long_text( 'Ngay xoa cuoi' ).
+      lo_col ?= lo_cols->get_column( 'LAST_USER' ).   lo_col->set_long_text( 'User gan nhat' ).
+      lo_col ?= lo_cols->get_column( 'RETENTION' ).   lo_col->set_long_text( 'Giu lai (ngay)' ).
+      lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).   lo_col->set_long_text( 'Dang bat' ).
       lo_col ?= lo_cols->get_column( 'ELIG_RECS' ).
-      lo_col->set_long_text( 'Eligible rows (est., Open SQL)' ).
+      lo_col->set_long_text( 'Co the archive (uoc tinh)' ).
       lo_col ?= lo_cols->get_column( 'EST_ROW_B' ).
-      lo_col->set_long_text( 'Est. row width (B, DDIC)' ).
+      lo_col->set_long_text( 'Kich thuoc 1 dong (B)' ).
       lo_col ?= lo_cols->get_column( 'EST_ELIG_MB' ).
-      lo_col->set_long_text( '~MB if archived (est., not file size)' ).
+      lo_col->set_long_text( '~MB tiet kiem (uoc tinh)' ).
     CATCH cx_salv_not_found. ENDTRY.
 
     lo_disp = go_mon_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |STORAGE ANALYSIS & MONITORING — { lines( gt_mon_disp ) } tables — { sy-datum }| ).
+      |PHAN TICH DUNG LUONG & GIAM SAT — { lines( gt_mon_disp ) } bang — { sy-datum }| ).
     go_mon_alv->display( ).
 
   CATCH cx_salv_msg INTO DATA(lx).
     MESSAGE lx->get_text( ) TYPE 'E'.
   ENDTRY.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM SHOW_MON_HELP — hướng dẫn đọc nhanh Monitor
+*&---------------------------------------------------------------------*
+FORM show_mon_help.
+  CALL FUNCTION 'POPUP_TO_DISPLAY_TEXT'
+    EXPORTING
+      titel     = 'Huong dan man hinh Monitor'
+      textline1 = '1) Co the archive = so dong uoc tinh theo retention + rule EQ.'
+      textline2 = '2) Kich thuoc 1 dong (B) lay theo DDIC, chi la uoc tinh.'
+      textline3 = '3) ~MB tiet kiem = Co the archive x Kich thuoc dong / 1MB.'
+      textline4 = '4) Neu rule OR phuc tap: so thuc te co the khac (he thong loc them).'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
