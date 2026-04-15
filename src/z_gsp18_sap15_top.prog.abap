@@ -170,6 +170,8 @@ TYPES: BEGIN OF ty_btc_row,
          listident  TYPE char14,
          strtdate   TYPE d,
          strttime   TYPE t,
+         run_ref    TYPE zsp26_de_archid,
+         table_name TYPE tabname,
        END OF ty_btc_row.
 
 DATA: gt_btc_rows TYPE TABLE OF ty_btc_row,

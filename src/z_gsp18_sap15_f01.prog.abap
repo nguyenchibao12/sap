@@ -85,7 +85,11 @@ CLASS lcl_btc_handler IMPLEMENTATION.
           RETURN.
         ENDIF.
         IF ls_b-progname = 'PURGE_ONLY'.
-          PERFORM show_hub_arch_log_recent USING space.
+          IF ls_b-run_ref IS NOT INITIAL.
+            PERFORM show_purge_run_data USING ls_b-run_ref.
+          ELSE.
+            PERFORM show_hub_arch_log_recent USING space.
+          ENDIF.
           RETURN.
         ENDIF.
         PERFORM show_btc_job_protocol USING ls_b-jobname ls_b-jobcount.
@@ -131,7 +135,11 @@ CLASS lcl_btc_handler IMPLEMENTATION.
     " - LISTIDENT opens spool
     " - other columns open job protocol
     IF column = 'STATUS' OR column = 'STATUS_TXT' OR column = 'ST'.
-      PERFORM show_hub_arch_log_recent USING space.
+      IF ls_b-progname = 'PURGE_ONLY' AND ls_b-run_ref IS NOT INITIAL.
+        PERFORM show_purge_run_data USING ls_b-run_ref.
+      ELSE.
+        PERFORM show_hub_arch_log_recent USING space.
+      ENDIF.
       RETURN.
     ENDIF.
 
@@ -142,6 +150,8 @@ CLASS lcl_btc_handler IMPLEMENTATION.
         RETURN.
       ENDIF.
       PERFORM show_btc_spool_popup USING ls_b-listident.
+    ELSEIF ls_b-progname = 'PURGE_ONLY' AND ls_b-run_ref IS NOT INITIAL.
+      PERFORM show_purge_run_data USING ls_b-run_ref.
     ELSE.
       PERFORM show_btc_job_protocol USING ls_b-jobname ls_b-jobcount.
     ENDIF.
@@ -954,9 +964,15 @@ FORM do_purge_only_direct.
         lv_purge_ok  TYPE i VALUE 0,
         lv_rule_skip TYPE i VALUE 0,
         lv_no_key    TYPE i VALUE 0,
+        lv_purge_id  TYPE zsp26_de_archid,
+        lv_seq_p     TYPE i VALUE 0,
+        lv_snap_err  TYPE i VALUE 0,
         lv_log_id    TYPE sysuuid_x16,
         ls_log       TYPE zsp26_arch_log,
-        lv_msg       TYPE string.
+        lv_msg       TYPE string,
+        lv_kv        TYPE char255,
+        lv_json      TYPE string,
+        ls_adata     TYPE zsp26_arch_data.
 
   FIELD-SYMBOLS: <lt_src> TYPE ANY TABLE,
                  <row>    TYPE any,
@@ -1009,6 +1025,7 @@ FORM do_purge_only_direct.
 
   LOOP AT <lt_src> ASSIGNING <row>.
     lv_wrow = |MANDT EQ '{ sy-mandt }'|.
+    CLEAR lv_kv.
 
     PERFORM apply_archive_rules
       USING <row> ls_cfg-config_id gv_tabname
@@ -1025,6 +1042,10 @@ FORM do_purge_only_direct.
         lv_val = CONV string( <fv> ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_val WITH ''''''.
         lv_wrow = |{ lv_wrow } AND { lv_kf } EQ '{ lv_val }'|.
+        IF lv_kv IS NOT INITIAL.
+          lv_kv &&= '|'.
+        ENDIF.
+        lv_kv &&= lv_kf && '=' && lv_val.
       ELSE.
         lv_no_key = 1.
         EXIT.
@@ -1036,6 +1057,37 @@ FORM do_purge_only_direct.
 
     IF gv_test_mode = 'X'.
       ADD 1 TO lv_purge_ok.
+      CONTINUE.
+    ENDIF.
+
+    IF lv_purge_id IS INITIAL.
+      TRY.
+        lv_purge_id = cl_system_uuid=>create_uuid_c32_static( ).
+      CATCH cx_uuid_error.
+        MESSAGE 'Purge-only: không tạo được PURGE run id.' TYPE 'S' DISPLAY LIKE 'E'.
+        RETURN.
+      ENDTRY.
+    ENDIF.
+
+    TRY.
+      lv_json = /ui2/cl_json=>serialize( data = <row> ).
+    CATCH cx_root.
+      lv_json = lv_kv.
+    ENDTRY.
+
+    ADD 1 TO lv_seq_p.
+    CLEAR ls_adata.
+    ls_adata-arch_id     = lv_purge_id.
+    ls_adata-data_seq    = lv_seq_p.
+    ls_adata-table_name  = gv_tabname.
+    ls_adata-key_values  = lv_kv.
+    ls_adata-data_json   = lv_json.
+    ls_adata-archived_on = sy-datum.
+    ls_adata-archived_by = sy-uname.
+    ls_adata-arch_status = 'P'.
+    INSERT zsp26_arch_data FROM ls_adata.
+    IF sy-subrc <> 0.
+      ADD 1 TO lv_snap_err.
       CONTINUE.
     ENDIF.
 
@@ -1058,6 +1110,7 @@ FORM do_purge_only_direct.
   IF lv_log_id IS NOT INITIAL.
     CLEAR ls_log.
     ls_log-log_id     = lv_log_id.
+    ls_log-arch_id    = lv_purge_id.
     ls_log-config_id  = ls_cfg-config_id.
     ls_log-table_name = gv_tabname.
     ls_log-action     = 'PURGE'.
@@ -1068,7 +1121,7 @@ FORM do_purge_only_direct.
     IF gv_test_mode = 'X'.
       ls_log-message = |Purge-only TEST: matched { lv_purge_ok } row(s); no DB delete. Rule-skip: { lv_rule_skip }.|.
     ELSE.
-      ls_log-message = |Purge-only: deleted { lv_purge_ok } row(s). Rule-skip: { lv_rule_skip }.|.
+      ls_log-message = |Purge-only: deleted { lv_purge_ok } row(s). Snapshot errors: { lv_snap_err }. PURGEID={ lv_purge_id }|.
     ENDIF.
     INSERT zsp26_arch_log FROM ls_log.
     IF sy-subrc = 0.
@@ -1082,7 +1135,7 @@ FORM do_purge_only_direct.
     lv_msg = |Purge-only TEST: { lv_purge_ok } row(s) sẽ bị xóa (không xóa DB). Rule-skip: { lv_rule_skip }.|.
     MESSAGE lv_msg TYPE 'S' DISPLAY LIKE 'W'.
   ELSE.
-    lv_msg = |Purge-only DONE: đã xóa { lv_purge_ok } row(s) khỏi { gv_tabname }. Rule-skip: { lv_rule_skip }.|.
+    lv_msg = |Purge-only DONE: đã xóa { lv_purge_ok } row(s) khỏi { gv_tabname }. Snapshot errors: { lv_snap_err }.|.
     MESSAGE lv_msg TYPE 'S'.
   ENDIF.
 ENDFORM.
@@ -2527,6 +2580,8 @@ FORM show_hub_btc_job_list.
 
   " Include PURGE-only runs from application log so operators can review all run outcomes in one place.
   TYPES: BEGIN OF ty_purge_log,
+           arch_id   TYPE zsp26_arch_log-arch_id,
+           table_name TYPE zsp26_arch_log-table_name,
            exec_date TYPE zsp26_arch_log-exec_date,
            exec_user TYPE zsp26_arch_log-exec_user,
            rec_count TYPE zsp26_arch_log-rec_count,
@@ -2537,14 +2592,14 @@ FORM show_hub_btc_job_list.
         ls_purge TYPE ty_purge_log.
 
   IF lv_btc_adm = abap_true.
-    SELECT exec_date, exec_user, rec_count, status, message
+    SELECT arch_id, table_name, exec_date, exec_user, rec_count, status, message
       FROM zsp26_arch_log
       INTO TABLE @lt_purge
       UP TO 40 ROWS
       WHERE action = 'PURGE'
       ORDER BY exec_date DESCENDING.
   ELSE.
-    SELECT exec_date, exec_user, rec_count, status, message
+    SELECT arch_id, table_name, exec_date, exec_user, rec_count, status, message
       FROM zsp26_arch_log
       INTO TABLE @lt_purge
       UP TO 40 ROWS
@@ -2562,6 +2617,8 @@ FORM show_hub_btc_job_list.
     ls_btc-sdluname   = ls_purge-exec_user.
     ls_btc-progname   = 'PURGE_ONLY'.
     ls_btc-strtdate   = ls_purge-exec_date.
+    ls_btc-run_ref    = ls_purge-arch_id.
+    ls_btc-table_name = ls_purge-table_name.
     APPEND ls_btc TO gt_btc_rows.
   ENDLOOP.
 
@@ -2789,6 +2846,67 @@ FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
       MESSAGE lx_z->get_text( ) TYPE 'E'.
   ENDTRY.
 
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& PURGE snapshot detail (no ADK session) — view rows captured before delete
+*&---------------------------------------------------------------------*
+FORM show_purge_run_data USING VALUE(pv_arch_id) TYPE zsp26_de_archid.
+  TYPES: BEGIN OF ty_purge_view,
+           data_seq    TYPE zsp26_arch_data-data_seq,
+           table_name  TYPE zsp26_arch_data-table_name,
+           key_values  TYPE zsp26_arch_data-key_values,
+           archived_on TYPE zsp26_arch_data-archived_on,
+           archived_by TYPE zsp26_arch_data-archived_by,
+           data_json   TYPE zsp26_arch_data-data_json,
+         END OF ty_purge_view.
+
+  DATA: lt_pv  TYPE TABLE OF ty_purge_view,
+        lo_alv TYPE REF TO cl_salv_table,
+        lo_c   TYPE REF TO cl_salv_columns_table,
+        lo_col TYPE REF TO cl_salv_column_table,
+        lo_d   TYPE REF TO cl_salv_display_settings.
+
+  IF pv_arch_id IS INITIAL.
+    MESSAGE 'Purge run reference is empty.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  SELECT data_seq, table_name, key_values, archived_on, archived_by, data_json
+    FROM zsp26_arch_data
+    INTO TABLE @lt_pv
+    UP TO 500 ROWS
+    WHERE arch_id = @pv_arch_id
+      AND arch_status = 'P'
+    ORDER BY data_seq.
+
+  IF lt_pv IS INITIAL.
+    MESSAGE |Không có snapshot purge cho run { pv_arch_id }.| TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  TRY.
+      cl_salv_table=>factory(
+        IMPORTING r_salv_table = lo_alv
+        CHANGING  t_table      = lt_pv ).
+      lo_alv->get_functions( )->set_all( abap_true ).
+      lo_c = lo_alv->get_columns( ).
+      lo_c->set_optimize( abap_true ).
+      TRY.
+          lo_col ?= lo_c->get_column( 'DATA_SEQ' ).    lo_col->set_long_text( 'Seq' ).
+          lo_col ?= lo_c->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( 'Table' ).
+          lo_col ?= lo_c->get_column( 'KEY_VALUES' ).  lo_col->set_long_text( 'Key values' ).
+          lo_col ?= lo_c->get_column( 'ARCHIVED_ON' ). lo_col->set_long_text( 'Purge date' ).
+          lo_col ?= lo_c->get_column( 'ARCHIVED_BY' ). lo_col->set_long_text( 'Purge user' ).
+          lo_col ?= lo_c->get_column( 'DATA_JSON' ).   lo_col->set_long_text( 'Row snapshot (JSON)' ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+      lo_d = lo_alv->get_display_settings( ).
+      lo_d->set_list_header( |PURGE snapshot { pv_arch_id } — { lines( lt_pv ) } row(s)| ).
+      lo_alv->display( ).
+    CATCH cx_salv_msg INTO DATA(lx_ps).
+      MESSAGE lx_ps->get_text( ) TYPE 'E'.
+  ENDTRY.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
