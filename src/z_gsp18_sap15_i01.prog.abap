@@ -592,3 +592,33 @@ MODULE user_command_0700 INPUT.
       PERFORM arch_admin_do_remove.
   ENDCASE.
 ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module USER_COMMAND_0800 INPUT
+*&---------------------------------------------------------------------*
+MODULE user_command_0800 INPUT.
+  DATA: lv_c8 TYPE sy-ucomm.
+
+  lv_c8 = ok_code.
+  CLEAR ok_code.
+
+  CASE lv_c8.
+    WHEN 'BT_REG_SAVE'.
+      PERFORM do_reg_validate_and_save.
+
+    WHEN 'BT_REG_CANCEL' OR 'BACK' OR 'EXIT' OR 'CANC'.
+      CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_ret, gv_reg_desc, gv_reg_active.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& F4 screen 0800 (PAI include — VALUE-REQUEST)
+*&---------------------------------------------------------------------*
+MODULE f4_reg_table INPUT.
+  PERFORM f4_reg_table.
+ENDMODULE.
+
+MODULE f4_reg_datfld INPUT.
+  PERFORM f4_reg_datfld.
+ENDMODULE.

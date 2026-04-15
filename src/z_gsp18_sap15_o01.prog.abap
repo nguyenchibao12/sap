@@ -228,3 +228,17 @@ ENDMODULE.
 MODULE f4_gv_adm_pick INPUT.
   PERFORM arch_admin_f4_usr02.
 ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Screen 0800 — đăng ký bảng vào ZSP26_ARCH_CFG
+*&---------------------------------------------------------------------*
+MODULE status_0800 OUTPUT.
+  IF gv_reg_active IS INITIAL.
+    gv_reg_active = 'X'.
+  ENDIF.
+  IF gv_reg_ret IS INITIAL OR gv_reg_ret = 0.
+    gv_reg_ret = 365.
+  ENDIF.
+  SET PF-STATUS 'STATUS_300'.
+  SET TITLEBAR 'TITLE_300'.
+ENDMODULE.

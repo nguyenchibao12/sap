@@ -96,6 +96,13 @@ DATA: gt_adm_list TYPE TABLE OF zsp26_arch_admin,
       gt_fcat_700 TYPE lvc_t_fcat,
       gv_adm_pick TYPE syuname.
 
+" Screen 0800 — đăng ký bảng mới vào ZSP26_ARCH_CFG (từ [Config])
+DATA: gv_reg_table  TYPE tabname,
+      gv_reg_datfld TYPE fieldname,
+      gv_reg_ret    TYPE zsp26_de_retdays,
+      gv_reg_desc   TYPE char80,
+      gv_reg_active TYPE char1.
+
 " Screen 0300 / 0500 — archive / job scheduler (variant, start, spool)
 " gv_object = archive object id (AOBJ) — ví dụ Z_ARCH_EKK
 " gv_tabname = bảng DDIC đích (preview/write/delete SQL) — bổ sung cho object ở trên
@@ -228,6 +235,14 @@ CLASS lcl_run_handler DEFINITION.
     CLASS-METHODS on_dblclick
       FOR EVENT double_click OF cl_salv_events_table
       IMPORTING row column.
+ENDCLASS.
+
+" Config SALV — mở popup đăng ký bảng
+CLASS lcl_cfg_handler DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS on_func
+      FOR EVENT added_function OF cl_salv_events
+      IMPORTING e_salv_function.
 ENDCLASS.
 
 "  lcl_handler + lcl_mon_handler + lcl_btc_handler + lcl_run_handler in F01

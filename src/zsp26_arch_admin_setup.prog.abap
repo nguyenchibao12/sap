@@ -1,8 +1,11 @@
 *&---------------------------------------------------------------------*
 *& Report ZSP26_ARCH_ADMIN_SETUP
 *&---------------------------------------------------------------------*
+*& Bootstrap one-time utility: chạy từ SE38 khi ZSP26_ARCH_ADMIN còn rỗng
+*& để thêm admin đầu tiên. Sau khi có admin, dùng Hub → [Admin] (screen 0700).
+*&---------------------------------------------------------------------*
 *& Tiện ích thêm/xóa user admin cho hệ thống archive hub
-*& Chạy 1 lần từ SE38 sau khi activate bảng ZSP26_ARCH_ADMIN
+*& Chạy từ SE38 sau khi activate bảng ZSP26_ARCH_ADMIN
 *&---------------------------------------------------------------------*
 REPORT zsp26_arch_admin_setup.
 

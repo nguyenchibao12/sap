@@ -22,6 +22,18 @@ CLASS lcl_handler IMPLEMENTATION.
   ENDMETHOD.
 ENDCLASS.
 
+CLASS lcl_cfg_handler IMPLEMENTATION.
+  METHOD on_func.
+    CHECK e_salv_function = 'REG_TAB'.
+
+    CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
+    gv_reg_ret    = 365.
+    gv_reg_active = 'X'.
+
+    CALL SCREEN 0800 STARTING AT 12 6 ENDING AT 88 20.
+  ENDMETHOD.
+ENDCLASS.
+
 *&---------------------------------------------------------------------*
 *& Phase 4 — Monitor drill-down: Detail Log button handler
 *&---------------------------------------------------------------------*
@@ -2566,7 +2578,7 @@ FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_CONFIG — Phase 1: Xem & Maintain ZSP26_ARCH_CFG
+*& FORM DO_CONFIG — ZSP26_ARCH_CFG + [Đăng ký Bảng Mới] → screen 0800
 *&---------------------------------------------------------------------*
 FORM do_config.
   DATA: lt_cfg   TYPE TABLE OF zsp26_arch_cfg,
@@ -2579,9 +2591,8 @@ FORM do_config.
   SELECT * FROM zsp26_arch_cfg INTO TABLE lt_cfg ORDER BY table_name.
 
   IF lt_cfg IS INITIAL.
-    MESSAGE 'Chưa có config nào. Chạy ZSP26_LOAD_SAMPLE_DATA để tạo.' TYPE 'S'
+    MESSAGE 'Chưa có dòng config — dùng [Đăng ký Bảng Mới] trên toolbar để thêm.' TYPE 'S'
             DISPLAY LIKE 'W'.
-    RETURN.
   ENDIF.
 
   TRY.
@@ -2591,6 +2602,18 @@ FORM do_config.
 
     lo_funcs = lo_alv->get_functions( ).
     lo_funcs->set_all( abap_true ).
+    TRY.
+      lo_funcs->add_function(
+        name     = 'REG_TAB'
+        icon     = '@0Y@'
+        text     = 'Đăng ký Bảng Mới'
+        tooltip  = 'Thêm bảng Z vào ZSP26_ARCH_CFG (popup)'
+        position = if_salv_c_function_position=>right_of_salv_functions ).
+    CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported.
+    ENDTRY.
+
+    SET HANDLER lcl_cfg_handler=>on_func FOR lo_alv->get_event( ).
+
     lo_cols = lo_alv->get_columns( ).
     lo_cols->set_optimize( abap_true ).
 
@@ -2612,14 +2635,253 @@ FORM do_config.
 
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |ARCHIVE CONFIG — { lines( lt_cfg ) } entries | &&
-      |/ Để sửa: chạy Z_CONFIG_Z15_EKKO (SE38)| ).
+      |ARCHIVE CONFIG — { lines( lt_cfg ) } dòng | &&
+      |/ Toolbar: [Đăng ký Bảng Mới] để thêm bảng Z.| ).
 
     lo_alv->display( ).
 
   CATCH cx_salv_msg INTO DATA(lx).
     MESSAGE lx->get_text( ) TYPE 'E'.
   ENDTRY.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& F4 screen 0800 — Table (Z* TRANSP từ DD02V), tái ZSP26_ARCH_REGISTER
+*&---------------------------------------------------------------------*
+FORM f4_reg_table.
+  TYPES: BEGIN OF ty_dd_tab,
+           tabname TYPE tabname,
+           ddtext  TYPE as4text,
+         END OF ty_dd_tab.
+  DATA: lt_dd  TYPE TABLE OF ty_dd_tab,
+        lt_ret TYPE TABLE OF ddshretval,
+        ls_ret TYPE ddshretval,
+        lv_win(40) TYPE c VALUE 'Z Transparent Tables (DDIC)'.
+
+  SELECT tabname, ddtext FROM dd02v
+    INTO CORRESPONDING FIELDS OF TABLE @lt_dd
+    WHERE tabname  LIKE 'Z%'
+      AND tabclass = 'TRANSP'.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'TABNAME'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'GV_REG_TABLE'
+      window_title = lv_win
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_dd
+      return_tab   = lt_ret
+    EXCEPTIONS
+      OTHERS       = 0.
+
+  READ TABLE lt_ret INTO ls_ret INDEX 1.
+  IF sy-subrc = 0 AND ls_ret-fieldval IS NOT INITIAL.
+    gv_reg_table = CONV tabname( ls_ret-fieldval ).
+    CONDENSE gv_reg_table NO-GAPS.
+    TRANSLATE gv_reg_table TO UPPER CASE.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& F4 screen 0800 — Date field (inttype D), tái ZSP26_ARCH_REGISTER
+*&---------------------------------------------------------------------*
+FORM f4_reg_datfld.
+  TYPES: BEGIN OF ty_fld_f4,
+           fieldname TYPE fieldname,
+           ddtext    TYPE as4text,
+         END OF ty_fld_f4.
+  DATA: lt_flds TYPE TABLE OF ty_fld_f4,
+        ls_fld  TYPE ty_fld_f4,
+        lt_dd2  TYPE TABLE OF dfies,
+        ls_dd2  TYPE dfies,
+        lt_ret2 TYPE TABLE OF ddshretval,
+        ls_ret2 TYPE ddshretval,
+        lv_win(40) TYPE c.
+
+  IF gv_reg_table IS INITIAL.
+    MESSAGE 'Nhập Table Name trước khi chọn Date Field.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'DDIF_FIELDINFO_GET'
+    EXPORTING  tabname   = gv_reg_table
+    TABLES     dfies_tab = lt_dd2
+    EXCEPTIONS OTHERS    = 1.
+
+  IF sy-subrc <> 0.
+    MESSAGE |Không đọc được cấu trúc bảng { gv_reg_table } từ DDIC.| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_dd2 INTO ls_dd2
+    WHERE inttype = 'D' AND fieldname <> 'MANDT'.
+    CLEAR ls_fld.
+    ls_fld-fieldname = ls_dd2-fieldname.
+    ls_fld-ddtext    = ls_dd2-fieldtext.
+    APPEND ls_fld TO lt_flds.
+  ENDLOOP.
+
+  IF lt_flds IS INITIAL.
+    MESSAGE |Bảng { gv_reg_table } không có field kiểu DATE.| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  lv_win = 'Date fields'.
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'FIELDNAME'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'GV_REG_DATFLD'
+      window_title = lv_win
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_flds
+      return_tab   = lt_ret2
+    EXCEPTIONS
+      OTHERS       = 0.
+
+  READ TABLE lt_ret2 INTO ls_ret2 INDEX 1.
+  IF sy-subrc = 0 AND ls_ret2-fieldval IS NOT INITIAL.
+    gv_reg_datfld = CONV fieldname( ls_ret2-fieldval ).
+    CONDENSE gv_reg_datfld NO-GAPS.
+    TRANSLATE gv_reg_datfld TO UPPER CASE.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Validate + INSERT ZSP26_ARCH_CFG (logic ZSP26_ARCH_REGISTER)
+*&---------------------------------------------------------------------*
+FORM do_reg_validate_and_save.
+  DATA: lt_fields    TYPE TABLE OF dfies,
+        ls_field     TYPE dfies,
+        lv_has_mandt TYPE abap_bool VALUE abap_false,
+        lv_has_key   TYPE abap_bool VALUE abap_false,
+        ls_dd02      TYPE dd02v,
+        ls_cfg       TYPE zsp26_arch_cfg,
+        lv_uuid      TYPE sysuuid_x16,
+        lv_ans       TYPE char1,
+        lv_tab       TYPE tabname,
+        lv_fld       TYPE fieldname.
+
+  lv_tab = gv_reg_table.
+  lv_fld = gv_reg_datfld.
+  CONDENSE: lv_tab NO-GAPS, lv_fld NO-GAPS.
+  TRANSLATE: lv_tab TO UPPER CASE, lv_fld TO UPPER CASE.
+
+  IF lv_tab IS INITIAL OR lv_fld IS INITIAL.
+    MESSAGE 'Nhập đủ Table Name và Date Field.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  IF gv_reg_ret <= 0.
+    MESSAGE 'Retention (ngày) phải > 0.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE tabname, tabclass FROM dd02v
+    INTO (@ls_dd02-tabname, @ls_dd02-tabclass)
+    WHERE tabname = @lv_tab.
+
+  IF sy-subrc <> 0.
+    MESSAGE |Bảng { lv_tab } không tồn tại trong DDIC hoặc chưa activate.| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+  IF ls_dd02-tabclass <> 'TRANSP'.
+    MESSAGE |Bảng { lv_tab } không phải TRANSP (type: { ls_dd02-tabclass }).| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'DDIF_FIELDINFO_GET'
+    EXPORTING  tabname   = lv_tab
+    TABLES     dfies_tab = lt_fields
+    EXCEPTIONS OTHERS    = 1.
+
+  IF sy-subrc <> 0.
+    MESSAGE |Không đọc được field list của { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_fields INTO ls_field WHERE fieldname = 'MANDT'.
+    lv_has_mandt = abap_true. EXIT.
+  ENDLOOP.
+  IF lv_has_mandt = abap_false.
+    MESSAGE 'Bảng không có MANDT (client-dependent).' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_fields INTO ls_field
+    WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
+    lv_has_key = abap_true. EXIT.
+  ENDLOOP.
+  IF lv_has_key = abap_false.
+    MESSAGE 'Cần ít nhất một key field ngoài MANDT.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  READ TABLE lt_fields INTO ls_field WITH KEY fieldname = lv_fld.
+  IF sy-subrc <> 0.
+    MESSAGE |Field { lv_fld } không tồn tại trong bảng { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+  IF ls_field-inttype <> 'D'.
+    MESSAGE |Field { lv_fld } không phải kiểu DATE (inttype { ls_field-inttype }).|
+            TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE table_name FROM zsp26_arch_cfg
+    INTO @DATA(lv_dup_tab)
+    WHERE table_name = @lv_tab
+      AND is_active  = 'X'.
+  IF sy-subrc = 0.
+    CALL FUNCTION 'POPUP_TO_CONFIRM'
+      EXPORTING
+        titlebar              = 'Trùng config active'
+        text_question         = |Đã có config active cho { lv_tab }. Vẫn INSERT thêm dòng mới?|
+        text_button_1         = 'Có'
+        text_button_2         = 'Không'
+        display_cancel_button = ' '
+      IMPORTING
+        answer                = lv_ans
+      EXCEPTIONS
+        OTHERS                = 1.
+    IF lv_ans <> '1'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  TRY.
+    lv_uuid = cl_system_uuid=>create_uuid_x16_static( ).
+  CATCH cx_uuid_error.
+    MESSAGE 'Lỗi tạo UUID.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDTRY.
+
+  CLEAR ls_cfg.
+  ls_cfg-config_id   = lv_uuid.
+  ls_cfg-table_name  = lv_tab.
+  ls_cfg-description = gv_reg_desc.
+  ls_cfg-retention   = gv_reg_ret.
+  ls_cfg-data_field  = lv_fld.
+  ls_cfg-is_active   = gv_reg_active.
+  ls_cfg-created_by  = sy-uname.
+  ls_cfg-created_on  = sy-datum.
+
+  INSERT zsp26_arch_cfg FROM ls_cfg.
+  IF sy-subrc = 0.
+    COMMIT WORK.
+    MESSAGE |Đã đăng ký { lv_tab }. Mở lại [Config] để thấy dòng mới.| TYPE 'S'.
+    CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
+    gv_reg_ret    = 365.
+    gv_reg_active = 'X'.
+    LEAVE TO SCREEN 0.
+  ELSE.
+    MESSAGE |Lỗi INSERT ZSP26_ARCH_CFG (sy-subrc={ sy-subrc }).| TYPE 'S' DISPLAY LIKE 'E'.
+  ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
