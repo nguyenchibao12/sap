@@ -3408,7 +3408,7 @@ FORM arch_admin_do_remove.
     RETURN.
   ENDIF.
 
-  SELECT COUNT(*) FROM zsp26_arch_admin INTO @lv_cnt WHERE mandt = @sy-mandt.
+  SELECT COUNT(*) FROM zsp26_arch_admin INTO @lv_cnt.
   IF lv_cnt <= 1.
     MESSAGE 'Không xóa admin cuối cùng.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
@@ -3431,7 +3431,7 @@ FORM arch_admin_do_remove.
     ENDIF.
   ENDIF.
 
-  DELETE FROM zsp26_arch_admin WHERE mandt = @sy-mandt AND uname = @ls_adm-uname.
+  DELETE FROM zsp26_arch_admin WHERE uname = @ls_adm-uname.
   IF sy-subrc = 0.
     COMMIT WORK.
     MESSAGE |Đã xóa { ls_adm-uname } khỏi admin| TYPE 'S'.
