@@ -1625,12 +1625,22 @@ ENDFORM.
 *&                               last_arch_d, last_del_d, status_txt
 *&   Phase 3: Traffic light   — OVERDUE(red) / WARNING(yellow) / OK(green)
 *&   Phase 4: Detail Log btn  — drill-down to ZSP26_ARCH_LOG per table
+*&   #9: Eligible row COUNT + ~MB (DDIC width); OR-rules not in SQL COUNT
 *&---------------------------------------------------------------------*
 FORM do_monitor.
-  DATA: ls_disp   TYPE ty_mon_disp,
-        lv_cnt    TYPE i,
-        lv_total  TYPE p DECIMALS 1,
-        lv_cutoff TYPE d.             " cutoff date for WARNING check (sy-datum - 30)
+  DATA: ls_disp      TYPE ty_mon_disp,
+        lv_cnt       TYPE i,
+        lv_total     TYPE p DECIMALS 1,
+        lv_cutoff    TYPE d,             " cutoff date for WARNING check (sy-datum - 30)
+        ls_cfg_full  TYPE zsp26_arch_cfg,
+        lv_cfg_ok    TYPE abap_bool,
+        lv_where     TYPE string,
+        lv_where_all TYPE string,
+        lv_elig      TYPE i,
+        lt_df_mon    TYPE TABLE OF dfies,
+        ls_df_mon    TYPE dfies,
+        lv_row_b     TYPE i,
+        lv_mb_num    TYPE decfloat34.
 
   CLEAR gt_mon_disp.
   lv_cutoff = sy-datum - 30.          " compute once; sy-datum-30 is integer, not date
@@ -1669,6 +1679,47 @@ FORM do_monitor.
     CATCH cx_sy_dynamic_osql_error.
       ls_disp-live_recs = -1.
     ENDTRY.
+
+    " ── #9: Capacity — eligible rows (same Open SQL window as purge preview) + rough MB ──
+    CLEAR: ls_disp-elig_recs, ls_disp-est_row_b, ls_disp-est_elig_mb,
+           ls_cfg_full, lv_where, lv_where_all, lv_elig, lt_df_mon, lv_row_b, lv_mb_num.
+    lv_cfg_ok = abap_false.
+    PERFORM validate_table_against_cfg
+      USING ls_cfg-table_name CHANGING ls_cfg_full lv_cfg_ok.
+    IF lv_cfg_ok = abap_true AND ls_disp-live_recs >= 0.
+      PERFORM build_where_from_arch_cfg
+        USING ls_cfg_full '00000000' '00000000'
+        CHANGING lv_where.
+      lv_where_all = lv_where.
+      PERFORM append_rules_eq_to_where
+        USING ls_cfg_full-config_id ls_cfg-table_name
+        CHANGING lv_where_all.
+      TRY.
+        SELECT COUNT(*) FROM (ls_cfg-table_name) WHERE (lv_where_all) INTO @lv_elig.
+        ls_disp-elig_recs = lv_elig.
+      CATCH cx_sy_dynamic_osql_error.
+        ls_disp-elig_recs = -1.
+      ENDTRY.
+      CLEAR lv_row_b.
+      CALL FUNCTION 'DDIF_FIELDINFO_GET'
+        EXPORTING  tabname   = ls_cfg-table_name
+        TABLES     dfies_tab = lt_df_mon
+        EXCEPTIONS OTHERS    = 7.
+      IF sy-subrc = 0.
+        LOOP AT lt_df_mon INTO ls_df_mon.
+          IF ls_df_mon-intlen > 0.
+            lv_row_b = lv_row_b + ls_df_mon-intlen.
+          ELSEIF ls_df_mon-leng > 0.
+            lv_row_b = lv_row_b + ls_df_mon-leng.
+          ENDIF.
+        ENDLOOP.
+      ENDIF.
+      ls_disp-est_row_b = lv_row_b.
+      IF ls_disp-elig_recs >= 0 AND lv_row_b > 0.
+        lv_mb_num = CONV decfloat34( ls_disp-elig_recs ) * CONV decfloat34( lv_row_b ) / 1048576.
+        ls_disp-est_elig_mb = lv_mb_num.
+      ENDIF.
+    ENDIF.
 
     " ── Phase 2a: Archived & Deleted record counts ───────────────────
     " SUM(rec_count) từ log — ZSP26_ARCH_DATA chỉ có data khi ADK write thực
@@ -1810,6 +1861,12 @@ FORM do_monitor.
       lo_col ?= lo_cols->get_column( 'LAST_USER' ).   lo_col->set_long_text( 'Last User' ).
       lo_col ?= lo_cols->get_column( 'RETENTION' ).   lo_col->set_long_text( 'Retention (days)' ).
       lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).   lo_col->set_long_text( 'Active' ).
+      lo_col ?= lo_cols->get_column( 'ELIG_RECS' ).
+      lo_col->set_long_text( 'Eligible rows (est., Open SQL)' ).
+      lo_col ?= lo_cols->get_column( 'EST_ROW_B' ).
+      lo_col->set_long_text( 'Est. row width (B, DDIC)' ).
+      lo_col ?= lo_cols->get_column( 'EST_ELIG_MB' ).
+      lo_col->set_long_text( '~MB if archived (est., not file size)' ).
     CATCH cx_salv_not_found. ENDTRY.
 
     lo_disp = go_mon_alv->get_display_settings( ).

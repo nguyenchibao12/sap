@@ -154,6 +154,9 @@ TYPES: BEGIN OF ty_mon_disp,
          last_user   TYPE xubname,
          retention   TYPE i,
          is_active   TYPE char1,
+         elig_recs   TYPE i,            " #9: COUNT(*) with retention+EQ rules (no row-level OR rules)
+         est_row_b   TYPE i,            " #9: sum DDIC INTLEN/LENG — rough row width (bytes)
+         est_elig_mb TYPE p LENGTH 16 DECIMALS 2, "#9: elig * est_row_b / 1 MB (approx, not ADK file size)
        END OF ty_mon_disp.
 
 DATA: gt_mon_disp TYPE TABLE OF ty_mon_disp,
