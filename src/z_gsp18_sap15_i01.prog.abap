@@ -355,13 +355,11 @@ MODULE f4_gv_variant INPUT.
         ls_vf4    TYPE ty_vf4,
         lv_r      TYPE ty_varid_name,
         lv_s      TYPE string,
-        lv_tab_s  TYPE string,
         lv_log    TYPE variant,
         lv_ok     TYPE abap_bool,
-        lv_pfx    TYPE string,
-        lv_pat    TYPE string,
-        lv_tab_up TYPE tabname,
-        lv_rep    TYPE programm.
+        lv_rep    TYPE programm,
+        lv_off    TYPE i,
+        lv_vtech  TYPE variant.
 
   IF sy-dynnr = '0600'.
     IF gv_prog_del IS INITIAL.
@@ -386,35 +384,29 @@ MODULE f4_gv_variant INPUT.
     INTO TABLE @lt_raw
     UP TO 500 ROWS.
 
-  PERFORM arch_variant_tab_prefix USING gv_tabname CHANGING lv_pfx.
-  " CP dùng * làm wildcard; không dùng % như SQL LIKE
-  lv_pat = |{ lv_pfx }_*|.
-  lv_tab_up = gv_tabname.
-  TRANSLATE lv_tab_up TO UPPER CASE.
-  lv_tab_s = CONV string( lv_tab_up ).
-  CONDENSE lv_tab_s NO-GAPS.
-
   LOOP AT lt_raw INTO lv_r.
     CLEAR ls_vf4.
     lv_s = lv_r.
     CONDENSE lv_s NO-GAPS.
+    TRANSLATE lv_s TO UPPER CASE.
+    IF lv_s IS INITIAL.
+      CONTINUE.
+    ENDIF.
 
-    IF lv_s = lv_tab_s.
-      ls_vf4-variant = CONV variant( lv_s ).
-      APPEND ls_vf4 TO lt_vf4.
+    FIND FIRST OCCURRENCE OF '_' IN lv_s MATCH OFFSET lv_off.
+    IF sy-subrc <> 0 OR lv_off <= 0 OR lv_off >= strlen( lv_s ) - 1.
       CONTINUE.
     ENDIF.
-    IF NOT lv_s CP lv_pat.
+
+    lv_log = lv_s+lv_off+1.
+    PERFORM arch_build_write_var_tech
+      USING gv_tabname lv_log
+      CHANGING lv_vtech lv_ok.
+    IF lv_ok = abap_false OR lv_vtech <> lv_s.
       CONTINUE.
     ENDIF.
-    PERFORM arch_log_from_write_var
-      USING gv_tabname lv_s
-      CHANGING lv_log lv_ok.
-    IF lv_ok = abap_true.
-      ls_vf4-variant = lv_log.
-    ELSE.
-      ls_vf4-variant = CONV variant( lv_s ).
-    ENDIF.
+
+    ls_vf4-variant = lv_log.
     APPEND ls_vf4 TO lt_vf4.
   ENDLOOP.
 
