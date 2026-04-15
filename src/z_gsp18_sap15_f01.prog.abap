@@ -995,9 +995,9 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
     ENDLOOP.
     IF lt_run_rst IS INITIAL.
       " Legacy logs (chưa có DOC=...) vẫn cho chọn session, kiểm tra kỹ ở bước xác nhận restore.
-      MESSAGE 'Chưa có marker DOC trong log DELETE (legacy). Vẫn hiển thị session; sẽ kiểm tra thêm trước khi restore.' TYPE 'S' DISPLAY LIKE 'W'.
+      MESSAGE 'Chưa có marker DOC trong log DELETE (legacy). Vẫn hiển thị session; sẽ kiểm tra thêm trước khi restore.' TYPE 'S'.
     ELSEIF lines( lt_run_rst ) < lines( lt_run ).
-      MESSAGE |Có { lines( lt_run ) - lines( lt_run_rst ) } session chưa có DELETE marker; vẫn hiển thị để bạn kiểm tra.| TYPE 'S' DISPLAY LIKE 'W'.
+      MESSAGE |Có { lines( lt_run ) - lines( lt_run_rst ) } session chưa có DELETE marker; vẫn hiển thị để bạn kiểm tra.| TYPE 'S'.
     ENDIF.
   ENDIF.
 
