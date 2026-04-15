@@ -969,6 +969,7 @@ FORM do_purge_only_direct.
         lv_snap_err  TYPE i VALUE 0,
         lv_log_id    TYPE sysuuid_x16,
         ls_log       TYPE zsp26_arch_log,
+        lv_ts_s      TYPE timestampl,
         lv_msg       TYPE string,
         lv_kv        TYPE char255,
         lv_json      TYPE string,
@@ -977,6 +978,8 @@ FORM do_purge_only_direct.
   FIELD-SYMBOLS: <lt_src> TYPE ANY TABLE,
                  <row>    TYPE any,
                  <fv>     TYPE any.
+
+  GET TIME STAMP FIELD lv_ts_s.
 
   IF gv_tabname IS INITIAL.
     MESSAGE 'Vui lòng chọn bảng ở màn trước.' TYPE 'S' DISPLAY LIKE 'E'.
@@ -1116,6 +1119,8 @@ FORM do_purge_only_direct.
     ls_log-action     = 'PURGE'.
     ls_log-rec_count  = lv_purge_ok.
     ls_log-status     = COND #( WHEN gv_test_mode = 'X' THEN 'I' ELSE 'S' ).
+    ls_log-start_time = lv_ts_s.
+    GET TIME STAMP FIELD ls_log-end_time.
     ls_log-exec_user  = sy-uname.
     ls_log-exec_date  = sy-datum.
     IF gv_test_mode = 'X'.
