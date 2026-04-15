@@ -2538,25 +2538,25 @@ FORM show_hub_btc_job_list.
             icon     = '@12@'
             text     = 'Job protocol'
             tooltip  = 'Đọc job log (BP_JOBLOG_READ) — tương đương SM37 log'
-            position = if_salv_c_function_position=>right_of_salv_functions ).
+            position = if_salv_c_function_position=>left_of_salv_functions ).
           lo_funcs->add_function(
             name     = 'BTC_SPOOL'
             icon     = '@0X@'
             text     = 'Spool ID'
             tooltip  = 'Xem List ID spool của step (nếu có)'
-            position = if_salv_c_function_position=>right_of_salv_functions ).
+            position = if_salv_c_function_position=>left_of_salv_functions ).
           lo_funcs->add_function(
             name     = 'BTC_Z26LOG'
             icon     = '@3W@'
             text     = 'ZSP26_ARCH_LOG'
             tooltip  = 'Log ứng dụng ARCHIVE/DELETE theo bảng hub hoặc user'
-            position = if_salv_c_function_position=>right_of_salv_functions ).
+            position = if_salv_c_function_position=>left_of_salv_functions ).
           lo_funcs->add_function(
             name     = 'BTC_SESS'
             icon     = '@3I@'
             text     = 'Archive sessions'
             tooltip  = 'Mở danh sách session để Open Session và xem archived data'
-            position = if_salv_c_function_position=>right_of_salv_functions ).
+            position = if_salv_c_function_position=>left_of_salv_functions ).
         CATCH cx_salv_method_not_supported
               cx_salv_wrong_call
               cx_salv_existing. ENDTRY.
