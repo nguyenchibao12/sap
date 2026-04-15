@@ -398,7 +398,7 @@ MODULE f4_gv_variant INPUT.
       CONTINUE.
     ENDIF.
 
-    lv_log = lv_s+lv_off+1.
+    lv_log = substring( val = lv_s off = lv_off + 1 ).
     PERFORM arch_build_write_var_tech
       USING gv_tabname lv_log
       CHANGING lv_vtech lv_ok.
