@@ -102,7 +102,8 @@ CLASS lcl_btc_handler IMPLEMENTATION.
         PERFORM show_btc_spool_popup USING ls_b-listident.
 
       WHEN 'BTC_Z26LOG'.
-        PERFORM show_hub_arch_log_recent USING gv_tabname.
+        " From job list, show broad app logs (not restricted by current table field).
+        PERFORM show_hub_arch_log_recent USING space.
 
       WHEN 'BTC_SESS'.
         PERFORM show_hub_admi_session_groups.
@@ -1059,6 +1060,8 @@ FORM do_purge_only_direct.
     INSERT zsp26_arch_log FROM ls_log.
     IF sy-subrc = 0.
       COMMIT WORK AND WAIT.
+    ELSE.
+      MESSAGE |Purge-only: ghi log ZSP26_ARCH_LOG thất bại (sy-subrc={ sy-subrc }).| TYPE 'S' DISPLAY LIKE 'E'.
     ENDIF.
   ENDIF.
 
@@ -2683,12 +2686,22 @@ FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
       WHERE table_name = @lv_tn
       ORDER BY exec_date DESCENDING.
   ELSE.
-    SELECT exec_date, table_name, exec_user, action, rec_count, status, message
-      FROM zsp26_arch_log
-      INTO TABLE @lt_lr UP TO 200 ROWS
-      WHERE exec_user = @sy-uname
-        AND ( action = 'ARCHIVE' OR action = 'DELETE' OR action = 'PURGE' )
-      ORDER BY exec_date DESCENDING.
+    DATA(lv_log_admin) = abap_false.
+    PERFORM is_arch_admin CHANGING lv_log_admin.
+    IF lv_log_admin = abap_true.
+      SELECT exec_date, table_name, exec_user, action, rec_count, status, message
+        FROM zsp26_arch_log
+        INTO TABLE @lt_lr UP TO 200 ROWS
+        WHERE ( action = 'ARCHIVE' OR action = 'DELETE' OR action = 'PURGE' )
+        ORDER BY exec_date DESCENDING.
+    ELSE.
+      SELECT exec_date, table_name, exec_user, action, rec_count, status, message
+        FROM zsp26_arch_log
+        INTO TABLE @lt_lr UP TO 200 ROWS
+        WHERE exec_user = @sy-uname
+          AND ( action = 'ARCHIVE' OR action = 'DELETE' OR action = 'PURGE' )
+        ORDER BY exec_date DESCENDING.
+    ENDIF.
   ENDIF.
 
   IF lt_lr IS INITIAL.
