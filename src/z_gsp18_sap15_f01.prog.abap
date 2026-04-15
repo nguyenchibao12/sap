@@ -260,7 +260,8 @@ FORM show_archive_preview.
       INSERT <row> INTO TABLE <lt_ready>.
     ELSE.
       ls_prev-status = 'TOO NEW'.
-      ls_prev-detail = |Too new: { ls_prev-date_val } > cutoff { lv_cutoff } ({ ls_prev-age_days}/{ gs_cfg-retention } days)|.
+      ls_prev-detail = |Too new: { ls_prev-date_val } > cutoff { lv_cutoff } ({ ls_prev-age_days }| &&
+                       |/{ gs_cfg-retention } days)|.
       ADD 1 TO gv_skp_cnt.
     ENDIF.
 
@@ -2715,8 +2716,7 @@ FORM f4_reg_table.
     ENDIF.
 
     READ TABLE lt_df INTO ls_df
-      WITH KEY inttype = 'D'
-      TRANSPORTING NO FIELDS.
+      WITH KEY inttype = 'D'.
     IF sy-subrc = 0.
       APPEND ls_dd TO lt_dd.
     ENDIF.
