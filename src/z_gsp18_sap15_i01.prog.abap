@@ -622,3 +622,25 @@ ENDMODULE.
 MODULE f4_reg_datfld INPUT.
   PERFORM f4_reg_datfld.
 ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module USER_COMMAND_0810 INPUT
+*&---------------------------------------------------------------------*
+MODULE user_command_0810 INPUT.
+  DATA: lv_c81 TYPE sy-ucomm.
+
+  lv_c81 = ok_code.
+  CLEAR ok_code.
+
+  CASE lv_c81.
+    WHEN 'BT_CFG_REG'.
+      CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
+      gv_reg_ret    = 365.
+      gv_reg_active = 'X'.
+      CALL SCREEN 0800 STARTING AT 12 6 ENDING AT 88 20.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'BT_CFG_LIST' OR 'BACK' OR 'EXIT' OR 'CANC'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.

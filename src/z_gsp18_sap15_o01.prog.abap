@@ -242,3 +242,11 @@ MODULE status_0800 OUTPUT.
   SET PF-STATUS 'STATUS_300'.
   SET TITLEBAR 'TITLE_300'.
 ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Screen 0810 — chọn: xem danh sách config hay đăng ký bảng (Fiori ẩn nút SALV tùy chỉnh)
+*&---------------------------------------------------------------------*
+MODULE status_0810 OUTPUT.
+  SET PF-STATUS 'STATUS_300'.
+  SET TITLEBAR 'TITLE_300'.
+ENDMODULE.

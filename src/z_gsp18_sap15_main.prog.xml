@@ -1326,6 +1326,82 @@
       </RPY_DYFATC>
      </FIELDS>
     </item>
+    <item>
+     <HEADER>
+      <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
+      <SCREEN>0810</SCREEN>
+      <LANGUAGE>E</LANGUAGE>
+      <DESCRIPT>Config: register or list</DESCRIPT>
+      <TYPE>M</TYPE>
+      <NEXTSCREEN>0000</NEXTSCREEN>
+      <LINES>008</LINES>
+      <COLUMNS>072</COLUMNS>
+     </HEADER>
+     <CONTAINERS>
+      <RPY_DYCATT>
+       <TYPE>SCREEN</TYPE>
+       <NAME>SCREEN</NAME>
+      </RPY_DYCATT>
+     </CONTAINERS>
+     <FIELDS>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>TEXT</TYPE>
+       <NAME>LBL_CFG_CH</NAME>
+       <TEXT>Archive_config:_choose_action</TEXT>
+       <LINE>002</LINE>
+       <COLUMN>002</COLUMN>
+       <LENGTH>040</LENGTH>
+       <VISLENGTH>040</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>PUSH</TYPE>
+       <NAME>BT_CFG_LIST</NAME>
+       <TEXT>View_config_list_______</TEXT>
+       <LINE>004</LINE>
+       <COLUMN>002</COLUMN>
+       <LENGTH>024</LENGTH>
+       <VISLENGTH>024</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <PUSH_FCODE>BT_CFG_LIST</PUSH_FCODE>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>PUSH</TYPE>
+       <NAME>BT_CFG_REG</NAME>
+       <TEXT>Register_new_Z_table___</TEXT>
+       <LINE>004</LINE>
+       <COLUMN>028</COLUMN>
+       <LENGTH>024</LENGTH>
+       <VISLENGTH>024</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <PUSH_FCODE>BT_CFG_REG</PUSH_FCODE>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>OKCODE</TYPE>
+       <NAME>OK_CODE</NAME>
+       <TEXT>____________________</TEXT>
+       <LENGTH>020</LENGTH>
+       <VISLENGTH>020</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <INPUT_FLD>X</INPUT_FLD>
+      </RPY_DYFATC>
+     </FIELDS>
+    </item>
    </DYNPROS>
    <CUA>
     <ADM>

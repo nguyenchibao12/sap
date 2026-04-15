@@ -2588,6 +2588,10 @@ FORM do_config.
         lo_funcs TYPE REF TO cl_salv_functions,
         lo_disp  TYPE REF TO cl_salv_display_settings.
 
+  " Popup 0810: nhiều GUI (đặc biệt theme mới) không hiện nút add_function của SALV —
+  " luôn có 2 nút dynpro rõ ràng trước khi mở danh sách SALV.
+  CALL SCREEN 0810 STARTING AT 18 8 ENDING AT 78 22.
+
   SELECT * FROM zsp26_arch_cfg INTO TABLE lt_cfg ORDER BY table_name.
 
   IF lt_cfg IS INITIAL.
@@ -2601,14 +2605,12 @@ FORM do_config.
       CHANGING  t_table      = lt_cfg ).
 
     lo_funcs = lo_alv->get_functions( ).
-    " add_function TRƯỚC set_all — nếu không, toolbar đầy icon chuẩn và nút tùy chỉnh
-    " thường rơi vào menu overflow / More (khó thấy).
     TRY.
       lo_funcs->add_function(
         name     = 'REG_TAB'
         icon     = '@0Y@'
         text     = 'Đăng ký'
-        tooltip  = 'Đăng ký bảng Z mới vào ZSP26_ARCH_CFG (popup)'
+        tooltip  = 'Đăng ký bảng Z (thêm nếu GUI hiện; chính: popup vừa rồi)'
         position = if_salv_c_function_position=>left_of_salv_functions ).
     CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported.
       TRY.
@@ -2616,7 +2618,7 @@ FORM do_config.
           name     = 'REG_TAB'
           icon     = '@0Y@'
           text     = 'Đăng ký'
-          tooltip  = 'Đăng ký bảng Z mới vào ZSP26_ARCH_CFG'
+          tooltip  = 'Đăng ký bảng Z mới'
           position = if_salv_c_function_position=>right_of_salv_functions ).
       CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported.
       ENDTRY.
@@ -2647,7 +2649,7 @@ FORM do_config.
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(
       |ARCHIVE CONFIG — { lines( lt_cfg ) } dòng | &&
-      |/ Nút Đăng ký (+) đầu toolbar; nếu không thấy mở menu More (...).| ).
+      |/ Đăng ký: đã qua popup chọn; toolbar [Đăng ký] nếu có.| ).
 
     lo_alv->display( ).
 
