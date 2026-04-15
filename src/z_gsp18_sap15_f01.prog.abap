@@ -199,11 +199,13 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM show_archive_preview.
   DATA: lt_prev TYPE TABLE OF ty_prev,
-        ls_prev TYPE ty_prev.
+        ls_prev TYPE ty_prev,
+        lv_cutoff TYPE d.
 
   CREATE DATA gr_ready TYPE TABLE OF (gv_tabname).
   ASSIGN gr_ready->* TO <lt_ready>.
   CLEAR: gv_rdy_cnt, gv_skp_cnt.
+  lv_cutoff = sy-datum - gs_cfg-retention.
 
   " Lấy key field đầu tiên (để hiển thị)
   DATA: lt_dd   TYPE TABLE OF dfies,
@@ -232,7 +234,9 @@ FORM show_archive_preview.
     ASSIGN COMPONENT gs_cfg-data_field OF STRUCTURE <row> TO FIELD-SYMBOL(<dt>).
     IF <dt> IS ASSIGNED.
       ls_prev-date_val = <dt>.
-      ls_prev-age_days = sy-datum - ls_prev-date_val.
+      IF ls_prev-date_val IS NOT INITIAL.
+        ls_prev-age_days = sy-datum - ls_prev-date_val.
+      ENDIF.
     ENDIF.
 
     " Check archive rules first
@@ -245,14 +249,18 @@ FORM show_archive_preview.
       ls_prev-detail = 'Does not meet archive criteria'.
       ADD 1 TO lv_fail_cnt.
       ADD 1 TO gv_skp_cnt.
+    ELSEIF ls_prev-date_val IS INITIAL.
+      ls_prev-status = 'DATE EMPTY'.
+      ls_prev-detail = |Date field { gs_cfg-data_field } is initial (00000000) - skipped|.
+      ADD 1 TO gv_skp_cnt.
     ELSEIF ls_prev-age_days >= gs_cfg-retention.
       ls_prev-status = 'READY'.
-      ls_prev-detail = |Eligible: { ls_prev-age_days } days ≥ { gs_cfg-retention }d|.
+      ls_prev-detail = |Eligible: { ls_prev-date_val } <= cutoff { lv_cutoff } ({ ls_prev-age_days } days ≥ { gs_cfg-retention }d)|.
       ADD 1 TO gv_rdy_cnt.
       INSERT <row> INTO TABLE <lt_ready>.
     ELSE.
       ls_prev-status = 'TOO NEW'.
-      ls_prev-detail = |Only { ls_prev-age_days } / { gs_cfg-retention } days|.
+      ls_prev-detail = |Too new: { ls_prev-date_val } > cutoff { lv_cutoff } ({ ls_prev-age_days}/{ gs_cfg-retention } days)|.
       ADD 1 TO gv_skp_cnt.
     ENDIF.
 
@@ -601,7 +609,11 @@ FORM do_archive_write_bg_job.
         lv_jobcount TYPE tbtcjob-jobcount,
         lv_save     TYPE zsp26_de_tabname,
         lv_line     TYPE tabname,
-        lv_n        TYPE i.
+        lv_n        TYPE i,
+        lv_step_n   TYPE i VALUE 0,
+        lv_skip_n   TYPE i VALUE 0,
+        lv_cfg_ok   TYPE abap_bool,
+        ls_cfg_chk  TYPE zsp26_arch_cfg.
 
   lv_save = gv_tabname.
 
@@ -638,6 +650,12 @@ FORM do_archive_write_bg_job.
   IF gv_batch_all = 'X'.
     LOOP AT gt_batch_tabnames INTO lv_line.
       gv_tabname = lv_line.
+      PERFORM validate_table_against_cfg
+        USING gv_tabname CHANGING ls_cfg_chk lv_cfg_ok.
+      IF lv_cfg_ok = abap_false.
+        ADD 1 TO lv_skip_n.
+        CONTINUE.
+      ENDIF.
       PERFORM arch_get_write_vrun CHANGING lv_vrun lv_err.
       IF lv_err = abap_true.
         MESSAGE |Variant không hợp lệ cho bảng { gv_tabname } (giới hạn 14 ký tự / chưa tạo).|
@@ -664,7 +682,13 @@ FORM do_archive_write_bg_job.
         gv_tabname = lv_save.
         RETURN.
       ENDIF.
+      ADD 1 TO lv_step_n.
     ENDLOOP.
+    IF lv_step_n = 0.
+      MESSAGE 'Batch không có bảng hợp lệ để schedule (kiểm tra config active + DATE field + retention).' TYPE 'S' DISPLAY LIKE 'E'.
+      gv_tabname = lv_save.
+      RETURN.
+    ENDIF.
   ELSE.
     PERFORM arch_get_write_vrun CHANGING lv_vrun lv_err.
     IF lv_err = abap_true.
@@ -716,7 +740,7 @@ FORM do_archive_write_bg_job.
 
   IF gv_batch_all = 'X'.
     lv_n = lines( gt_batch_tabnames ).
-    MESSAGE |Đã schedule WRITE job { lv_jobname }/{ lv_jobcount } — { lv_n } bảng (batch).|
+    MESSAGE |Đã schedule WRITE job { lv_jobname }/{ lv_jobcount } — added { lv_step_n }/{ lv_n } bảng, skipped { lv_skip_n }.|
             TYPE 'S'.
   ELSE.
     MESSAGE |Đã schedule WRITE job { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S'.

@@ -15,8 +15,10 @@ FORM validate_table_against_cfg
            cv_ok           TYPE abap_bool.
 
   DATA: lt_df       TYPE TABLE OF dfies,
+        ls_df       TYPE dfies,
         lt_cfg_pick TYPE STANDARD TABLE OF zsp26_arch_cfg WITH EMPTY KEY,
-        lv_tn       TYPE tabname.
+        lv_tn       TYPE tabname,
+        lv_df       TYPE fieldname.
 
   CLEAR: ps_cfg, cv_ok.
   cv_ok = abap_false.
@@ -42,6 +44,14 @@ FORM validate_table_against_cfg
   IF ps_cfg-data_field IS INITIAL.
     RETURN.
   ENDIF.
+  IF ps_cfg-retention <= 0.
+    RETURN.
+  ENDIF.
+
+  lv_df = ps_cfg-data_field.
+  CONDENSE lv_df NO-GAPS.
+  TRANSLATE lv_df TO UPPER CASE.
+  ps_cfg-data_field = lv_df.
 
   CALL FUNCTION 'DDIF_FIELDINFO_GET'
     EXPORTING  tabname   = lv_tn
@@ -51,8 +61,11 @@ FORM validate_table_against_cfg
     RETURN.
   ENDIF.
 
-  READ TABLE lt_df WITH KEY fieldname = ps_cfg-data_field TRANSPORTING NO FIELDS.
+  READ TABLE lt_df INTO ls_df WITH KEY fieldname = ps_cfg-data_field.
   IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+  IF ls_df-inttype <> 'D'.
     RETURN.
   ENDIF.
 
@@ -119,9 +132,9 @@ FORM build_where_from_arch_cfg
     ENDIF.
   ELSE.
     IF pv_dlow IS NOT INITIAL.
-      cv_where = |{ ps_cfg-data_field } GE '{ pv_dlow }' AND { ps_cfg-data_field } LE '{ lv_hi }'|.
+      cv_where = |{ ps_cfg-data_field } NE '00000000' AND { ps_cfg-data_field } GE '{ pv_dlow }' AND { ps_cfg-data_field } LE '{ lv_hi }'|.
     ELSE.
-      cv_where = |{ ps_cfg-data_field } LE '{ lv_hi }'|.
+      cv_where = |{ ps_cfg-data_field } NE '00000000' AND { ps_cfg-data_field } LE '{ lv_hi }'|.
     ENDIF.
   ENDIF.
 ENDFORM.
