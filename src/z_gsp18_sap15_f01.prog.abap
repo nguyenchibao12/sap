@@ -960,14 +960,16 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
       WHERE client = @sy-mandt
         AND object = @lv_obj
       INTO TABLE @lt_run
-      UP TO 500 ROWS.
+      UP TO 500 ROWS
+      ORDER BY creat_date DESCENDING, document DESCENDING.
   ELSE.
     SELECT * FROM admi_run
       WHERE client    = @sy-mandt
         AND object    = @lv_obj
         AND user_name = @sy-uname
       INTO TABLE @lt_run
-      UP TO 500 ROWS.
+      UP TO 500 ROWS
+      ORDER BY creat_date DESCENDING, document DESCENDING.
   ENDIF.
 
   IF lt_run IS INITIAL.
@@ -975,7 +977,8 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
     RETURN.
   ENDIF.
 
-  " Restore mode: chỉ cho chọn session đã có DELETE log tương ứng (đúng luồng nghiệp vụ).
+  " Restore mode: luôn hiển thị tất cả session để user thấy session mới nhất.
+  " Kiểm tra DELETE-marker được giữ ở bước xác nhận restore (do_restore_from_hub).
   IF pv_mode = 'R'.
     DATA: lt_run_rst TYPE TABLE OF admi_run,
           lv_like_doc TYPE string,
@@ -990,15 +993,13 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
         APPEND ls_run TO lt_run_rst.
       ENDIF.
     ENDLOOP.
-    IF lt_run_rst IS NOT INITIAL.
-      lt_run = lt_run_rst.
-    ELSE.
+    IF lt_run_rst IS INITIAL.
       " Legacy logs (chưa có DOC=...) vẫn cho chọn session, kiểm tra kỹ ở bước xác nhận restore.
       MESSAGE 'Chưa có marker DOC trong log DELETE (legacy). Vẫn hiển thị session; sẽ kiểm tra thêm trước khi restore.' TYPE 'S' DISPLAY LIKE 'W'.
+    ELSEIF lines( lt_run_rst ) < lines( lt_run ).
+      MESSAGE |Có { lines( lt_run ) - lines( lt_run_rst ) } session chưa có DELETE marker; vẫn hiển thị để bạn kiểm tra.| TYPE 'S' DISPLAY LIKE 'W'.
     ENDIF.
   ENDIF.
-
-  SORT lt_run BY creat_date DESCENDING document DESCENDING.
 
   LOOP AT lt_run INTO ls_run.
     CLEAR ls_f4.
