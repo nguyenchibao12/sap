@@ -19,17 +19,37 @@ MODULE user_command_0400 INPUT.
     WHEN 'BACK' OR 'EXIT' OR 'CANC'.
       LEAVE PROGRAM.
     WHEN 'BT_CONTINUE'.
-      IF gv_tabname IS INITIAL.
-        MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
-      ELSE.
-        gv_hub_allowed = abap_true.
-        IF lv_adm_0400_i = abap_true.
-          CLEAR gv_admin_pick_table.
+      IF gv_batch_all = 'X'.
+        CLEAR gt_batch_tabnames.
+        SELECT table_name FROM zsp26_arch_cfg
+          WHERE is_active = 'X'
+          INTO TABLE @gt_batch_tabnames.
+        IF gt_batch_tabnames IS INITIAL.
+          MESSAGE 'Không có bảng active trong ZSP26_ARCH_CFG.' TYPE 'S' DISPLAY LIKE 'E'.
+        ELSE.
+          SORT gt_batch_tabnames.
+          READ TABLE gt_batch_tabnames INTO gv_tabname INDEX 1.
+          gv_hub_allowed = abap_true.
+          IF lv_adm_0400_i = abap_true.
+            CLEAR gv_admin_pick_table.
+          ENDIF.
+          EXPORT arch_tabname = gv_tabname TO MEMORY ID 'Z_GSP18_ARCH_TAB'.
+          SET SCREEN 0100.
+          LEAVE SCREEN.
         ENDIF.
-        " Đồng bộ P_TABLE khi mở Z_ARCH_EKK_WRITE (SE38/hub hoặc SUBMIT chưa truyền WITH)
-        EXPORT arch_tabname = gv_tabname TO MEMORY ID 'Z_GSP18_ARCH_TAB'.
-        SET SCREEN 0100.
-        LEAVE SCREEN.
+      ELSE.
+        CLEAR: gv_batch_all, gt_batch_tabnames.
+        IF gv_tabname IS INITIAL.
+          MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
+        ELSE.
+          gv_hub_allowed = abap_true.
+          IF lv_adm_0400_i = abap_true.
+            CLEAR gv_admin_pick_table.
+          ENDIF.
+          EXPORT arch_tabname = gv_tabname TO MEMORY ID 'Z_GSP18_ARCH_TAB'.
+          SET SCREEN 0100.
+          LEAVE SCREEN.
+        ENDIF.
       ENDIF.
   ENDCASE.
 ENDMODULE.
@@ -66,6 +86,7 @@ MODULE user_command_0100 INPUT.
     WHEN 'BT_CHG_TAB'.
       gv_hub_allowed = abap_false.
       CLEAR gv_variant.
+      CLEAR: gv_batch_all, gt_batch_tabnames.
       IF lv_is_admin = abap_true.
         gv_admin_pick_table = 'X'.
       ENDIF.
@@ -106,6 +127,15 @@ MODULE user_command_0100 INPUT.
         PERFORM do_config.
       ELSE.
         MESSAGE 'Chỉ admin mới được mở Config.' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDIF.
+
+    WHEN 'BT_ADMIN'.
+      IF lv_is_admin = abap_true.
+        CLEAR gv_adm_pick.
+        SET SCREEN 0700.
+        LEAVE SCREEN.
+      ELSE.
+        MESSAGE 'Chỉ admin mới được mở quản lý Admin.' TYPE 'S' DISPLAY LIKE 'E'.
       ENDIF.
 
     WHEN 'BT_RUN_LOG'.
@@ -533,5 +563,32 @@ MODULE user_command_0600 INPUT.
     WHEN 'BACK'.
       SET SCREEN 0100.
       LEAVE SCREEN.
+  ENDCASE.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module USER_COMMAND_0700 INPUT
+*&---------------------------------------------------------------------*
+MODULE user_command_0700 INPUT.
+  DATA: lv_c7 TYPE sy-ucomm.
+
+  lv_c7 = ok_code.
+  CLEAR ok_code.
+
+  CASE lv_c7.
+    WHEN 'BACK' OR 'EXIT' OR 'CANC'.
+      IF go_cont_700 IS BOUND.
+        go_cont_700->free( ).
+        CLEAR: go_cont_700, go_alv_700, gt_fcat_700.
+      ENDIF.
+      CLEAR: gt_adm_list, gv_adm_pick.
+      SET SCREEN 0100.
+      LEAVE SCREEN.
+
+    WHEN 'BT_ADM_ADD'.
+      PERFORM arch_admin_do_add.
+
+    WHEN 'BT_ADM_DEL'.
+      PERFORM arch_admin_do_remove.
   ENDCASE.
 ENDMODULE.

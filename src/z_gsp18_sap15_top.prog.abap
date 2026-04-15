@@ -64,6 +64,9 @@ DATA: gv_tabname TYPE zsp26_de_tabname. " Khớp DDIC màn 0400 (ROLLNAME) + F4 
 DATA: gv_hub_allowed TYPE abap_bool VALUE abap_false.
 DATA: gv_admin_pick_table TYPE xfeld VALUE space. " Admin requested to stay on table-selection screen
 DATA: gv_full_restore TYPE xfeld VALUE space. " Admin only: restore all tables in selected session
+" Batch archive: tất cả bảng active trong ZSP26_ARCH_CFG (màn 0400)
+DATA: gv_batch_all TYPE xfeld VALUE space.
+DATA: gt_batch_tabnames TYPE TABLE OF tabname.
 
 " Archive operation globals
 DATA: gs_cfg      TYPE zsp26_arch_cfg,
@@ -85,6 +88,13 @@ DATA: gt_arch_stat TYPE TABLE OF ty_arch_stat,
       go_alv_200   TYPE REF TO cl_gui_alv_grid,
       go_cont_200  TYPE REF TO cl_gui_custom_container,
       gt_fcat_200  TYPE lvc_t_fcat.
+
+" Screen 0700 — maintain ZSP26_ARCH_ADMIN (admin only)
+DATA: gt_adm_list TYPE TABLE OF zsp26_arch_admin,
+      go_alv_700  TYPE REF TO cl_gui_alv_grid,
+      go_cont_700 TYPE REF TO cl_gui_custom_container,
+      gt_fcat_700 TYPE lvc_t_fcat,
+      gv_adm_pick TYPE syuname.
 
 " Screen 0300 / 0500 — archive / job scheduler (variant, start, spool)
 " gv_object = archive object id (AOBJ) — ví dụ Z_ARCH_EKK

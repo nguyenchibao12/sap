@@ -12,6 +12,17 @@ MODULE status_0400 OUTPUT.
     RETURN.
   ENDIF.
 
+  LOOP AT SCREEN.
+    IF screen-name = 'GV_TABNAME'.
+      IF gv_batch_all = 'X'.
+        screen-input = 0.
+      ELSE.
+        screen-input = 1.
+      ENDIF.
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
+
   SET PF-STATUS 'STATUS_100'.
   SET TITLEBAR 'TITLE_100'.
 ENDMODULE.
@@ -41,7 +52,8 @@ MODULE status_0100 OUTPUT.
           screen-active = 1.
         ENDIF.
         MODIFY SCREEN.
-      WHEN 'MANAGE_BUTTON'.
+      WHEN 'MANAGE_BUTTON'
+        OR 'ADMIN_BTN'.
         IF lv_adm_0100 = abap_true.
           screen-active = 1.
         ELSE.
@@ -77,6 +89,38 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 MODULE display_alv_0200 OUTPUT.
   PERFORM display_alv.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module STATUS_0700 OUTPUT — quản lý ZSP26_ARCH_ADMIN
+*&---------------------------------------------------------------------*
+MODULE status_0700 OUTPUT.
+  DATA: lv_adm_700 TYPE abap_bool.
+
+  PERFORM is_arch_admin CHANGING lv_adm_700.
+  IF lv_adm_700 = abap_false.
+    MESSAGE 'Chỉ archive admin mới vào được màn hình này.' TYPE 'S' DISPLAY LIKE 'E'.
+    SET SCREEN 0100.
+    LEAVE SCREEN.
+  ENDIF.
+
+  SET PF-STATUS 'STATUS_300'.
+  SET TITLEBAR 'TITLE_300'.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Module DISPLAY_ALV_0700 OUTPUT
+*&---------------------------------------------------------------------*
+MODULE display_alv_0700 OUTPUT.
+  PERFORM arch_admin_load_list.
+  IF go_cont_700 IS NOT BOUND.
+    PERFORM arch_admin_build_fieldcat.
+    PERFORM arch_admin_display_alv.
+  ELSE.
+    IF go_alv_700 IS BOUND.
+      go_alv_700->refresh_table_display( ).
+    ENDIF.
+  ENDIF.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
@@ -176,4 +220,11 @@ ENDMODULE.
 MODULE status_0600 OUTPUT.
   SET PF-STATUS 'STATUS_300'.
   SET TITLEBAR 'TITLE_300'.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& F4 màn 0700 — chọn user từ USR02
+*&---------------------------------------------------------------------*
+MODULE f4_gv_adm_pick INPUT.
+  PERFORM arch_admin_f4_usr02.
 ENDMODULE.

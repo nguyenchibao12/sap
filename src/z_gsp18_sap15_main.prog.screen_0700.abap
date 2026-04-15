@@ -1,0 +1,9 @@
+PROCESS BEFORE OUTPUT.
+  MODULE status_0700.
+  MODULE display_alv_0700.
+
+PROCESS AFTER INPUT.
+  MODULE user_command_0700.
+
+PROCESS ON VALUE-REQUEST.
+  FIELD gv_adm_pick MODULE f4_gv_adm_pick.

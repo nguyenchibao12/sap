@@ -164,6 +164,10 @@ FORM do_archive_write.
     RETURN.
   ENDIF.
 
+  IF gv_batch_all = 'X'.
+    MESSAGE 'Batch mode: Preview chỉ áp dụng cho bảng đầu tiên trong danh sách active.' TYPE 'S' DISPLAY LIKE 'W'.
+  ENDIF.
+
   " 2. Dynamic SELECT toàn bộ bảng
   CREATE DATA gr_all TYPE TABLE OF (gv_tabname).
   ASSIGN gr_all->* TO <lt_all>.
@@ -530,49 +534,74 @@ FORM do_archive_via_adk.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_ARCHIVE_WRITE_BG_JOB — schedule ADK Write in SM37
+*& FORM ARCH_GET_WRITE_VRUN — variant thực tế cho Z_ARCH_EKK_WRITE (theo gv_tabname)
 *&---------------------------------------------------------------------*
-FORM do_archive_write_bg_job.
-  DATA: lv_vtech    TYPE variant,
-        lv_vrun     TYPE variant,
-        lv_vok      TYPE abap_bool,
-        lv_rc_var   TYPE sy-subrc,
-        lv_jobname  TYPE tbtcjob-jobname,
-        lv_jobcount TYPE tbtcjob-jobcount.
+FORM arch_get_write_vrun
+  CHANGING cv_vrun TYPE variant
+           cv_err  TYPE abap_bool.
 
-  IF gv_tabname IS INITIAL.
-    MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+  DATA: lv_vtech  TYPE variant,
+        lv_vok    TYPE abap_bool,
+        lv_rc_var TYPE sy-subrc.
+
+  CLEAR: cv_vrun, cv_err.
+
+  IF gv_variant IS INITIAL.
     RETURN.
   ENDIF.
 
-  IF gv_variant IS NOT INITIAL.
-    PERFORM arch_build_write_var_tech
-      USING gv_tabname gv_variant
-      CHANGING lv_vtech lv_vok.
-    IF lv_vok = abap_false.
-      MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
-      RETURN.
-    ENDIF.
+  PERFORM arch_build_write_var_tech
+    USING gv_tabname gv_variant
+    CHANGING lv_vtech lv_vok.
+  IF lv_vok = abap_false.
+    cv_err = abap_true.
+    RETURN.
+  ENDIF.
 
-    CLEAR lv_vrun.
+  CALL FUNCTION 'RS_VARIANT_EXISTS'
+    EXPORTING
+      report  = 'Z_ARCH_EKK_WRITE'
+      variant = lv_vtech
+    IMPORTING
+      r_c     = lv_rc_var.
+  IF lv_rc_var = 0.
+    cv_vrun = lv_vtech.
+  ELSE.
     CALL FUNCTION 'RS_VARIANT_EXISTS'
       EXPORTING
         report  = 'Z_ARCH_EKK_WRITE'
-        variant = lv_vtech
+        variant = gv_variant
       IMPORTING
         r_c     = lv_rc_var.
     IF lv_rc_var = 0.
-      lv_vrun = lv_vtech.
-    ELSE.
-      CALL FUNCTION 'RS_VARIANT_EXISTS'
-        EXPORTING
-          report  = 'Z_ARCH_EKK_WRITE'
-          variant = gv_variant
-        IMPORTING
-          r_c     = lv_rc_var.
-      IF lv_rc_var = 0.
-        lv_vrun = gv_variant.
-      ENDIF.
+      cv_vrun = gv_variant.
+    ENDIF.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& FORM DO_ARCHIVE_WRITE_BG_JOB — schedule ADK Write in SM37 (1 bảng hoặc batch)
+*&---------------------------------------------------------------------*
+FORM do_archive_write_bg_job.
+  DATA: lv_vrun     TYPE variant,
+        lv_err      TYPE abap_bool,
+        lv_jobname  TYPE tbtcjob-jobname,
+        lv_jobcount TYPE tbtcjob-jobcount,
+        lv_save     TYPE zsp26_de_tabname,
+        lv_line     TYPE tabname,
+        lv_n        TYPE i.
+
+  lv_save = gv_tabname.
+
+  IF gv_batch_all = 'X'.
+    IF gt_batch_tabnames IS INITIAL.
+      MESSAGE 'Batch: danh sách bảng trống. Quay lại Step 1 (chọn bảng).' TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+  ELSE.
+    IF gv_tabname IS INITIAL.
+      MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
     ENDIF.
   ENDIF.
 
@@ -590,27 +619,69 @@ FORM do_archive_write_bg_job.
       OTHERS           = 4.
   IF sy-subrc <> 0.
     MESSAGE 'Không mở được background job cho Write.' TYPE 'S' DISPLAY LIKE 'E'.
+    gv_tabname = lv_save.
     RETURN.
   ENDIF.
 
-  IF lv_vrun IS NOT INITIAL.
-    SUBMIT z_arch_ekk_write
-      WITH p_table = gv_tabname
-      WITH p_test  = ' '
-      USING SELECTION-SET lv_vrun
-      VIA JOB lv_jobname NUMBER lv_jobcount
-      AND RETURN.
+  IF gv_batch_all = 'X'.
+    LOOP AT gt_batch_tabnames INTO lv_line.
+      gv_tabname = lv_line.
+      PERFORM arch_get_write_vrun CHANGING lv_vrun lv_err.
+      IF lv_err = abap_true.
+        MESSAGE |Variant không hợp lệ cho bảng { gv_tabname } (giới hạn 14 ký tự / chưa tạo).|
+                TYPE 'S' DISPLAY LIKE 'E'.
+        gv_tabname = lv_save.
+        RETURN.
+      ENDIF.
+      IF lv_vrun IS NOT INITIAL.
+        SUBMIT z_arch_ekk_write
+          WITH p_table = gv_tabname
+          WITH p_test  = ' '
+          USING SELECTION-SET lv_vrun
+          VIA JOB lv_jobname NUMBER lv_jobcount
+          AND RETURN.
+      ELSE.
+        SUBMIT z_arch_ekk_write
+          WITH p_table = gv_tabname
+          WITH p_test  = ' '
+          VIA JOB lv_jobname NUMBER lv_jobcount
+          AND RETURN.
+      ENDIF.
+      IF sy-subrc <> 0.
+        MESSAGE 'Không add được step Write vào background job.' TYPE 'S' DISPLAY LIKE 'E'.
+        gv_tabname = lv_save.
+        RETURN.
+      ENDIF.
+    ENDLOOP.
   ELSE.
-    SUBMIT z_arch_ekk_write
-      WITH p_table = gv_tabname
-      WITH p_test  = ' '
-      VIA JOB lv_jobname NUMBER lv_jobcount
-      AND RETURN.
+    PERFORM arch_get_write_vrun CHANGING lv_vrun lv_err.
+    IF lv_err = abap_true.
+      MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
+      gv_tabname = lv_save.
+      RETURN.
+    ENDIF.
+    IF lv_vrun IS NOT INITIAL.
+      SUBMIT z_arch_ekk_write
+        WITH p_table = gv_tabname
+        WITH p_test  = ' '
+        USING SELECTION-SET lv_vrun
+        VIA JOB lv_jobname NUMBER lv_jobcount
+        AND RETURN.
+    ELSE.
+      SUBMIT z_arch_ekk_write
+        WITH p_table = gv_tabname
+        WITH p_test  = ' '
+        VIA JOB lv_jobname NUMBER lv_jobcount
+        AND RETURN.
+    ENDIF.
+    IF sy-subrc <> 0.
+      MESSAGE 'Không add được step Write vào background job.' TYPE 'S' DISPLAY LIKE 'E'.
+      gv_tabname = lv_save.
+      RETURN.
+    ENDIF.
   ENDIF.
-  IF sy-subrc <> 0.
-    MESSAGE 'Không add được step Write vào background job.' TYPE 'S' DISPLAY LIKE 'E'.
-    RETURN.
-  ENDIF.
+
+  gv_tabname = lv_save.
 
   CALL FUNCTION 'JOB_CLOSE'
     EXPORTING
@@ -631,7 +702,13 @@ FORM do_archive_write_bg_job.
     RETURN.
   ENDIF.
 
-  MESSAGE |Đã schedule WRITE job { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S'.
+  IF gv_batch_all = 'X'.
+    lv_n = lines( gt_batch_tabnames ).
+    MESSAGE |Đã schedule WRITE job { lv_jobname }/{ lv_jobcount } — { lv_n } bảng (batch).|
+            TYPE 'S'.
+  ELSE.
+    MESSAGE |Đã schedule WRITE job { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S'.
+  ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -3225,4 +3302,168 @@ FORM is_arch_admin CHANGING cv_admin TYPE abap_bool.
     WHERE uname = @sy-uname.
   cv_admin = COND abap_bool( WHEN sy-subrc = 0 THEN abap_true
                               ELSE abap_false ).
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Screen 0700 — ZSP26_ARCH_ADMIN (danh sách + thêm / xóa)
+*&---------------------------------------------------------------------*
+FORM arch_admin_load_list.
+  SELECT * FROM zsp26_arch_admin
+    INTO TABLE @gt_adm_list
+    ORDER BY uname.
+ENDFORM.
+
+FORM arch_admin_build_fieldcat.
+  DATA: ls_fc TYPE lvc_s_fcat.
+  CLEAR gt_fcat_700.
+  DEFINE _col.
+    CLEAR ls_fc.
+    ls_fc-fieldname = &1.
+    ls_fc-coltext   = &2.
+    ls_fc-outputlen = &3.
+    APPEND ls_fc TO gt_fcat_700.
+  END-OF-DEFINITION.
+  _col 'MANDT' 'Client' 4.
+  _col 'UNAME' 'User'   12.
+ENDFORM.
+
+FORM arch_admin_display_alv.
+  DATA: ls_layo TYPE lvc_s_layo.
+
+  IF go_cont_700 IS BOUND.
+    go_cont_700->free( ).
+    CLEAR: go_cont_700, go_alv_700.
+  ENDIF.
+
+  CREATE OBJECT go_cont_700
+    EXPORTING container_name = 'ADM_ALV_CONT'
+    EXCEPTIONS OTHERS        = 1.
+  IF sy-subrc <> 0.
+    MESSAGE 'Lỗi tạo container ALV (Admin)' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  CREATE OBJECT go_alv_700
+    EXPORTING i_parent = go_cont_700
+    EXCEPTIONS OTHERS  = 1.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  ls_layo-sel_mode = 'A'.
+  CALL METHOD go_alv_700->set_table_for_first_display
+    EXPORTING is_layout = ls_layo
+    CHANGING  it_outtab       = gt_adm_list
+              it_fieldcatalog = gt_fcat_700.
+ENDFORM.
+
+FORM arch_admin_do_add.
+  DATA: ls_adm TYPE zsp26_arch_admin.
+
+  CONDENSE gv_adm_pick.
+  IF gv_adm_pick IS INITIAL.
+    MESSAGE 'Nhập user (F4) hoặc gõ tên user.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+  TRANSLATE gv_adm_pick TO UPPER CASE.
+
+  ls_adm-mandt = sy-mandt.
+  ls_adm-uname = gv_adm_pick.
+
+  INSERT zsp26_arch_admin FROM ls_adm.
+  IF sy-subrc = 0.
+    COMMIT WORK.
+    CLEAR gv_adm_pick.
+    MESSAGE |Đã thêm admin { ls_adm-uname }| TYPE 'S'.
+  ELSEIF sy-subrc = 4.
+    MESSAGE |User { ls_adm-uname } đã là admin| TYPE 'S' DISPLAY LIKE 'W'.
+  ELSE.
+    MESSAGE 'Không thêm được (kiểm tra bảng / trùng khóa).' TYPE 'S' DISPLAY LIKE 'E'.
+  ENDIF.
+ENDFORM.
+
+FORM arch_admin_do_remove.
+  DATA: lt_rows TYPE lvc_t_row,
+        ls_row  TYPE lvc_s_row,
+        ls_adm  TYPE zsp26_arch_admin,
+        lv_cnt  TYPE i,
+        lv_ans  TYPE char1.
+
+  IF go_alv_700 IS NOT BOUND.
+    RETURN.
+  ENDIF.
+
+  CALL METHOD go_alv_700->get_selected_rows
+    IMPORTING
+      et_index_rows = lt_rows.
+
+  IF lt_rows IS INITIAL.
+    MESSAGE 'Chọn một dòng trong danh sách rồi bấm Remove admin.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  READ TABLE lt_rows INTO ls_row INDEX 1.
+  READ TABLE gt_adm_list INTO ls_adm INDEX ls_row-index.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  SELECT COUNT(*) FROM zsp26_arch_admin INTO @lv_cnt WHERE mandt = @sy-mandt.
+  IF lv_cnt <= 1.
+    MESSAGE 'Không xóa admin cuối cùng.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  IF ls_adm-uname = sy-uname.
+    CALL FUNCTION 'POPUP_TO_CONFIRM'
+      EXPORTING
+        titlebar              = 'Xác nhận'
+        text_question         = 'Bạn đang xóa chính mình khỏi admin. Tiếp tục?'
+        text_button_1         = 'Có'
+        text_button_2         = 'Không'
+        display_cancel_button = ' '
+      IMPORTING
+        answer                = lv_ans
+      EXCEPTIONS
+        OTHERS                = 1.
+    IF lv_ans <> '1'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  DELETE FROM zsp26_arch_admin WHERE mandt = @sy-mandt AND uname = @ls_adm-uname.
+  IF sy-subrc = 0.
+    COMMIT WORK.
+    MESSAGE |Đã xóa { ls_adm-uname } khỏi admin| TYPE 'S'.
+  ELSE.
+    MESSAGE 'Không xóa được dòng đã chọn.' TYPE 'S' DISPLAY LIKE 'E'.
+  ENDIF.
+ENDFORM.
+
+FORM arch_admin_f4_usr02.
+  TYPES: BEGIN OF ty_u4,
+           uname TYPE xubname,
+         END OF ty_u4.
+  DATA: lt_u4 TYPE STANDARD TABLE OF ty_u4 WITH DEFAULT KEY,
+        lv_tit(40) TYPE c.
+
+  lv_tit = 'SAP user (USR02)'.
+
+  SELECT bname AS uname FROM usr02
+    INTO TABLE @lt_u4
+    UP TO 5000 ROWS
+    ORDER BY bname.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'UNAME'
+      window_title = lv_tit
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'GV_ADM_PICK'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_u4
+    EXCEPTIONS
+      OTHERS       = 0.
 ENDFORM.

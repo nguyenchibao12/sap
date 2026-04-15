@@ -78,6 +78,36 @@
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>TEXT</TYPE>
+       <NAME>LBL_BATCH_ALL</NAME>
+       <TEXT>All_active_tables_(batch_write)</TEXT>
+       <LINE>006</LINE>
+       <COLUMN>013</COLUMN>
+       <LENGTH>035</LENGTH>
+       <VISLENGTH>035</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>TEMPLATE</TYPE>
+       <NAME>GV_BATCH_ALL</NAME>
+       <TEXT>_</TEXT>
+       <LINE>006</LINE>
+       <COLUMN>050</COLUMN>
+       <LENGTH>001</LENGTH>
+       <VISLENGTH>001</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <INPUT_FLD>X</INPUT_FLD>
+       <OUTPUT_FLD>X</OUTPUT_FLD>
+       <ROLLNAME>XFELD</ROLLNAME>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>CONTINUE_BTN</NAME>
        <TEXT>Continue___________________________</TEXT>
@@ -224,6 +254,21 @@
        <VISLENGTH>035</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <PUSH_FCODE>BT_MANAGE</PUSH_FCODE>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>PUSH</TYPE>
+       <NAME>ADMIN_BTN</NAME>
+       <TEXT>Admin______________________________</TEXT>
+       <LINE>010</LINE>
+       <COLUMN>050</COLUMN>
+       <LENGTH>035</LENGTH>
+       <VISLENGTH>035</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <PUSH_FCODE>BT_ADMIN</PUSH_FCODE>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
@@ -940,6 +985,121 @@
       </RPY_DYFATC>
      </FIELDS>
     </item>
+    <item>
+     <HEADER>
+      <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
+      <SCREEN>0700</SCREEN>
+      <LANGUAGE>E</LANGUAGE>
+      <DESCRIPT>Archive admin users</DESCRIPT>
+      <TYPE>N</TYPE>
+      <NEXTSCREEN>0700</NEXTSCREEN>
+      <LINES>027</LINES>
+      <COLUMNS>122</COLUMNS>
+     </HEADER>
+     <CONTAINERS>
+      <RPY_DYCATT>
+       <TYPE>SCREEN</TYPE>
+       <NAME>SCREEN</NAME>
+      </RPY_DYCATT>
+      <RPY_DYCATT>
+       <TYPE>CUST_CTRL</TYPE>
+       <NAME>ADM_ALV_CONT</NAME>
+       <ELEMENT_OF>SCREEN</ELEMENT_OF>
+       <LINE>005</LINE>
+       <COLUMN>007</COLUMN>
+       <LENGTH>107</LENGTH>
+       <HEIGHT>019</HEIGHT>
+      </RPY_DYCATT>
+     </CONTAINERS>
+     <FIELDS>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>TEXT</TYPE>
+       <NAME>LBL_ADM_HEAD</NAME>
+       <TEXT>ZSP26_ARCH_ADMIN_(active_users)</TEXT>
+       <LINE>001</LINE>
+       <COLUMN>007</COLUMN>
+       <LENGTH>035</LENGTH>
+       <VISLENGTH>035</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>PUSH</TYPE>
+       <NAME>BT_ADM_ADD</NAME>
+       <TEXT>Add_admin__________________________</TEXT>
+       <LINE>002</LINE>
+       <COLUMN>007</COLUMN>
+       <LENGTH>035</LENGTH>
+       <VISLENGTH>035</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <PUSH_FCODE>BT_ADM_ADD</PUSH_FCODE>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>PUSH</TYPE>
+       <NAME>BT_ADM_DEL</NAME>
+       <TEXT>Remove_admin_______________________</TEXT>
+       <LINE>002</LINE>
+       <COLUMN>044</COLUMN>
+       <LENGTH>035</LENGTH>
+       <VISLENGTH>035</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <PUSH_FCODE>BT_ADM_DEL</PUSH_FCODE>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>TEXT</TYPE>
+       <NAME>LBL_ADM_USER</NAME>
+       <TEXT>Add_user_(F4)_________</TEXT>
+       <LINE>003</LINE>
+       <COLUMN>007</COLUMN>
+       <LENGTH>022</LENGTH>
+       <VISLENGTH>022</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>TEMPLATE</TYPE>
+       <NAME>GV_ADM_PICK</NAME>
+       <TEXT>______________</TEXT>
+       <LINE>003</LINE>
+       <COLUMN>031</COLUMN>
+       <LENGTH>014</LENGTH>
+       <VISLENGTH>014</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <INPUT_FLD>X</INPUT_FLD>
+       <OUTPUT_FLD>X</OUTPUT_FLD>
+       <ROLLNAME>SYUNAME</ROLLNAME>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>OKCODE</TYPE>
+       <NAME>OK_CODE</NAME>
+       <TEXT>____________________</TEXT>
+       <LENGTH>020</LENGTH>
+       <VISLENGTH>020</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <INPUT_FLD>X</INPUT_FLD>
+      </RPY_DYFATC>
+     </FIELDS>
+    </item>
    </DYNPROS>
    <CUA>
     <ADM>
@@ -1103,6 +1263,15 @@
       <TEXT_TYPE>S</TEXT_TYPE>
       <FUN_TEXT>Change table</FUN_TEXT>
       <INFO_TEXT>Back to table selection (screen 0400)</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_ADMIN</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <TEXT_NAME>ICON_SYSTEM_USER_MENU</TEXT_NAME>
+      <ICON_ID>@08@</ICON_ID>
+      <FUN_TEXT>Admin</FUN_TEXT>
+      <INFO_TEXT>Maintain archive administrators (ZSP26_ARCH_ADMIN)</INFO_TEXT>
      </RSMPE_FUNT>
      <RSMPE_FUNT>
       <CODE>BT_PREVIEW</CODE>
