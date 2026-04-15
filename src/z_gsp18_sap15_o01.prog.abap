@@ -99,7 +99,7 @@ MODULE status_0700 OUTPUT.
 
   PERFORM is_arch_admin CHANGING lv_adm_700.
   IF lv_adm_700 = abap_false.
-    MESSAGE 'Chỉ archive admin mới vào được màn hình này.' TYPE 'S' DISPLAY LIKE 'E'.
+    " Do not raise MESSAGE in PBO; it causes status-line flicker on every roundtrip.
     SET SCREEN 0100.
     LEAVE SCREEN.
   ENDIF.
