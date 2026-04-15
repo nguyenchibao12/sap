@@ -3679,7 +3679,7 @@ FORM arch_popup_wvar_3ch_fb
   USING    iv_titel TYPE char40
   CHANGING cv_answer TYPE char1.
 
-  DATA lv_a TYPE char1.
+  DATA lv_a TYPE c LENGTH 4.
 
   CLEAR cv_answer.
   CALL FUNCTION 'POPUP_TO_DECIDE'
@@ -3693,11 +3693,16 @@ FORM arch_popup_wvar_3ch_fb
       answer        = lv_a
     EXCEPTIONS
       OTHERS        = 1.
-  IF sy-subrc <> 0 OR lv_a = 'A'.
+  CONDENSE lv_a NO-GAPS.
+  IF sy-subrc <> 0 OR lv_a = 'A' OR lv_a IS INITIAL.
     RETURN.
   ENDIF.
   IF lv_a = '1'.
     cv_answer = '1'.
+    RETURN.
+  ENDIF.
+  IF lv_a <> '2'.
+    MESSAGE |Lựa chọn không hợp lệ ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -3712,13 +3717,16 @@ FORM arch_popup_wvar_3ch_fb
       answer        = lv_a
     EXCEPTIONS
       OTHERS        = 1.
-  IF sy-subrc <> 0 OR lv_a = 'A'.
+  CONDENSE lv_a NO-GAPS.
+  IF sy-subrc <> 0 OR lv_a = 'A' OR lv_a IS INITIAL.
     RETURN.
   ENDIF.
   IF lv_a = '1'.
     cv_answer = '2'.
   ELSEIF lv_a = '2'.
     cv_answer = '3'.
+  ELSE.
+    MESSAGE |Lựa chọn không hợp lệ ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W'.
   ENDIF.
 ENDFORM.
 
@@ -3874,12 +3882,13 @@ FORM arch_copy_write_variant_dialog
         ls_field     TYPE sval.
 
   CLEAR ls_field.
-  ls_field-tabname   = 'RS38M'.
+  ls_field-tabname   = 'RSVARI'.
   ls_field-fieldname = 'VARIANT'.
-  ls_field-fieldtext = 'New variant'.
+  ls_field-fieldtext = 'Ten variant moi'.
   CLEAR ls_field-value.
   APPEND ls_field TO lt_fields.
 
+  CLEAR lv_ret.
   CALL FUNCTION 'POPUP_GET_VALUES'
     EXPORTING
       popup_title    = 'Copy variant'
@@ -3893,17 +3902,26 @@ FORM arch_copy_write_variant_dialog
     EXCEPTIONS
       error_in_fields = 1
       OTHERS            = 2.
+  IF sy-subrc = 1.
+    MESSAGE 'Không mở được popup nhập tên (POPUP_GET_VALUES / RSVARI-VARIANT). Kiểm tra DDIC.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
   IF sy-subrc <> 0 OR lv_ret = 'A'.
+    IF lv_ret = 'A'.
+      MESSAGE 'Đã hủy copy variant.' TYPE 'S'.
+    ENDIF.
     RETURN.
   ENDIF.
 
   READ TABLE lt_fields INTO ls_field INDEX 1.
   IF sy-subrc <> 0.
+    MESSAGE 'Không đọc được giá trị nhập.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   lv_new = ls_field-value.
   CONDENSE lv_new.
   IF lv_new IS INITIAL.
+    MESSAGE 'Vui long nhap ten variant moi (khong de trong).' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
