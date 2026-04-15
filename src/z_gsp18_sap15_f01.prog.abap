@@ -2669,12 +2669,26 @@ FORM f4_reg_table.
   DATA: lt_dd  TYPE TABLE OF ty_dd_tab,
         lt_ret TYPE TABLE OF ddshretval,
         ls_ret TYPE ddshretval,
-        lv_win(40) TYPE c VALUE 'Z Transparent Tables (DDIC)'.
+        lv_win(40) TYPE c VALUE 'Z Tables with DATE field (DDIC)'.
 
-  SELECT tabname, ddtext FROM dd02v
+  SELECT DISTINCT a~tabname, a~ddtext
+    FROM dd02v AS a
+    INNER JOIN dd03l AS b
+      ON b~tabname  = a~tabname
     INTO CORRESPONDING FIELDS OF TABLE @lt_dd
-    WHERE tabname  LIKE 'Z%'
-      AND tabclass = 'TRANSP'.
+    WHERE a~tabname   LIKE 'Z%'
+      AND a~tabclass  = 'TRANSP'
+      AND a~as4local  = 'A'
+      AND a~as4vers   = '0000'
+      AND b~as4local  = 'A'
+      AND b~as4vers   = '0000'
+      AND b~fieldname <> '.INCLUDE'
+      AND b~datatype  = 'DATS'.
+
+  IF lt_dd IS INITIAL.
+    MESSAGE 'Không có bảng Z* TRANSP nào có field DATE để đăng ký.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
 
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
