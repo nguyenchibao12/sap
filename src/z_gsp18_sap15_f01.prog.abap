@@ -2640,20 +2640,23 @@ FORM show_hub_btc_job_list.
            exec_user TYPE zsp26_arch_log-exec_user,
            rec_count TYPE zsp26_arch_log-rec_count,
            status    TYPE zsp26_arch_log-status,
+           end_time  TYPE zsp26_arch_log-end_time,
            message   TYPE zsp26_arch_log-message,
          END OF ty_purge_log.
   DATA: lt_purge TYPE TABLE OF ty_purge_log,
-        ls_purge TYPE ty_purge_log.
+        ls_purge TYPE ty_purge_log,
+        lv_dloc  TYPE d,
+        lv_tloc  TYPE t.
 
   IF lv_btc_adm = abap_true.
-    SELECT arch_id, table_name, exec_date, exec_user, rec_count, status, message
+    SELECT arch_id, table_name, exec_date, exec_user, rec_count, status, end_time, message
       FROM zsp26_arch_log
       INTO TABLE @lt_purge
       UP TO 40 ROWS
       WHERE action = 'PURGE'
       ORDER BY exec_date DESCENDING.
   ELSE.
-    SELECT arch_id, table_name, exec_date, exec_user, rec_count, status, message
+    SELECT arch_id, table_name, exec_date, exec_user, rec_count, status, end_time, message
       FROM zsp26_arch_log
       INTO TABLE @lt_purge
       UP TO 40 ROWS
@@ -2670,7 +2673,14 @@ FORM show_hub_btc_job_list.
     ls_btc-status_txt = |PURGE { ls_purge-rec_count }|.
     ls_btc-sdluname   = ls_purge-exec_user.
     ls_btc-progname   = 'PURGE_ONLY'.
-    ls_btc-strtdate   = ls_purge-exec_date.
+    IF ls_purge-end_time IS NOT INITIAL.
+      CONVERT TIME STAMP ls_purge-end_time TIME ZONE sy-zonlo
+        INTO DATE lv_dloc TIME lv_tloc.
+      ls_btc-strtdate = lv_dloc.
+      ls_btc-strttime = lv_tloc.
+    ELSE.
+      ls_btc-strtdate = ls_purge-exec_date.
+    ENDIF.
     ls_btc-run_ref    = ls_purge-arch_id.
     ls_btc-table_name = ls_purge-table_name.
     APPEND ls_btc TO gt_btc_rows.
