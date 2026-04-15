@@ -64,9 +64,6 @@ DATA: gv_tabname TYPE zsp26_de_tabname. " Khớp DDIC màn 0400 (ROLLNAME) + F4 
 DATA: gv_hub_allowed TYPE abap_bool VALUE abap_false.
 DATA: gv_admin_pick_table TYPE xfeld VALUE space. " Admin requested to stay on table-selection screen
 DATA: gv_full_restore TYPE xfeld VALUE space. " Admin only: restore all tables in selected session
-" Batch archive: tất cả bảng active trong ZSP26_ARCH_CFG (màn 0400)
-DATA: gv_batch_all TYPE xfeld VALUE space.
-DATA: gt_batch_tabnames TYPE TABLE OF tabname.
 
 " Archive operation globals
 DATA: gs_cfg      TYPE zsp26_arch_cfg,

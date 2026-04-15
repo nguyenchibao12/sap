@@ -12,17 +12,6 @@ MODULE status_0400 OUTPUT.
     RETURN.
   ENDIF.
 
-  LOOP AT SCREEN.
-    IF screen-name = 'GV_TABNAME'.
-      IF gv_batch_all = 'X'.
-        screen-input = 0.
-      ELSE.
-        screen-input = 1.
-      ENDIF.
-      MODIFY SCREEN.
-    ENDIF.
-  ENDLOOP.
-
   SET PF-STATUS 'STATUS_100'.
   SET TITLEBAR 'TITLE_100'.
 ENDMODULE.

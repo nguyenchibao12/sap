@@ -78,36 +78,6 @@
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>TEXT</TYPE>
-       <NAME>LBL_BATCH_ALL</NAME>
-       <TEXT>All_active_tables_(batch_write)</TEXT>
-       <LINE>006</LINE>
-       <COLUMN>013</COLUMN>
-       <LENGTH>035</LENGTH>
-       <VISLENGTH>035</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <FORMAT>CHAR</FORMAT>
-       <REQU_ENTRY>N</REQU_ENTRY>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>TEMPLATE</TYPE>
-       <NAME>GV_BATCH_ALL</NAME>
-       <TEXT>_</TEXT>
-       <LINE>006</LINE>
-       <COLUMN>050</COLUMN>
-       <LENGTH>001</LENGTH>
-       <VISLENGTH>001</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <FORMAT>CHAR</FORMAT>
-       <INPUT_FLD>X</INPUT_FLD>
-       <OUTPUT_FLD>X</OUTPUT_FLD>
-       <ROLLNAME>XFELD</ROLLNAME>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>CONTINUE_BTN</NAME>
        <TEXT>Continue___________________________</TEXT>

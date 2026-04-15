@@ -204,10 +204,6 @@ FORM do_archive_write.
     RETURN.
   ENDIF.
 
-  IF gv_batch_all = 'X'.
-    MESSAGE 'Batch mode: Preview chỉ áp dụng cho bảng đầu tiên trong danh sách active.' TYPE 'S' DISPLAY LIKE 'W'.
-  ENDIF.
-
   " 2. Dynamic SELECT toàn bộ bảng
   CREATE DATA gr_all TYPE TABLE OF (gv_tabname).
   ASSIGN gr_all->* TO <lt_all>.
@@ -629,33 +625,20 @@ FORM arch_get_write_vrun
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_ARCHIVE_WRITE_BG_JOB — schedule ADK Write in SM37 (1 bảng hoặc batch)
+*& FORM DO_ARCHIVE_WRITE_BG_JOB — schedule ADK Write in SM37 (1 bảng)
 *&---------------------------------------------------------------------*
 FORM do_archive_write_bg_job.
   DATA: lv_vrun     TYPE variant,
         lv_err      TYPE abap_bool,
         lv_jobname  TYPE tbtcjob-jobname,
         lv_jobcount TYPE tbtcjob-jobcount,
-        lv_save     TYPE zsp26_de_tabname,
-        lv_line     TYPE tabname,
-        lv_n        TYPE i,
-        lv_step_n   TYPE i VALUE 0,
-        lv_skip_n   TYPE i VALUE 0,
-        lv_cfg_ok   TYPE abap_bool,
-        ls_cfg_chk  TYPE zsp26_arch_cfg.
+        lv_save     TYPE zsp26_de_tabname.
 
   lv_save = gv_tabname.
 
-  IF gv_batch_all = 'X'.
-    IF gt_batch_tabnames IS INITIAL.
-      MESSAGE 'Batch: danh sách bảng trống. Quay lại Step 1 (chọn bảng).' TYPE 'S' DISPLAY LIKE 'E'.
-      RETURN.
-    ENDIF.
-  ELSE.
-    IF gv_tabname IS INITIAL.
-      MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
-      RETURN.
-    ENDIF.
+  IF gv_tabname IS INITIAL.
+    MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
   ENDIF.
 
   lv_jobname = |ZARCH_WR_{ sy-uname }|.
@@ -676,74 +659,30 @@ FORM do_archive_write_bg_job.
     RETURN.
   ENDIF.
 
-  IF gv_batch_all = 'X'.
-    LOOP AT gt_batch_tabnames INTO lv_line.
-      gv_tabname = lv_line.
-      PERFORM validate_table_against_cfg
-        USING gv_tabname CHANGING ls_cfg_chk lv_cfg_ok.
-      IF lv_cfg_ok = abap_false.
-        ADD 1 TO lv_skip_n.
-        CONTINUE.
-      ENDIF.
-      PERFORM arch_get_write_vrun CHANGING lv_vrun lv_err.
-      IF lv_err = abap_true.
-        MESSAGE |Variant không hợp lệ cho bảng { gv_tabname } (giới hạn 14 ký tự / chưa tạo).|
-                TYPE 'S' DISPLAY LIKE 'E'.
-        gv_tabname = lv_save.
-        RETURN.
-      ENDIF.
-      IF lv_vrun IS NOT INITIAL.
-        SUBMIT z_arch_ekk_write
-          WITH p_table = gv_tabname
-          WITH p_test  = ' '
-          USING SELECTION-SET lv_vrun
-          VIA JOB lv_jobname NUMBER lv_jobcount
-          AND RETURN.
-      ELSE.
-        SUBMIT z_arch_ekk_write
-          WITH p_table = gv_tabname
-          WITH p_test  = ' '
-          VIA JOB lv_jobname NUMBER lv_jobcount
-          AND RETURN.
-      ENDIF.
-      IF sy-subrc <> 0.
-        MESSAGE 'Không add được step Write vào background job.' TYPE 'S' DISPLAY LIKE 'E'.
-        gv_tabname = lv_save.
-        RETURN.
-      ENDIF.
-      ADD 1 TO lv_step_n.
-    ENDLOOP.
-    IF lv_step_n = 0.
-      MESSAGE 'Batch không có bảng hợp lệ để schedule (kiểm tra config active + DATE field + retention).' TYPE 'S' DISPLAY LIKE 'E'.
-      gv_tabname = lv_save.
-      RETURN.
-    ENDIF.
+  PERFORM arch_get_write_vrun CHANGING lv_vrun lv_err.
+  IF lv_err = abap_true.
+    MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
+    gv_tabname = lv_save.
+    RETURN.
+  ENDIF.
+  IF lv_vrun IS NOT INITIAL.
+    SUBMIT z_arch_ekk_write
+      WITH p_table = gv_tabname
+      WITH p_test  = ' '
+      USING SELECTION-SET lv_vrun
+      VIA JOB lv_jobname NUMBER lv_jobcount
+      AND RETURN.
   ELSE.
-    PERFORM arch_get_write_vrun CHANGING lv_vrun lv_err.
-    IF lv_err = abap_true.
-      MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
-      gv_tabname = lv_save.
-      RETURN.
-    ENDIF.
-    IF lv_vrun IS NOT INITIAL.
-      SUBMIT z_arch_ekk_write
-        WITH p_table = gv_tabname
-        WITH p_test  = ' '
-        USING SELECTION-SET lv_vrun
-        VIA JOB lv_jobname NUMBER lv_jobcount
-        AND RETURN.
-    ELSE.
-      SUBMIT z_arch_ekk_write
-        WITH p_table = gv_tabname
-        WITH p_test  = ' '
-        VIA JOB lv_jobname NUMBER lv_jobcount
-        AND RETURN.
-    ENDIF.
-    IF sy-subrc <> 0.
-      MESSAGE 'Không add được step Write vào background job.' TYPE 'S' DISPLAY LIKE 'E'.
-      gv_tabname = lv_save.
-      RETURN.
-    ENDIF.
+    SUBMIT z_arch_ekk_write
+      WITH p_table = gv_tabname
+      WITH p_test  = ' '
+      VIA JOB lv_jobname NUMBER lv_jobcount
+      AND RETURN.
+  ENDIF.
+  IF sy-subrc <> 0.
+    MESSAGE 'Không add được step Write vào background job.' TYPE 'S' DISPLAY LIKE 'E'.
+    gv_tabname = lv_save.
+    RETURN.
   ENDIF.
 
   gv_tabname = lv_save.
@@ -767,13 +706,7 @@ FORM do_archive_write_bg_job.
     RETURN.
   ENDIF.
 
-  IF gv_batch_all = 'X'.
-    lv_n = lines( gt_batch_tabnames ).
-    MESSAGE |Đã schedule WRITE job { lv_jobname }/{ lv_jobcount } — added { lv_step_n }/{ lv_n } bảng, skipped { lv_skip_n }.|
-            TYPE 'S'.
-  ELSE.
-    MESSAGE |Đã schedule WRITE job { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S'.
-  ENDIF.
+  MESSAGE |Đã schedule WRITE job { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

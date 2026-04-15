@@ -22,37 +22,16 @@ MODULE user_command_0400 INPUT.
       SET SCREEN 0400.
       LEAVE SCREEN.
     WHEN 'BT_CONTINUE'.
-      IF gv_batch_all = 'X'.
-        CLEAR gt_batch_tabnames.
-        SELECT table_name FROM zsp26_arch_cfg
-          WHERE is_active = 'X'
-          INTO TABLE @gt_batch_tabnames.
-        IF gt_batch_tabnames IS INITIAL.
-          MESSAGE 'Không có bảng active trong ZSP26_ARCH_CFG.' TYPE 'S' DISPLAY LIKE 'E'.
-        ELSE.
-          SORT gt_batch_tabnames.
-          READ TABLE gt_batch_tabnames INTO gv_tabname INDEX 1.
-          gv_hub_allowed = abap_true.
-          IF lv_adm_0400_i = abap_true.
-            CLEAR gv_admin_pick_table.
-          ENDIF.
-          EXPORT arch_tabname = gv_tabname TO MEMORY ID 'Z_GSP18_ARCH_TAB'.
-          SET SCREEN 0100.
-          LEAVE SCREEN.
-        ENDIF.
+      IF gv_tabname IS INITIAL.
+        MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
-        CLEAR: gv_batch_all, gt_batch_tabnames.
-        IF gv_tabname IS INITIAL.
-          MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
-        ELSE.
-          gv_hub_allowed = abap_true.
-          IF lv_adm_0400_i = abap_true.
-            CLEAR gv_admin_pick_table.
-          ENDIF.
-          EXPORT arch_tabname = gv_tabname TO MEMORY ID 'Z_GSP18_ARCH_TAB'.
-          SET SCREEN 0100.
-          LEAVE SCREEN.
+        gv_hub_allowed = abap_true.
+        IF lv_adm_0400_i = abap_true.
+          CLEAR gv_admin_pick_table.
         ENDIF.
+        EXPORT arch_tabname = gv_tabname TO MEMORY ID 'Z_GSP18_ARCH_TAB'.
+        SET SCREEN 0100.
+        LEAVE SCREEN.
       ENDIF.
   ENDCASE.
 ENDMODULE.
@@ -92,7 +71,6 @@ MODULE user_command_0100 INPUT.
     WHEN 'BT_CHG_TAB'.
       gv_hub_allowed = abap_false.
       CLEAR gv_variant.
-      CLEAR: gv_batch_all, gt_batch_tabnames.
       IF lv_is_admin = abap_true.
         gv_admin_pick_table = 'X'.
       ENDIF.
