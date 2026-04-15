@@ -1581,8 +1581,23 @@
       <FUN_TEXT>Preview &amp; Archive</FUN_TEXT>
       <INFO_TEXT>Open SALV preview then ADK write (after variant / start / spool)</INFO_TEXT>
      </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_REFRESH</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <TEXT_NAME>ICON_REFRESH</TEXT_NAME>
+      <ICON_ID>@42@</ICON_ID>
+      <FUN_TEXT>Reload</FUN_TEXT>
+      <INFO_TEXT>Reload current screen data</INFO_TEXT>
+     </RSMPE_FUNT>
     </FUN>
     <BUT>
+     <RSMPE_BUT>
+      <PFK_CODE>000001</PFK_CODE>
+      <CODE>0001</CODE>
+      <NO>01</NO>
+      <PFNO>17</PFNO>
+     </RSMPE_BUT>
      <RSMPE_BUT>
       <PFK_CODE>000002</PFK_CODE>
       <CODE>0001</CODE>
@@ -1600,6 +1615,12 @@
       <CODE>0001</CODE>
       <NO>03</NO>
       <PFNO>16</PFNO>
+     </RSMPE_BUT>
+     <RSMPE_BUT>
+      <PFK_CODE>000002</PFK_CODE>
+      <CODE>0001</CODE>
+      <NO>04</NO>
+      <PFNO>17</PFNO>
      </RSMPE_BUT>
     </BUT>
     <PFK>
@@ -1619,6 +1640,12 @@
       <CODE>000001</CODE>
       <PFNO>15</PFNO>
       <FUNCODE>EXIT</FUNCODE>
+      <FUNNO>001</FUNNO>
+     </RSMPE_PFK>
+     <RSMPE_PFK>
+      <CODE>000001</CODE>
+      <PFNO>17</PFNO>
+      <FUNCODE>BT_REFRESH</FUNCODE>
       <FUNNO>001</FUNNO>
      </RSMPE_PFK>
      <RSMPE_PFK>
@@ -1663,6 +1690,12 @@
       <FUNCODE>ONLI</FUNCODE>
       <FUNNO>001</FUNNO>
      </RSMPE_PFK>
+     <RSMPE_PFK>
+      <CODE>000002</CODE>
+      <PFNO>17</PFNO>
+      <FUNCODE>BT_REFRESH</FUNCODE>
+      <FUNNO>001</FUNNO>
+     </RSMPE_PFK>
     </PFK>
     <SET>
      <RSMPE_STAF>
@@ -1698,6 +1731,10 @@
       <FUNCTION>BT_CHG_TAB</FUNCTION>
      </RSMPE_STAF>
      <RSMPE_STAF>
+      <STATUS>STATUS_100</STATUS>
+      <FUNCTION>BT_REFRESH</FUNCTION>
+     </RSMPE_STAF>
+     <RSMPE_STAF>
       <STATUS>STATUS_300</STATUS>
       <FUNCTION>BACK</FUNCTION>
      </RSMPE_STAF>
@@ -1728,6 +1765,10 @@
      <RSMPE_STAF>
       <STATUS>STATUS_300</STATUS>
       <FUNCTION>ONLI</FUNCTION>
+     </RSMPE_STAF>
+     <RSMPE_STAF>
+      <STATUS>STATUS_300</STATUS>
+      <FUNCTION>BT_REFRESH</FUNCTION>
      </RSMPE_STAF>
     </SET>
     <DOC>

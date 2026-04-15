@@ -18,6 +18,9 @@ MODULE user_command_0400 INPUT.
   CASE lv_cmd_400.
     WHEN 'BACK' OR 'EXIT' OR 'CANC'.
       LEAVE PROGRAM.
+    WHEN 'BT_REFRESH'.
+      SET SCREEN 0400.
+      LEAVE SCREEN.
     WHEN 'BT_CONTINUE'.
       IF gv_batch_all = 'X'.
         CLEAR gt_batch_tabnames.
@@ -76,6 +79,9 @@ MODULE user_command_0100 INPUT.
   CLEAR gv_full_restore.
 
   CASE lv_cmd.
+    WHEN 'BT_REFRESH'.
+      SET SCREEN 0100.
+      LEAVE SCREEN.
     WHEN 'BACK'.
       gv_hub_allowed = abap_false.
       SET SCREEN 0400.
@@ -266,6 +272,9 @@ MODULE user_command_0300 INPUT.
   CLEAR ok_code.
 
   CASE lv_ucomm.
+    WHEN 'BT_REFRESH'.
+      SET SCREEN 0300.
+      LEAVE SCREEN.
     WHEN 'ONLI'.
       MESSAGE 'Execute (F8) chỉ dùng ở màn Write.' TYPE 'S' DISPLAY LIKE 'W'.
 
@@ -442,6 +451,9 @@ MODULE user_command_0500 INPUT.
   CLEAR ok_code.
 
   CASE lv_u5.
+    WHEN 'BT_REFRESH'.
+      SET SCREEN 0500.
+      LEAVE SCREEN.
     WHEN 'BT_EDIT' OR 'EDIT_BTN'.
       PERFORM zsp26_hub_edit_wvar_0500.
 
@@ -491,6 +503,9 @@ MODULE user_command_0600 INPUT.
   CLEAR ok_code.
 
   CASE lv_u6.
+    WHEN 'BT_REFRESH'.
+      SET SCREEN 0600.
+      LEAVE SCREEN.
     WHEN 'BT_EDIT' OR 'EDIT_BTN'.
       IF gv_variant IS NOT INITIAL.
         IF gv_prog_del IS INITIAL.
@@ -568,6 +583,9 @@ MODULE user_command_0700 INPUT.
   CLEAR ok_code.
 
   CASE lv_c7.
+    WHEN 'BT_REFRESH'.
+      SET SCREEN 0700.
+      LEAVE SCREEN.
     WHEN 'BACK' OR 'EXIT' OR 'CANC'.
       IF go_cont_700 IS BOUND.
         go_cont_700->free( ).
@@ -595,6 +613,9 @@ MODULE user_command_0800 INPUT.
   CLEAR ok_code.
 
   CASE lv_c8.
+    WHEN 'BT_REFRESH'.
+      SET SCREEN 0800.
+      LEAVE SCREEN.
     WHEN 'BT_REG_SAVE'.
       PERFORM do_reg_validate_and_save.
 
@@ -626,6 +647,9 @@ MODULE user_command_0810 INPUT.
   CLEAR ok_code.
 
   CASE lv_c81.
+    WHEN 'BT_REFRESH'.
+      SET SCREEN 0810.
+      LEAVE SCREEN.
     WHEN 'BT_CFG_REG'.
       CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
       gv_reg_ret    = '365'.
