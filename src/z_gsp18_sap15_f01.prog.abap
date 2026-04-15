@@ -3673,16 +3673,21 @@ FORM arch_popup_wvar_3ch
   TRY.
     CALL FUNCTION 'POPUP_WITH_3_BUTTONS_TO_CHOOSE'
       EXPORTING
-        titel          = lv_t40
-        textline1      = ' '
-        text_option1   = 'Change variant'
-        text_option2   = 'Copy variant'
-        text_option3   = 'Delete variant'
-        defaultoption  = '1'
+        titel           = lv_t40
+        diagnosetext1   = '-'
+        diagnosetext2   = ' '
+        diagnosetext3   = ' '
+        textline1       = ' '
+        textline2       = ' '
+        textline3       = ' '
+        text_option1    = 'Change variant'
+        text_option2    = 'Copy variant'
+        text_option3    = 'Delete variant'
+        defaultoption   = '1'
       IMPORTING
-        answer         = lv_answer
+        answer          = lv_answer
       EXCEPTIONS
-        OTHERS         = 1.
+        OTHERS          = 1.
     IF sy-subrc = 0.
       cv_answer = lv_answer.
     ENDIF.
@@ -3703,15 +3708,15 @@ FORM arch_popup_wvar_3ch_fb
   CLEAR cv_answer.
   CALL FUNCTION 'POPUP_TO_DECIDE'
     EXPORTING
-      titel          = iv_titel
-      textline1      = ' '
-      text_option1   = 'Change variant'
-      text_option2   = 'Copy or delete...'
-      defaultoption  = '1'
+      titel         = iv_titel
+      textline1     = '-'
+      text_option1  = 'Change variant'
+      text_option2  = 'Copy or delete...'
+      defaultoption = '1'
     IMPORTING
-      answer         = lv_a
+      answer        = lv_a
     EXCEPTIONS
-      OTHERS         = 1.
+      OTHERS        = 1.
   IF sy-subrc <> 0 OR lv_a = 'A'.
     RETURN.
   ENDIF.
@@ -3722,15 +3727,15 @@ FORM arch_popup_wvar_3ch_fb
 
   CALL FUNCTION 'POPUP_TO_DECIDE'
     EXPORTING
-      titel          = iv_titel
-      textline1      = ' '
-      text_option1   = 'Copy variant'
-      text_option2   = 'Delete variant'
-      defaultoption  = '1'
+      titel         = iv_titel
+      textline1     = '-'
+      text_option1  = 'Copy variant'
+      text_option2  = 'Delete variant'
+      defaultoption = '1'
     IMPORTING
-      answer         = lv_a
+      answer        = lv_a
     EXCEPTIONS
-      OTHERS         = 1.
+      OTHERS        = 1.
   IF sy-subrc <> 0 OR lv_a = 'A'.
     RETURN.
   ENDIF.
@@ -3884,40 +3889,30 @@ FORM arch_copy_write_variant_dialog
            iv_tabname TYPE tabname
            iv_src     TYPE variant.
 
-  DATA: lt_fields    TYPE TABLE OF sval,
-        ls_field     TYPE sval,
-        lv_new       TYPE string,
+  DATA: lv_new       TYPE string,
         lv_tgt       TYPE variant,
         lv_ok        TYPE abap_bool,
         lv_rc        TYPE sy-subrc,
-        lv_ret_popup TYPE char1.
+        lv_pv_out    TYPE char40,
+        lv_pv_ans    TYPE char1.
 
-  CLEAR ls_field.
-  ls_field-tabname   = 'RSVARI'.
-  ls_field-fieldname = 'VARIANT'.
-  ls_field-fieldtext = 'New variant name (logical)'.
-  CLEAR ls_field-value.
-  APPEND ls_field TO lt_fields.
-
-  CALL FUNCTION 'POPUP_GET_VALUES'
+  CALL FUNCTION 'POPUP_TO_GET_VALUE'
     EXPORTING
-      popup_title = 'Copy variant'
+      tabname   = 'RSVARI'
+      fieldname = 'VARIANT'
+      titel     = 'Copy variant'
+      valuein   = space
     IMPORTING
-      returncode  = lv_ret_popup
-    TABLES
-      fields      = lt_fields
+      valueout  = lv_pv_out
+      answer    = lv_pv_ans
     EXCEPTIONS
-      error_in_fields = 1
-      OTHERS            = 2.
-  IF sy-subrc <> 0 OR lv_ret_popup = 'A'.
+      fieldname_not_found = 1
+      OTHERS                = 2.
+  IF sy-subrc <> 0 OR lv_pv_ans = 'A'.
     RETURN.
   ENDIF.
 
-  READ TABLE lt_fields INTO ls_field INDEX 1.
-  IF sy-subrc <> 0.
-    RETURN.
-  ENDIF.
-  lv_new = ls_field-value.
+  lv_new = lv_pv_out.
   CONDENSE lv_new.
   IF lv_new IS INITIAL.
     RETURN.
