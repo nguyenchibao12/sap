@@ -959,17 +959,17 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
     SELECT * FROM admi_run
       WHERE client = @sy-mandt
         AND object = @lv_obj
+      ORDER BY creat_date DESCENDING, document DESCENDING
       INTO TABLE @lt_run
-      UP TO 500 ROWS
-      ORDER BY creat_date DESCENDING, document DESCENDING.
+      UP TO 500 ROWS.
   ELSE.
     SELECT * FROM admi_run
       WHERE client    = @sy-mandt
         AND object    = @lv_obj
         AND user_name = @sy-uname
+      ORDER BY creat_date DESCENDING, document DESCENDING
       INTO TABLE @lt_run
-      UP TO 500 ROWS
-      ORDER BY creat_date DESCENDING, document DESCENDING.
+      UP TO 500 ROWS.
   ENDIF.
 
   IF lt_run IS INITIAL.
