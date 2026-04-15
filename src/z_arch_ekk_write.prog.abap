@@ -82,7 +82,7 @@ INITIALIZATION.
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN OUTPUT.
 *----------------------------------------------------------------------*
-  " Hub mở màn hình này chỉ để tạo/sửa variant: ẩn Execute (F8) — xem Z_GSP18_SAP15_MAIN arch_submit_write_variant_screen
+  " Hub mở màn hình này chỉ để tạo/sửa variant: ẩn Execute (F8) — xem FORM arch_submit_wvar_ss (Z_GSP18_SAP15_F01)
   DATA lv_hide_exec TYPE xfeld.
   CLEAR lv_hide_exec.
   IMPORT zsp26_no_ss_exec = lv_hide_exec FROM MEMORY ID 'Z_GSP18_WR_SS'.

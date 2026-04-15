@@ -573,7 +573,7 @@ ENDFORM.
 *& SUBMIT write report — selection screen chỉ để sửa variant (ẩn Execute)
 *& Hub sets EXPORT trước SUBMIT; Z_ARCH_EKK_WRITE đọc ở AT SS OUTPUT.
 *&---------------------------------------------------------------------*
-FORM arch_submit_write_variant_screen
+FORM arch_submit_wvar_ss
   USING iv_variant TYPE variant.
   IF gv_prog_write IS INITIAL OR gv_tabname IS INITIAL OR iv_variant IS INITIAL.
     RETURN.
@@ -3738,7 +3738,7 @@ FORM zsp26_hub_edit_wvar_0500.
       MESSAGE |Không tạo được variant { lv_vtech }. Kiểm tra quyền variant.| TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
-    PERFORM arch_submit_write_variant_screen USING lv_vtech.
+    PERFORM arch_submit_wvar_ss USING lv_vtech.
     RETURN.
   ENDIF.
 
@@ -3758,7 +3758,7 @@ FORM zsp26_hub_edit_wvar_0500.
     RETURN.
   ENDIF.
   IF lv_ans = '1'.
-    PERFORM arch_submit_write_variant_screen USING lv_run.
+    PERFORM arch_submit_wvar_ss USING lv_run.
     RETURN.
   ENDIF.
 
