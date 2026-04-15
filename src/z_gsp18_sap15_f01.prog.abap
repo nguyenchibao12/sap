@@ -3658,42 +3658,18 @@ FORM f4_gv_tabname_dynp.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Popup 3 lựa chọn: Change / Copy / Delete variant (FM CO hoặc fallback 2 bước)
+*& Popup 3 lựa chọn: Change / Copy / Delete — chỉ POPUP_TO_DECIDE (Basis)
+*& (FM POPUP_WITH_3_BUTTONS_TO_CHOOSE thiếu tham số / khác release → dump)
 *&---------------------------------------------------------------------*
 FORM arch_popup_wvar_3ch
   USING    iv_titel TYPE string
   CHANGING cv_answer TYPE char1.
 
-  DATA: lv_t40    TYPE char40,
-        lv_answer TYPE char1.
+  DATA lv_t40 TYPE char40.
 
   CLEAR cv_answer.
   lv_t40 = iv_titel.
-
-  TRY.
-    CALL FUNCTION 'POPUP_WITH_3_BUTTONS_TO_CHOOSE'
-      EXPORTING
-        titel           = lv_t40
-        diagnosetext1   = '-'
-        diagnosetext2   = ' '
-        diagnosetext3   = ' '
-        textline1       = ' '
-        textline2       = ' '
-        textline3       = ' '
-        text_option1    = 'Change variant'
-        text_option2    = 'Copy variant'
-        text_option3    = 'Delete variant'
-        defaultoption   = '1'
-      IMPORTING
-        answer          = lv_answer
-      EXCEPTIONS
-        OTHERS          = 1.
-    IF sy-subrc = 0.
-      cv_answer = lv_answer.
-    ENDIF.
-  CATCH cx_sy_dyn_call_illegal_func.
-    PERFORM arch_popup_wvar_3ch_fb USING lv_t40 CHANGING cv_answer.
-  ENDTRY.
+  PERFORM arch_popup_wvar_3ch_fb USING lv_t40 CHANGING cv_answer.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -3893,26 +3869,39 @@ FORM arch_copy_write_variant_dialog
         lv_tgt       TYPE variant,
         lv_ok        TYPE abap_bool,
         lv_rc        TYPE sy-subrc,
-        lv_pv_out    TYPE char40,
-        lv_pv_ans    TYPE char1.
+        lv_ret       TYPE char1,
+        lt_fields    TYPE TABLE OF sval,
+        ls_field     TYPE sval.
 
-  CALL FUNCTION 'POPUP_TO_GET_VALUE'
+  CLEAR ls_field.
+  ls_field-tabname   = 'RS38M'.
+  ls_field-fieldname = 'VARIANT'.
+  ls_field-fieldtext = 'New variant'.
+  CLEAR ls_field-value.
+  APPEND ls_field TO lt_fields.
+
+  CALL FUNCTION 'POPUP_GET_VALUES'
     EXPORTING
-      tabname   = 'RSVARI'
-      fieldname = 'VARIANT'
-      titel     = 'Copy variant'
-      valuein   = space
+      popup_title    = 'Copy variant'
+      start_column   = 5
+      start_row      = 5
+      no_value_check = 'X'
     IMPORTING
-      valueout  = lv_pv_out
-      answer    = lv_pv_ans
+      returncode     = lv_ret
+    TABLES
+      fields         = lt_fields
     EXCEPTIONS
-      fieldname_not_found = 1
-      OTHERS                = 2.
-  IF sy-subrc <> 0 OR lv_pv_ans = 'A'.
+      error_in_fields = 1
+      OTHERS            = 2.
+  IF sy-subrc <> 0 OR lv_ret = 'A'.
     RETURN.
   ENDIF.
 
-  lv_new = lv_pv_out.
+  READ TABLE lt_fields INTO ls_field INDEX 1.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+  lv_new = ls_field-value.
   CONDENSE lv_new.
   IF lv_new IS INITIAL.
     RETURN.
