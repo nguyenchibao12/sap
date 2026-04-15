@@ -2666,24 +2666,37 @@ FORM f4_reg_table.
            tabname TYPE tabname,
            ddtext  TYPE as4text,
          END OF ty_dd_tab.
-  DATA: lt_dd  TYPE TABLE OF ty_dd_tab,
+  DATA: lt_dd_all TYPE TABLE OF ty_dd_tab,
+        lt_dd  TYPE TABLE OF ty_dd_tab,
+        lt_df  TYPE TABLE OF dfies,
+        ls_df  TYPE dfies,
+        ls_dd  TYPE ty_dd_tab,
         lt_ret TYPE TABLE OF ddshretval,
         ls_ret TYPE ddshretval,
         lv_win(40) TYPE c VALUE 'Z Tables with DATE field (DDIC)'.
 
-  SELECT DISTINCT a~tabname, a~ddtext
-    FROM dd02v AS a
-    INNER JOIN dd03l AS b
-      ON b~tabname  = a~tabname
-    INTO CORRESPONDING FIELDS OF TABLE @lt_dd
-    WHERE a~tabname   LIKE 'Z%'
-      AND a~tabclass  = 'TRANSP'
-      AND a~as4local  = 'A'
-      AND a~as4vers   = '0000'
-      AND b~as4local  = 'A'
-      AND b~as4vers   = '0000'
-      AND b~fieldname <> '.INCLUDE'
-      AND b~datatype  = 'DATS'.
+  SELECT tabname, ddtext FROM dd02v
+    INTO CORRESPONDING FIELDS OF TABLE @lt_dd_all
+    WHERE tabname  LIKE 'Z%'
+      AND tabclass = 'TRANSP'.
+
+  LOOP AT lt_dd_all INTO ls_dd.
+    CLEAR lt_df.
+    CALL FUNCTION 'DDIF_FIELDINFO_GET'
+      EXPORTING  tabname   = ls_dd-tabname
+      TABLES     dfies_tab = lt_df
+      EXCEPTIONS OTHERS    = 1.
+    IF sy-subrc <> 0.
+      CONTINUE.
+    ENDIF.
+
+    READ TABLE lt_df INTO ls_df
+      WITH KEY inttype = 'D'
+      TRANSPORTING NO FIELDS.
+    IF sy-subrc = 0.
+      APPEND ls_dd TO lt_dd.
+    ENDIF.
+  ENDLOOP.
 
   IF lt_dd IS INITIAL.
     MESSAGE 'Không có bảng Z* TRANSP nào có field DATE để đăng ký.' TYPE 'S' DISPLAY LIKE 'W'.
