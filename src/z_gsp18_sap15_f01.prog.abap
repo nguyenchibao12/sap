@@ -84,6 +84,10 @@ CLASS lcl_btc_handler IMPLEMENTATION.
         IF sy-subrc <> 0.
           RETURN.
         ENDIF.
+        IF ls_b-progname = 'PURGE_ONLY'.
+          PERFORM show_hub_arch_log_recent USING space.
+          RETURN.
+        ENDIF.
         PERFORM show_btc_job_protocol USING ls_b-jobname ls_b-jobcount.
 
       WHEN 'BTC_SPOOL'.
@@ -2519,6 +2523,46 @@ FORM show_hub_btc_job_list.
         AND listident <> @space
       INTO (@ls_btc-progname, @ls_btc-listident).
     MODIFY gt_btc_rows FROM ls_btc INDEX lv_ix.
+  ENDLOOP.
+
+  " Include PURGE-only runs from application log so operators can review all run outcomes in one place.
+  TYPES: BEGIN OF ty_purge_log,
+           exec_date TYPE zsp26_arch_log-exec_date,
+           exec_user TYPE zsp26_arch_log-exec_user,
+           rec_count TYPE zsp26_arch_log-rec_count,
+           status    TYPE zsp26_arch_log-status,
+           message   TYPE zsp26_arch_log-message,
+         END OF ty_purge_log.
+  DATA: lt_purge TYPE TABLE OF ty_purge_log,
+        ls_purge TYPE ty_purge_log.
+
+  IF lv_btc_adm = abap_true.
+    SELECT exec_date, exec_user, rec_count, status, message
+      FROM zsp26_arch_log
+      INTO TABLE @lt_purge
+      UP TO 40 ROWS
+      WHERE action = 'PURGE'
+      ORDER BY exec_date DESCENDING.
+  ELSE.
+    SELECT exec_date, exec_user, rec_count, status, message
+      FROM zsp26_arch_log
+      INTO TABLE @lt_purge
+      UP TO 40 ROWS
+      WHERE action = 'PURGE'
+        AND exec_user = @sy-uname
+      ORDER BY exec_date DESCENDING.
+  ENDIF.
+
+  LOOP AT lt_purge INTO ls_purge.
+    CLEAR ls_btc.
+    ls_btc-jobname    = 'PURGE_ONLY'.
+    ls_btc-jobcount   = '00000000'.
+    ls_btc-status     = 'F'.
+    ls_btc-status_txt = |PURGE { ls_purge-rec_count }|.
+    ls_btc-sdluname   = ls_purge-exec_user.
+    ls_btc-progname   = 'PURGE_ONLY'.
+    ls_btc-strtdate   = ls_purge-exec_date.
+    APPEND ls_btc TO gt_btc_rows.
   ENDLOOP.
 
   IF gt_btc_rows IS INITIAL.
