@@ -2578,6 +2578,60 @@ FORM show_hub_btc_job_list.
     MODIFY gt_btc_rows FROM ls_btc INDEX lv_ix.
   ENDLOOP.
 
+  " Best-effort mapping from SM37 rows to app log rows for quick traceability.
+  TYPES: BEGIN OF ty_btc_log_ref,
+           arch_id    TYPE zsp26_arch_log-arch_id,
+           table_name TYPE zsp26_arch_log-table_name,
+           exec_user  TYPE zsp26_arch_log-exec_user,
+           action     TYPE zsp26_arch_log-action,
+           exec_date  TYPE zsp26_arch_log-exec_date,
+           end_time   TYPE zsp26_arch_log-end_time,
+         END OF ty_btc_log_ref.
+  DATA: lt_log_ref TYPE TABLE OF ty_btc_log_ref,
+        ls_log_ref TYPE ty_btc_log_ref,
+        lv_act     TYPE zsp26_arch_log-action.
+
+  IF lv_btc_adm = abap_true.
+    SELECT arch_id, table_name, exec_user, action, exec_date, end_time
+      FROM zsp26_arch_log
+      INTO TABLE @lt_log_ref
+      UP TO 800 ROWS
+      WHERE ( action = 'ARCHIVE' OR action = 'DELETE' )
+      ORDER BY exec_date DESCENDING, end_time DESCENDING.
+  ELSE.
+    SELECT arch_id, table_name, exec_user, action, exec_date, end_time
+      FROM zsp26_arch_log
+      INTO TABLE @lt_log_ref
+      UP TO 800 ROWS
+      WHERE exec_user = @sy-uname
+        AND ( action = 'ARCHIVE' OR action = 'DELETE' )
+      ORDER BY exec_date DESCENDING, end_time DESCENDING.
+  ENDIF.
+
+  LOOP AT gt_btc_rows INTO ls_btc.
+    lv_ix = sy-tabix.
+    CLEAR lv_act.
+    IF ls_btc-progname CS '_WRITE'.
+      lv_act = 'ARCHIVE'.
+    ELSEIF ls_btc-progname CS '_DELETE'.
+      lv_act = 'DELETE'.
+    ENDIF.
+    IF lv_act IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    READ TABLE lt_log_ref INTO ls_log_ref
+      WITH KEY exec_user = ls_btc-sdluname
+               action    = lv_act
+               exec_date = ls_btc-strtdate.
+    IF sy-subrc = 0.
+      ls_btc-run_ref    = ls_log_ref-arch_id.
+      ls_btc-table_name = ls_log_ref-table_name.
+      MODIFY gt_btc_rows FROM ls_btc INDEX lv_ix.
+      DELETE lt_log_ref INDEX sy-tabix.
+    ENDIF.
+  ENDLOOP.
+
   " Include PURGE-only runs from application log so operators can review all run outcomes in one place.
   TYPES: BEGIN OF ty_purge_log,
            arch_id   TYPE zsp26_arch_log-arch_id,
@@ -2678,6 +2732,8 @@ FORM show_hub_btc_job_list.
           lo_col ?= lo_cols->get_column( 'LISTIDENT' ). lo_col->set_long_text( 'Spool list ID' ).
           lo_col ?= lo_cols->get_column( 'STRTDATE' ). lo_col->set_long_text( 'Start date' ).
           lo_col ?= lo_cols->get_column( 'STRTTIME' ). lo_col->set_long_text( 'Start time' ).
+          lo_col ?= lo_cols->get_column( 'RUN_REF' ). lo_col->set_long_text( 'Archive Run Identifier' ).
+          lo_col ?= lo_cols->get_column( 'TABLE_NAME' ). lo_col->set_long_text( 'Table Name' ).
         CATCH cx_salv_not_found. ENDTRY.
 
       lo_disp = go_btc_alv->get_display_settings( ).
