@@ -122,6 +122,15 @@ CLASS lcl_btc_handler IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    " Fallback for themes where custom SALV functions are hidden:
+    " - STATUS/STATUS_TXT opens app log
+    " - LISTIDENT opens spool
+    " - other columns open job protocol
+    IF column = 'STATUS' OR column = 'STATUS_TXT' OR column = 'ST'.
+      PERFORM show_hub_arch_log_recent USING space.
+      RETURN.
+    ENDIF.
+
     " Double-click theo cột: LISTIDENT mở spool, cột khác mở job protocol.
     IF column = 'LISTIDENT' OR column = 'SPOOL_ID' OR column = 'LIST ID'.
       IF ls_b-listident IS INITIAL.
