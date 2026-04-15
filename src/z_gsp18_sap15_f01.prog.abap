@@ -1093,6 +1093,9 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
         lv_doc TYPE admi_run-document,
         lv_title TYPE c LENGTH 70.
 
+  " Always reset previous selection to avoid stale restore/delete session.
+  CLEAR: gs_del_admi, gv_f4_sess, gv_del_sess_def.
+
   IF gv_object IS INITIAL.
     gv_object = 'Z_ARCH_EKK'.
   ENDIF.
@@ -1287,38 +1290,8 @@ FORM do_restore_from_hub.
         AND message LIKE @lv_like_doc.
   ENDIF.
   IF lv_del_hit = 0.
-    " Fallback cho dữ liệu cũ: log DELETE trước đây chưa gắn DOC=<session>.
-    DATA: lv_legacy_del TYPE i.
-    IF lv_rst_adm = abap_true.
-      SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_legacy_del
-        WHERE action = 'DELETE'.
-    ELSE.
-      SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_legacy_del
-        WHERE action = 'DELETE'
-          AND table_name = @gv_tabname.
-    ENDIF.
-
-    IF lv_legacy_del = 0.
-      MESSAGE |Session { gs_del_admi-document } chưa qua bước DELETE (không có log DELETE) nên chưa được restore.| TYPE 'S' DISPLAY LIKE 'E'.
-      RETURN.
-    ELSE.
-      DATA: lv_legacy_ans TYPE c LENGTH 1.
-      CALL FUNCTION 'POPUP_TO_CONFIRM'
-        EXPORTING
-          titlebar              = 'Legacy delete log'
-          text_question         = |Không tìm thấy DELETE marker theo session DOC={ gs_del_admi-document } (log cũ). Cho phép restore theo legacy delete evidence?|
-          text_button_1         = 'Yes, restore'
-          text_button_2         = 'No'
-          default_button        = '2'
-          display_cancel_button = ' '
-        IMPORTING
-          answer                = lv_legacy_ans
-        EXCEPTIONS
-          OTHERS                = 1.
-      IF lv_legacy_ans <> '1'.
-        RETURN.
-      ENDIF.
-    ENDIF.
+    MESSAGE |Session { gs_del_admi-document } chưa có DELETE marker theo DOC=... nên không được restore.| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
   ENDIF.
 
   " Bước 3: Xác nhận theo role (admin = full session)
@@ -2678,7 +2651,7 @@ FORM show_btc_spool_popup USING VALUE(pv_list) TYPE clike.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& ZSP26_ARCH_LOG — theo GV_TABNAME hoặc user (ARCHIVE/DELETE gần đây)
+*& ZSP26_ARCH_LOG — theo GV_TABNAME hoặc user (ARCHIVE/DELETE/PURGE gần đây)
 *&---------------------------------------------------------------------*
 FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
 
@@ -2714,7 +2687,7 @@ FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
       FROM zsp26_arch_log
       INTO TABLE @lt_lr UP TO 200 ROWS
       WHERE exec_user = @sy-uname
-        AND ( action = 'ARCHIVE' OR action = 'DELETE' )
+        AND ( action = 'ARCHIVE' OR action = 'DELETE' OR action = 'PURGE' )
       ORDER BY exec_date DESCENDING.
   ENDIF.
 
