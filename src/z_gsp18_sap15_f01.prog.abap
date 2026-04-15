@@ -2601,16 +2601,27 @@ FORM do_config.
       CHANGING  t_table      = lt_cfg ).
 
     lo_funcs = lo_alv->get_functions( ).
-    lo_funcs->set_all( abap_true ).
+    " add_function TRƯỚC set_all — nếu không, toolbar đầy icon chuẩn và nút tùy chỉnh
+    " thường rơi vào menu overflow / More (khó thấy).
     TRY.
       lo_funcs->add_function(
         name     = 'REG_TAB'
         icon     = '@0Y@'
-        text     = 'Đăng ký Bảng Mới'
-        tooltip  = 'Thêm bảng Z vào ZSP26_ARCH_CFG (popup)'
-        position = if_salv_c_function_position=>right_of_salv_functions ).
+        text     = 'Đăng ký'
+        tooltip  = 'Đăng ký bảng Z mới vào ZSP26_ARCH_CFG (popup)'
+        position = if_salv_c_function_position=>left_of_salv_functions ).
     CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported.
+      TRY.
+        lo_funcs->add_function(
+          name     = 'REG_TAB'
+          icon     = '@0Y@'
+          text     = 'Đăng ký'
+          tooltip  = 'Đăng ký bảng Z mới vào ZSP26_ARCH_CFG'
+          position = if_salv_c_function_position=>right_of_salv_functions ).
+      CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported.
+      ENDTRY.
     ENDTRY.
+    lo_funcs->set_all( abap_true ).
 
     SET HANDLER lcl_cfg_handler=>on_func FOR lo_alv->get_event( ).
 
@@ -2636,7 +2647,7 @@ FORM do_config.
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(
       |ARCHIVE CONFIG — { lines( lt_cfg ) } dòng | &&
-      |/ Toolbar: [Đăng ký Bảng Mới] để thêm bảng Z.| ).
+      |/ Nút Đăng ký (+) đầu toolbar; nếu không thấy mở menu More (...).| ).
 
     lo_alv->display( ).
 
