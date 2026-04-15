@@ -539,7 +539,11 @@ MODULE user_command_0600 INPUT.
       ENDIF.
 
     WHEN 'BT_ARCH_SEL'.
-      PERFORM arch_del_pick_session_popup USING 'D'.
+      IF gv_purge_mode = 'X'.
+        MESSAGE 'Purge-only mode không cần chọn Archive Selection.' TYPE 'S'.
+      ELSE.
+        PERFORM arch_del_pick_session_popup USING 'D'.
+      ENDIF.
 
     WHEN 'BT_START' OR 'START_BTN'.
       PERFORM maintenance_start_date.
@@ -556,6 +560,8 @@ MODULE user_command_0600 INPUT.
         MESSAGE 'Chưa maintain Start Date. Vào Start Date để khai báo trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_spool_set <> 'X'.
         MESSAGE 'Chưa maintain Spool Parameters. Vào Spool Parameters trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSEIF gv_purge_mode = 'X'.
+        PERFORM do_purge_only_direct.
       ELSEIF gv_del_sess_def IS INITIAL AND gv_variant IS INITIAL.
         MESSAGE 'Chưa chọn Archive Selection (session) hoặc Variant cho delete.' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.

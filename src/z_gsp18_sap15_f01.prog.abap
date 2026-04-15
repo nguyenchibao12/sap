@@ -923,6 +923,155 @@ FORM do_archive_delete_bg_job.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& FORM DO_PURGE_ONLY_DIRECT — direct DB delete (no ADK file/session)
+*&---------------------------------------------------------------------*
+FORM do_purge_only_direct.
+  DATA: ls_cfg       TYPE zsp26_arch_cfg,
+        lv_cfg_ok    TYPE abap_bool,
+        lv_where     TYPE string,
+        lv_where_all TYPE string,
+        lt_df        TYPE TABLE OF dfies,
+        ls_df        TYPE dfies,
+        lt_kfs       TYPE TABLE OF string,
+        lv_kf        TYPE string,
+        lv_wrow      TYPE string,
+        lv_val       TYPE string,
+        lv_pass      TYPE abap_bool,
+        lv_purge_ok  TYPE i VALUE 0,
+        lv_rule_skip TYPE i VALUE 0,
+        lv_no_key    TYPE i VALUE 0,
+        lv_log_id    TYPE sysuuid_x16,
+        ls_log       TYPE zsp26_arch_log,
+        lv_msg       TYPE string.
+
+  FIELD-SYMBOLS: <lt_src> TYPE ANY TABLE,
+                 <row>    TYPE any,
+                 <fv>     TYPE any.
+
+  IF gv_tabname IS INITIAL.
+    MESSAGE 'Vui lòng chọn bảng ở màn trước.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  PERFORM validate_table_against_cfg
+    USING gv_tabname CHANGING ls_cfg lv_cfg_ok.
+  IF lv_cfg_ok = abap_false.
+    MESSAGE |Purge-only: bảng { gv_tabname } chưa có config active hợp lệ (DATE field/retention).| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  PERFORM build_where_from_arch_cfg
+    USING ls_cfg '00000000' '00000000'
+    CHANGING lv_where.
+  lv_where_all = lv_where.
+  PERFORM append_rules_eq_to_where
+    USING ls_cfg-config_id gv_tabname
+    CHANGING lv_where_all.
+
+  CREATE DATA gr_all TYPE TABLE OF (gv_tabname).
+  ASSIGN gr_all->* TO <lt_src>.
+  SELECT * FROM (gv_tabname) INTO TABLE <lt_src> WHERE (lv_where_all).
+  IF <lt_src> IS INITIAL.
+    MESSAGE |Purge-only: không có record nào phù hợp điều kiện purge của { gv_tabname }.| TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'DDIF_FIELDINFO_GET'
+    EXPORTING  tabname   = gv_tabname
+    TABLES     dfies_tab = lt_df
+    EXCEPTIONS OTHERS    = 1.
+  IF sy-subrc <> 0 OR lt_df IS INITIAL.
+    MESSAGE |Purge-only: không đọc được DDIC field list của { gv_tabname }.| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_df INTO ls_df WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
+    APPEND ls_df-fieldname TO lt_kfs.
+  ENDLOOP.
+  IF lt_kfs IS INITIAL.
+    MESSAGE 'Purge-only yêu cầu bảng có key ngoài MANDT để xóa an toàn.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  LOOP AT <lt_src> ASSIGNING <row>.
+    lv_wrow = |MANDT EQ '{ sy-mandt }'|.
+
+    PERFORM apply_archive_rules
+      USING <row> ls_cfg-config_id gv_tabname
+      CHANGING lv_pass.
+    IF lv_pass = abap_false.
+      ADD 1 TO lv_rule_skip.
+      CONTINUE.
+    ENDIF.
+
+    CLEAR lv_no_key.
+    LOOP AT lt_kfs INTO lv_kf.
+      ASSIGN COMPONENT lv_kf OF STRUCTURE <row> TO <fv>.
+      IF <fv> IS ASSIGNED.
+        lv_val = CONV string( <fv> ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_val WITH ''''''.
+        lv_wrow = |{ lv_wrow } AND { lv_kf } EQ '{ lv_val }'|.
+      ELSE.
+        lv_no_key = 1.
+        EXIT.
+      ENDIF.
+    ENDLOOP.
+    IF lv_no_key = 1.
+      CONTINUE.
+    ENDIF.
+
+    IF gv_test_mode = 'X'.
+      ADD 1 TO lv_purge_ok.
+      CONTINUE.
+    ENDIF.
+
+    DELETE FROM (gv_tabname) WHERE (lv_wrow).
+    IF sy-subrc = 0 AND sy-dbcnt > 0.
+      ADD 1 TO lv_purge_ok.
+    ENDIF.
+  ENDLOOP.
+
+  IF gv_test_mode <> 'X' AND lv_purge_ok > 0.
+    COMMIT WORK AND WAIT.
+  ENDIF.
+
+  TRY.
+    lv_log_id = cl_system_uuid=>create_uuid_x16_static( ).
+  CATCH cx_uuid_error.
+    CLEAR lv_log_id.
+  ENDTRY.
+
+  IF lv_log_id IS NOT INITIAL.
+    CLEAR ls_log.
+    ls_log-log_id     = lv_log_id.
+    ls_log-config_id  = ls_cfg-config_id.
+    ls_log-table_name = gv_tabname.
+    ls_log-action     = 'PURGE'.
+    ls_log-rec_count  = lv_purge_ok.
+    ls_log-status     = COND #( WHEN gv_test_mode = 'X' THEN 'I' ELSE 'S' ).
+    ls_log-exec_user  = sy-uname.
+    ls_log-exec_date  = sy-datum.
+    IF gv_test_mode = 'X'.
+      ls_log-message = |Purge-only TEST: matched { lv_purge_ok } row(s); no DB delete. Rule-skip: { lv_rule_skip }.|.
+    ELSE.
+      ls_log-message = |Purge-only: deleted { lv_purge_ok } row(s). Rule-skip: { lv_rule_skip }.|.
+    ENDIF.
+    INSERT zsp26_arch_log FROM ls_log.
+    IF sy-subrc = 0.
+      COMMIT WORK AND WAIT.
+    ENDIF.
+  ENDIF.
+
+  IF gv_test_mode = 'X'.
+    lv_msg = |Purge-only TEST: { lv_purge_ok } row(s) sẽ bị xóa (không xóa DB). Rule-skip: { lv_rule_skip }.|.
+    MESSAGE lv_msg TYPE 'S' DISPLAY LIKE 'W'.
+  ELSE.
+    lv_msg = |Purge-only DONE: đã xóa { lv_purge_ok } row(s) khỏi { gv_tabname }. Rule-skip: { lv_rule_skip }.|.
+    MESSAGE lv_msg TYPE 'S'.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& FORM ARCH_DEL_PICK_SESSION_POPUP — chọn session/file delete (ADMI_RUN, AOBJ)
 *&  Popup F4 nội bộ — không gọi transaction SARA
 *&---------------------------------------------------------------------*

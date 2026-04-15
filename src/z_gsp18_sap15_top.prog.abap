@@ -124,6 +124,7 @@ DATA: gv_disp_mandt    TYPE mandt,
       gv_stat_spool_tx TYPE char20,
       gv_scr600_head   TYPE char80,
       gv_f4_sess       TYPE admi_run-document,
+      gv_purge_mode    TYPE xfeld VALUE space,
       gv_del_sess_def  TYPE char1,
       gs_del_admi      TYPE admi_run.
 

@@ -199,7 +199,9 @@ MODULE init_fields_0600 OUTPUT.
 
   gv_scr600_head = |Archive for { gv_object }|.
 
-  IF gv_del_sess_def = 'X' AND gs_del_admi-document IS NOT INITIAL.
+  IF gv_purge_mode = 'X'.
+    gv_stat_arch_tx = 'N/A (Purge-only)'.
+  ELSEIF gv_del_sess_def = 'X' AND gs_del_admi-document IS NOT INITIAL.
     gv_stat_arch_tx = |Defined ({ gs_del_admi-document })|.
   ELSEIF gv_del_sess_def = 'X' OR gv_variant IS NOT INITIAL.
     gv_stat_arch_tx = 'Defined'.
