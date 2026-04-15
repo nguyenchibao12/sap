@@ -3658,8 +3658,8 @@ FORM f4_gv_tabname_dynp.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Popup 3 lựa chọn: Change / Copy / Delete — chỉ POPUP_TO_DECIDE (Basis)
-*& (FM POPUP_WITH_3_BUTTONS_TO_CHOOSE thiếu tham số / khác release → dump)
+*& Popup 3 lựa chọn: Change / Copy / Delete — 2× POPUP_TO_DECIDE (Basis)
+*& Không dùng POPUP_WITH_3_BUTTONS_TO_CHOOSE (CO, tham số DIAGNOSETEXT* tùy release).
 *&---------------------------------------------------------------------*
 FORM arch_popup_wvar_3ch
   USING    iv_titel TYPE string
@@ -3673,7 +3673,7 @@ FORM arch_popup_wvar_3ch
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Fallback khi không có POPUP_WITH_3_BUTTONS_TO_CHOOSE (2x 2 lựa chọn)
+*& Hai bước: Change vs Copy/Delete → Copy vs Delete (trả về 1 / 2 / 3)
 *&---------------------------------------------------------------------*
 FORM arch_popup_wvar_3ch_fb
   USING    iv_titel TYPE char40
