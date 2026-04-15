@@ -99,7 +99,7 @@ DATA: gt_adm_list TYPE TABLE OF zsp26_arch_admin,
 " Screen 0800 — đăng ký bảng mới vào ZSP26_ARCH_CFG (từ [Config])
 DATA: gv_reg_table  TYPE tabname,
       gv_reg_datfld TYPE fieldname,
-      gv_reg_ret    TYPE zsp26_de_retdays,
+      gv_reg_ret    TYPE char6,
       gv_reg_desc   TYPE char80,
       gv_reg_active TYPE char1.
 

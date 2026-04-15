@@ -236,8 +236,8 @@ MODULE status_0800 OUTPUT.
   IF gv_reg_active IS INITIAL.
     gv_reg_active = 'X'.
   ENDIF.
-  IF gv_reg_ret IS INITIAL OR gv_reg_ret = 0.
-    gv_reg_ret = 365.
+  IF gv_reg_ret IS INITIAL OR gv_reg_ret CO space.
+    gv_reg_ret = '365'.
   ENDIF.
   SET PF-STATUS 'STATUS_300'.
   SET TITLEBAR 'TITLE_300'.

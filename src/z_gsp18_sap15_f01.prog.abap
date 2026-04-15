@@ -27,7 +27,7 @@ CLASS lcl_cfg_handler IMPLEMENTATION.
     CHECK e_salv_function = 'REG_TAB'.
 
     CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
-    gv_reg_ret    = 365.
+    gv_reg_ret    = '365'.
     gv_reg_active = 'X'.
 
     CALL SCREEN 0800 STARTING AT 12 6 ENDING AT 88 20.
@@ -2778,7 +2778,9 @@ FORM do_reg_validate_and_save.
         lv_uuid      TYPE sysuuid_x16,
         lv_ans       TYPE char1,
         lv_tab       TYPE tabname,
-        lv_fld       TYPE fieldname.
+        lv_fld       TYPE fieldname,
+        lv_ret_days  TYPE i,
+        lv_ret_raw   TYPE string.
 
   lv_tab = gv_reg_table.
   lv_fld = gv_reg_datfld.
@@ -2790,8 +2792,15 @@ FORM do_reg_validate_and_save.
     RETURN.
   ENDIF.
 
-  IF gv_reg_ret <= 0.
-    MESSAGE 'Retention (ngày) phải > 0.' TYPE 'S' DISPLAY LIKE 'E'.
+  lv_ret_raw = gv_reg_ret.
+  CONDENSE lv_ret_raw NO-GAPS.
+  IF lv_ret_raw IS INITIAL OR NOT lv_ret_raw CO '0123456789'.
+    MESSAGE 'Retention: nhập số ngày (chỉ chữ số, vd 365).' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+  lv_ret_days = CONV i( lv_ret_raw ).
+  IF lv_ret_days <= 0 OR lv_ret_days > 9999.
+    MESSAGE 'Retention phải từ 1 đến 9999.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -2878,7 +2887,7 @@ FORM do_reg_validate_and_save.
   ls_cfg-config_id   = lv_uuid.
   ls_cfg-table_name  = lv_tab.
   ls_cfg-description = gv_reg_desc.
-  ls_cfg-retention   = gv_reg_ret.
+  ls_cfg-retention   = CONV zsp26_de_retdays( lv_ret_days ).
   ls_cfg-data_field  = lv_fld.
   ls_cfg-is_active   = gv_reg_active.
   ls_cfg-created_by  = sy-uname.
@@ -2889,7 +2898,7 @@ FORM do_reg_validate_and_save.
     COMMIT WORK.
     MESSAGE |Đã đăng ký { lv_tab }. Mở lại [Config] để thấy dòng mới.| TYPE 'S'.
     CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
-    gv_reg_ret    = 365.
+    gv_reg_ret    = '365'.
     gv_reg_active = 'X'.
     LEAVE TO SCREEN 0.
   ELSE.

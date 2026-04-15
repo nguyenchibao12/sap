@@ -606,6 +606,7 @@ MODULE user_command_0800 INPUT.
     WHEN 'BT_REG_SAVE'.
       PERFORM do_reg_validate_and_save.
 
+    " CANC = nút Cancel dynpro (FCODE CANC) → xử lý như Exit: không kiểm tra chuyển đổi field
     WHEN 'BT_REG_CANCEL' OR 'BACK' OR 'EXIT' OR 'CANC'.
       CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_ret, gv_reg_desc, gv_reg_active.
       LEAVE TO SCREEN 0.
@@ -635,7 +636,7 @@ MODULE user_command_0810 INPUT.
   CASE lv_c81.
     WHEN 'BT_CFG_REG'.
       CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
-      gv_reg_ret    = 365.
+      gv_reg_ret    = '365'.
       gv_reg_active = 'X'.
       CALL SCREEN 0800 STARTING AT 12 6 ENDING AT 88 20.
       LEAVE TO SCREEN 0.
