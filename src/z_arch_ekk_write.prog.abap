@@ -80,6 +80,17 @@ INITIALIZATION.
   bt_data = 'Show Eligible Data'.
 
 *----------------------------------------------------------------------*
+AT SELECTION-SCREEN OUTPUT.
+*----------------------------------------------------------------------*
+  " Hub mở màn hình này chỉ để tạo/sửa variant: ẩn Execute (F8) — xem Z_GSP18_SAP15_MAIN arch_submit_write_variant_screen
+  DATA lv_hide_exec TYPE xfeld.
+  CLEAR lv_hide_exec.
+  IMPORT zsp26_no_ss_exec = lv_hide_exec FROM MEMORY ID 'Z_GSP18_WR_SS'.
+  IF sy-subrc = 0 AND lv_hide_exec = 'X'.
+    PERFORM insert_into_excl(RSDBRUNT) USING 'ONLI'.
+  ENDIF.
+
+*----------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
 *----------------------------------------------------------------------*
   PERFORM f4_arch_cfg_table CHANGING p_table.

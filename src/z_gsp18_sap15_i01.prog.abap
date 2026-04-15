@@ -223,11 +223,7 @@ MODULE check_variant_0300 INPUT.
           TYPE 'S' DISPLAY LIKE 'E'.
         RETURN.
       ENDIF.
-      SUBMIT (gv_prog_write)
-        WITH p_table = gv_tabname
-        USING SELECTION-SET lv_vtech_c
-        VIA SELECTION-SCREEN
-        AND RETURN.
+      PERFORM arch_submit_write_variant_screen USING lv_vtech_c.
     ELSE.
       CLEAR gv_variant.
     ENDIF.
@@ -278,11 +274,7 @@ MODULE user_command_0300 INPUT.
                 r_c     = lv_rc_300.
 
             IF lv_rc_300 = 0.
-              SUBMIT (gv_prog_write)
-                WITH p_table = gv_tabname
-                USING SELECTION-SET lv_vtech_300
-                VIA SELECTION-SCREEN
-                AND RETURN.
+              PERFORM arch_submit_write_variant_screen USING lv_vtech_300.
             ELSE.
               lv_q_300 = |Variant chưa tồn tại. Ô Variant giữ "{ gv_variant }". Tên trong SAP: { lv_vtech_300 } (chỉ tham khảo). Tạo mới?|.
               CALL FUNCTION 'POPUP_TO_CONFIRM'
@@ -305,11 +297,7 @@ MODULE user_command_0300 INPUT.
                     TYPE 'S' DISPLAY LIKE 'E'.
                   RETURN.
                 ENDIF.
-                SUBMIT (gv_prog_write)
-                  WITH p_table = gv_tabname
-                  USING SELECTION-SET lv_vtech_300
-                  VIA SELECTION-SCREEN
-                  AND RETURN.
+                PERFORM arch_submit_write_variant_screen USING lv_vtech_300.
               ELSE.
                 CLEAR gv_variant.
               ENDIF.

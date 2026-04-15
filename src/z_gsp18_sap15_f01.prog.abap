@@ -570,6 +570,24 @@ FORM arch_ensure_write_variant
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& SUBMIT write report — selection screen chỉ để sửa variant (ẩn Execute)
+*& Hub sets EXPORT trước SUBMIT; Z_ARCH_EKK_WRITE đọc ở AT SS OUTPUT.
+*&---------------------------------------------------------------------*
+FORM arch_submit_write_variant_screen
+  USING iv_variant TYPE variant.
+  IF gv_prog_write IS INITIAL OR gv_tabname IS INITIAL OR iv_variant IS INITIAL.
+    RETURN.
+  ENDIF.
+  EXPORT zsp26_no_ss_exec = 'X' TO MEMORY ID 'Z_GSP18_WR_SS'.
+  SUBMIT (gv_prog_write)
+    WITH p_table = gv_tabname
+    USING SELECTION-SET iv_variant
+    VIA SELECTION-SCREEN
+    AND RETURN.
+  FREE MEMORY ID 'Z_GSP18_WR_SS'.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& FORM DO_ARCHIVE_VIA_ADK — gọi ADK Write Program (từ lcl_handler)
 *&---------------------------------------------------------------------*
 FORM do_archive_via_adk.
@@ -3720,11 +3738,7 @@ FORM zsp26_hub_edit_wvar_0500.
       MESSAGE |Không tạo được variant { lv_vtech }. Kiểm tra quyền variant.| TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
-    SUBMIT (gv_prog_write)
-      WITH p_table = gv_tabname
-      USING SELECTION-SET lv_vtech
-      VIA SELECTION-SCREEN
-      AND RETURN.
+    PERFORM arch_submit_write_variant_screen USING lv_vtech.
     RETURN.
   ENDIF.
 
@@ -3744,11 +3758,7 @@ FORM zsp26_hub_edit_wvar_0500.
     RETURN.
   ENDIF.
   IF lv_ans = '1'.
-    SUBMIT (gv_prog_write)
-      WITH p_table = gv_tabname
-      USING SELECTION-SET lv_run
-      VIA SELECTION-SCREEN
-      AND RETURN.
+    PERFORM arch_submit_write_variant_screen USING lv_run.
     RETURN.
   ENDIF.
 
