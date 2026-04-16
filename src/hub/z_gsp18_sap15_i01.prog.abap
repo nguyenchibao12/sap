@@ -87,12 +87,10 @@ MODULE user_command_0100 INPUT.
       ENDIF.
 
     WHEN 'BT_RESTORE'.
-      IF lv_is_admin = abap_true.
-        PERFORM do_restore_from_hub.
-      ELSEIF gv_tabname IS INITIAL.
+      IF gv_tabname IS INITIAL AND lv_is_admin = abap_false.
         MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
-        PERFORM do_restore_from_hub.
+        PERFORM do_restore_menu.
       ENDIF.
 
     WHEN 'BT_ADK_DELETE'.
@@ -104,7 +102,7 @@ MODULE user_command_0100 INPUT.
       ENDIF.
 
     WHEN 'BT_MONITOR'.
-      PERFORM do_monitor.
+      PERFORM do_monitor_menu.
 
     WHEN 'BT_MANAGE'.
       IF lv_is_admin = abap_true.

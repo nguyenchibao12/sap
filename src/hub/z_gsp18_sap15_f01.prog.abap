@@ -1346,6 +1346,37 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& FORM DO_RESTORE_MENU — popup chọn Browse hoặc Restore
+*&---------------------------------------------------------------------*
+FORM do_restore_menu.
+  DATA: lv_ans TYPE char1.
+
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar              = 'Archive Read / Restore'
+      text_question         = 'Chọn thao tác:'
+      text_button_1         = 'Xem archived data'
+      text_button_2         = 'Restore vào DB'
+      display_cancel_button = 'X'
+    IMPORTING
+      answer                = lv_ans
+    EXCEPTIONS
+      OTHERS                = 1.
+
+  CASE lv_ans.
+    WHEN '1'.
+      IF gv_tabname IS INITIAL.
+        MESSAGE 'Vui lòng nhập Table Name để xem archived data.' TYPE 'S' DISPLAY LIKE 'E'.
+        RETURN.
+      ENDIF.
+      PERFORM do_restore_preview.
+    WHEN '2'.
+      PERFORM do_restore_from_hub.
+    WHEN OTHERS.
+  ENDCASE.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& FORM DO_RESTORE_FROM_HUB — Restore từ archive (xác nhận → ADK + p_rest=X)
 *&---------------------------------------------------------------------*
 FORM do_restore_from_hub.
@@ -1636,6 +1667,34 @@ ENDFORM.
 *& FORM DO_MONITOR — Storage Analysis & Monitoring (Enhanced)
 *&   Phase 1: Fix duplicates  — GROUP BY table_name
 *&   Phase 2: Extra columns   — arch_recs, del_recs, pct_saved,
+*&---------------------------------------------------------------------*
+*& FORM DO_MONITOR_MENU — popup chọn Dashboard hoặc Archive Inventory
+*&---------------------------------------------------------------------*
+FORM do_monitor_menu.
+  DATA: lv_ans TYPE char1.
+
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar              = 'Monitor'
+      text_question         = 'Chọn loại báo cáo:'
+      text_button_1         = 'Dashboard (traffic light)'
+      text_button_2         = 'Archive Inventory'
+      display_cancel_button = 'X'
+    IMPORTING
+      answer                = lv_ans
+    EXCEPTIONS
+      OTHERS                = 1.
+
+  CASE lv_ans.
+    WHEN '1'.
+      PERFORM do_monitor.
+    WHEN '2'.
+      CLEAR gt_arch_stat.
+      SET SCREEN 0200. LEAVE SCREEN.
+    WHEN OTHERS.
+  ENDCASE.
+ENDFORM.
+
 *&                               last_arch_d, last_del_d, status_txt
 *&   Phase 3: Traffic light   — OVERDUE(red) / WARNING(yellow) / OK(green)
 *&   Phase 4: Detail Log btn  — drill-down to ZSP26_ARCH_LOG per table
