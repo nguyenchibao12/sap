@@ -710,6 +710,9 @@ FORM do_archive_write_bg_job.
         OTHERS  = 1.
     IF sy-subrc = 0.
       LOOP AT lt_var_par INTO ls_vp WHERE selname = 'S_DATE'.
+        IF ls_vp-low IS INITIAL AND ls_vp-high IS INITIAL.
+          CONTINUE.
+        ENDIF.
         CLEAR ls_sdate.
         ls_sdate-sign   = ls_vp-sign.
         ls_sdate-option = ls_vp-option.
