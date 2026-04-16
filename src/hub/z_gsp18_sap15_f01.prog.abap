@@ -3076,11 +3076,13 @@ ENDFORM.
 FORM do_delete_old_logs.
   DATA: lv_adm     TYPE abap_bool,
         lv_answer  TYPE char1,
-        lv_days_c  TYPE char4,
         lv_days    TYPE i,
         lv_cutoff  TYPE d,
         lv_deleted TYPE i,
-        lv_q       TYPE string.
+        lv_q       TYPE string,
+        lv_rc      TYPE char1,
+        lt_fields  TYPE TABLE OF sval,
+        ls_field   TYPE sval.
 
   PERFORM is_arch_admin CHANGING lv_adm.
   IF lv_adm = abap_false.
@@ -3088,22 +3090,27 @@ FORM do_delete_old_logs.
     RETURN.
   ENDIF.
 
-  lv_days_c = '90'.
+  ls_field-tabname   = 'ZSP26_ARCH_LOG'.
+  ls_field-fieldname = 'REC_COUNT'.
+  ls_field-fieldtext = 'Số ngày giữ lại'.
+  ls_field-value     = '90'.
+  APPEND ls_field TO lt_fields.
 
-  CALL FUNCTION 'POPUP_TO_GET_ONE_VALUE'
+  CALL FUNCTION 'POPUP_GET_VALUES'
     EXPORTING
-      textline1   = 'Nhập số ngày giữ lại (xóa log cũ hơn):'
-      titel       = 'Delete Old Archive Logs'
-      valuelength = 4
+      popup_title = 'Xóa log cũ — nhập số ngày giữ lại'
     IMPORTING
-      value1      = lv_days_c
+      returncode  = lv_rc
+    TABLES
+      fields      = lt_fields
     EXCEPTIONS
       OTHERS      = 1.
-  IF sy-subrc <> 0 OR lv_days_c IS INITIAL.
+  IF sy-subrc <> 0 OR lv_rc = 'A'.
     RETURN.
   ENDIF.
 
-  lv_days = lv_days_c.
+  READ TABLE lt_fields INTO ls_field INDEX 1.
+  lv_days = ls_field-value.
   IF lv_days < 1.
     MESSAGE 'Số ngày phải >= 1.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
