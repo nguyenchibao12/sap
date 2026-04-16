@@ -160,6 +160,15 @@ MODULE init_fields_0500 OUTPUT.
   IF gv_prog_write IS INITIAL.
     PERFORM get_archive_programs.
   ENDIF.
+
+  PERFORM refresh_var_tech_display.
+
+  LOOP AT SCREEN.
+    IF screen-name = 'GV_VAR_TECH'.
+      screen-input = 0.
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
@@ -203,6 +212,15 @@ MODULE init_fields_0600 OUTPUT.
   IF gv_prog_del IS INITIAL.
     PERFORM get_archive_programs.
   ENDIF.
+
+  PERFORM refresh_var_tech_display.
+
+  LOOP AT SCREEN.
+    IF screen-name = 'GV_VAR_TECH'.
+      screen-input = 0.
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*

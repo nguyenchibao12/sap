@@ -588,6 +588,28 @@ FORM arch_submit_wvar_ss
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& FORM REFRESH_VAR_TECH_DISPLAY — PBO: show tên kỹ thuật đầy đủ
+*&---------------------------------------------------------------------*
+FORM refresh_var_tech_display.
+  DATA: lv_vt TYPE variant,
+        lv_ok TYPE abap_bool.
+
+  CLEAR gv_var_tech.
+  IF gv_variant IS INITIAL OR gv_tabname IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  PERFORM arch_build_write_var_tech
+    USING gv_tabname gv_variant
+    CHANGING lv_vt lv_ok.
+  IF lv_ok = abap_true.
+    gv_var_tech = lv_vt.
+  ELSE.
+    gv_var_tech = '(tên quá dài / không hợp lệ)'.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& FORM DO_ARCHIVE_VIA_ADK — gọi ADK Write Program (từ lcl_handler)
 *&---------------------------------------------------------------------*
 FORM do_archive_via_adk.
@@ -629,16 +651,6 @@ FORM arch_get_write_vrun
       r_c     = lv_rc_var.
   IF lv_rc_var = 0.
     cv_vrun = lv_vtech.
-  ELSE.
-    CALL FUNCTION 'RS_VARIANT_EXISTS'
-      EXPORTING
-        report  = 'Z_ARCH_EKK_WRITE'
-        variant = gv_variant
-      IMPORTING
-        r_c     = lv_rc_var.
-    IF lv_rc_var = 0.
-      cv_vrun = gv_variant.
-    ENDIF.
   ENDIF.
 ENDFORM.
 
@@ -683,17 +695,21 @@ FORM do_archive_write_bg_job.
     gv_tabname = lv_save.
     RETURN.
   ENDIF.
+  IF gv_test_mode = 'X'.
+    MESSAGE 'Write job chạy ở Test Mode — không ghi archive thật.' TYPE 'S' DISPLAY LIKE 'W'.
+  ENDIF.
+
   IF lv_vrun IS NOT INITIAL.
     SUBMIT z_arch_ekk_write
       WITH p_table = gv_tabname
-      WITH p_test  = ' '
+      WITH p_test  = gv_test_mode
       USING SELECTION-SET lv_vrun
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   ELSE.
     SUBMIT z_arch_ekk_write
       WITH p_table = gv_tabname
-      WITH p_test  = ' '
+      WITH p_test  = gv_test_mode
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   ENDIF.
@@ -728,10 +744,54 @@ FORM do_archive_write_bg_job.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& FORM ARCH_RESOLVE_DEL_VARIANT — resolve tech variant for delete program
+*&---------------------------------------------------------------------*
+FORM arch_resolve_del_variant
+  CHANGING cv_vrun TYPE variant
+           cv_err  TYPE abap_bool.
+
+  DATA: lv_vtech  TYPE variant,
+        lv_vok    TYPE abap_bool,
+        lv_rc_var TYPE sy-subrc.
+
+  CLEAR: cv_vrun, cv_err.
+
+  IF gv_variant IS INITIAL.
+    RETURN.
+  ENDIF.
+  IF gv_prog_del IS INITIAL.
+    PERFORM get_archive_programs.
+  ENDIF.
+  IF gv_prog_del IS INITIAL.
+    cv_err = abap_true.
+    RETURN.
+  ENDIF.
+
+  PERFORM arch_build_write_var_tech
+    USING gv_tabname gv_variant
+    CHANGING lv_vtech lv_vok.
+  IF lv_vok = abap_false.
+    cv_err = abap_true.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'RS_VARIANT_EXISTS'
+    EXPORTING
+      report  = gv_prog_del
+      variant = lv_vtech
+    IMPORTING
+      r_c     = lv_rc_var.
+  IF lv_rc_var = 0.
+    cv_vrun = lv_vtech.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& FORM DO_ARCHIVE_DELETE_JOB — SUBMIT delete program (ADK delete)
 *&---------------------------------------------------------------------*
 FORM do_archive_delete_job.
-  DATA: lv_rc_var  TYPE sy-subrc,
+  DATA: lv_vrun    TYPE variant,
+        lv_verr    TYPE abap_bool,
         lv_sel_doc TYPE admi_run-document.
 
   IF gv_tabname IS INITIAL.
@@ -763,26 +823,20 @@ FORM do_archive_delete_job.
     ENDIF.
   ENDIF.
 
-  IF gv_variant IS NOT INITIAL.
-    CALL FUNCTION 'RS_VARIANT_EXISTS'
-      EXPORTING
-        report  = gv_prog_del
-        variant = gv_variant
-      IMPORTING
-        r_c     = lv_rc_var.
+  PERFORM arch_resolve_del_variant CHANGING lv_vrun lv_verr.
+  IF lv_verr = abap_true.
+    MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
   ENDIF.
 
-  IF gv_variant IS NOT INITIAL AND lv_rc_var = 0.
+  IF lv_vrun IS NOT INITIAL.
     SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
       WITH p_doc   = lv_sel_doc
-      USING SELECTION-SET gv_variant
+      USING SELECTION-SET lv_vrun
       AND RETURN.
   ELSE.
-    IF gv_variant IS NOT INITIAL AND lv_rc_var <> 0.
-      MESSAGE |Variant { gv_variant } không tồn tại trên { gv_prog_del } - chạy với default selection.| TYPE 'S' DISPLAY LIKE 'W'.
-    ENDIF.
     SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
@@ -797,7 +851,8 @@ ENDFORM.
 FORM do_archive_delete_bg_job.
   DATA: lv_jobname  TYPE tbtcjob-jobname,
         lv_jobcount TYPE tbtcjob-jobcount,
-        lv_rc_var   TYPE sy-subrc,
+        lv_vrun     TYPE variant,
+        lv_verr     TYPE abap_bool,
         lv_sel_doc  TYPE admi_run-document.
 
   IF gv_tabname IS INITIAL.
@@ -829,13 +884,10 @@ FORM do_archive_delete_bg_job.
     ENDIF.
   ENDIF.
 
-  IF gv_variant IS NOT INITIAL.
-    CALL FUNCTION 'RS_VARIANT_EXISTS'
-      EXPORTING
-        report  = gv_prog_del
-        variant = gv_variant
-      IMPORTING
-        r_c     = lv_rc_var.
+  PERFORM arch_resolve_del_variant CHANGING lv_vrun lv_verr.
+  IF lv_verr = abap_true.
+    MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
   ENDIF.
 
   lv_jobname = |ZARCH_DEL_{ sy-uname }|.
@@ -855,18 +907,15 @@ FORM do_archive_delete_bg_job.
     RETURN.
   ENDIF.
 
-  IF gv_variant IS NOT INITIAL AND lv_rc_var = 0.
+  IF lv_vrun IS NOT INITIAL.
     SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
       WITH p_doc   = lv_sel_doc
-      USING SELECTION-SET gv_variant
+      USING SELECTION-SET lv_vrun
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   ELSE.
-    IF gv_variant IS NOT INITIAL AND lv_rc_var <> 0.
-      MESSAGE |Variant { gv_variant } không tồn tại trên { gv_prog_del } - schedule job với default selection.| TYPE 'S' DISPLAY LIKE 'W'.
-    ENDIF.
     SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
@@ -3744,7 +3793,8 @@ FORM zsp26_hub_edit_wvar_0500.
         lv_ok    TYPE abap_bool,
         lv_msg   TYPE string,
         lv_pick  TYPE char1,
-        lv_tit_s TYPE string.
+        lv_tit_s TYPE string,
+        lv_vlog  TYPE string.
 
   IF gv_variant IS INITIAL.
     MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
@@ -3752,6 +3802,14 @@ FORM zsp26_hub_edit_wvar_0500.
   ENDIF.
   IF gv_tabname IS INITIAL.
     MESSAGE 'Chọn bảng archive trước khi chỉnh Variant' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  lv_vlog = gv_variant.
+  TRANSLATE lv_vlog TO UPPER CASE.
+  CONDENSE lv_vlog NO-GAPS.
+  IF lv_vlog = 'DEFAULT'.
+    MESSAGE |"DEFAULT" là tên dành cho variant hệ thống (do utility tạo). Dùng tên khác (vd VAR_01).| TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
   IF gv_prog_write IS INITIAL.
@@ -3778,16 +3836,6 @@ FORM zsp26_hub_edit_wvar_0500.
       r_c     = lv_rc.
   IF lv_rc = 0.
     lv_run = lv_vtech.
-  ELSE.
-    CALL FUNCTION 'RS_VARIANT_EXISTS'
-      EXPORTING
-        report  = gv_prog_write
-        variant = gv_variant
-      IMPORTING
-        r_c     = lv_rc.
-    IF lv_rc = 0.
-      lv_run = gv_variant.
-    ENDIF.
   ENDIF.
 
   IF lv_run IS INITIAL.
@@ -3818,7 +3866,7 @@ FORM zsp26_hub_edit_wvar_0500.
   ENDIF.
 
   " Variant đã tồn tại: một popup Change / Copy / Delete (giống SE91-style)
-  lv_tit_s = |Variant { gv_variant }|.
+  lv_tit_s = |Variant { lv_run } ({ gv_variant })|.
   PERFORM arch_popup_wvar_3ch USING lv_tit_s CHANGING lv_pick.
   IF lv_pick <> '1' AND lv_pick <> '2' AND lv_pick <> '3'.
     RETURN.

@@ -132,24 +132,53 @@ START-OF-SELECTION.
       CONTINUE.
     ENDIF.
 
-    " Create/update variant (tên VARID = PREFIX_DEFAULT, khớp F4 theo bảng)
-    CALL FUNCTION 'RS_CHANGE_CREATED_VARIANT'
+    DATA: ls_varid_cv TYPE varid,
+          lt_varit_cv TYPE TABLE OF varit,
+          ls_varit_cv TYPE varit,
+          lv_rep_cv   TYPE syrepid.
+    lv_rep_cv = p_report.
+
+    CLEAR ls_varid_cv.
+    ls_varid_cv-mandt      = sy-mandt.
+    ls_varid_cv-report     = lv_rep_cv.
+    ls_varid_cv-variant    = lv_vname.
+    ls_varid_cv-environmnt = 'A'.
+    ls_varid_cv-aedat      = sy-datum.
+    ls_varid_cv-aetime     = sy-uzeit.
+
+    CLEAR ls_varit_cv.
+    ls_varit_cv-mandt   = sy-mandt.
+    ls_varit_cv-langu   = sy-langu.
+    ls_varit_cv-report  = lv_rep_cv.
+    ls_varit_cv-variant = lv_vname.
+    ls_varit_cv-vtext   = ls_table-desc.
+    REFRESH lt_varit_cv.
+    APPEND ls_varit_cv TO lt_varit_cv.
+
+    CALL FUNCTION 'RS_CREATE_VARIANT'
       EXPORTING
-        curr_report          = p_report
-        curr_variant         = lv_vname
-        vari_desc            = ls_table-desc
+        curr_report               = lv_rep_cv
+        curr_variant              = lv_vname
+        vari_desc                 = ls_varid_cv
       TABLES
-        vari_contents        = lt_params
+        vari_contents             = lt_params
+        vari_text                 = lt_varit_cv
       EXCEPTIONS
         illegal_report_or_variant = 1
         illegal_variantname       = 2
         not_authorized            = 3
         not_executed              = 4
         report_not_existent       = 5
-        OTHERS                    = 6.
+        report_not_supplied       = 6
+        variant_exists            = 7
+        variant_locked            = 8
+        OTHERS                    = 9.
 
     IF sy-subrc = 0.
-      WRITE: / |  ✓ Variant { lv_vname } ({ ls_table-tabname }) — { ls_table-desc }|.
+      COMMIT WORK AND WAIT.
+      WRITE: / |  ✓ Created { lv_vname } ({ ls_table-tabname }) — { ls_table-desc }|.
+    ELSEIF sy-subrc = 7.
+      WRITE: / |  ○ Already exists { lv_vname } ({ ls_table-tabname }) — skipped (no overwrite)|.
     ELSE.
       WRITE: / |  ✗ Failed: { ls_table-tabname } (sy-subrc={ sy-subrc })|.
     ENDIF.

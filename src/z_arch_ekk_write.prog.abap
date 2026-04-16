@@ -52,8 +52,7 @@ SELECTION-SCREEN END OF BLOCK b0.
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME.
 SELECTION-SCREEN COMMENT /1(72) g_scr_h1.
 SELECT-OPTIONS: s_date FOR sy-datum.
-PARAMETERS:     p_keyf TYPE char50,
-                p_test TYPE c AS CHECKBOX DEFAULT ' '.
+PARAMETERS:     p_test TYPE c AS CHECKBOX DEFAULT ' '.
 SELECTION-SCREEN END OF BLOCK b1.
 
 SELECTION-SCREEN: BEGIN OF LINE,
@@ -264,9 +263,6 @@ START-OF-SELECTION.
     WRITE: / 'Date From  : (no lower bound)'.
   ENDIF.
   WRITE: / |Date To    : { lv_cutoff }|.
-  IF p_keyf IS NOT INITIAL.
-    WRITE: / |Key Filter : { p_keyf }|.
-  ENDIF.
   IF p_test = 'X'. WRITE: / '*** TEST MODE — no archive I/O ***'. ENDIF.
   WRITE: /.
 
@@ -282,8 +278,7 @@ START-OF-SELECTION.
         lv_take     TYPE i,
         lv_val2     TYPE string,
         lv_fn2      TYPE fieldname,
-        lv_kfn      TYPE string,
-        lv_kcheck   TYPE char255.
+        lv_kfn      TYPE string.
   PERFORM build_where_from_arch_cfg
     USING gs_cfg s_date-low lv_cutoff
     CHANGING lv_where0.
@@ -297,23 +292,6 @@ START-OF-SELECTION.
 
   lv_sql_elig_cnt = lines( <lt_src> ).
   PERFORM apply_rules_to_src.
-
-  IF p_keyf IS NOT INITIAL.
-    CALL FUNCTION 'DDIF_FIELDINFO_GET'
-      EXPORTING  tabname   = p_table
-      TABLES     dfies_tab = lt_dd
-      EXCEPTIONS OTHERS    = 1.
-    LOOP AT <lt_src> ASSIGNING FIELD-SYMBOL(<frow>).
-      CLEAR lv_kcheck.
-      LOOP AT lt_dd INTO ls_dd_wa WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
-        ASSIGN COMPONENT ls_dd_wa-fieldname OF STRUCTURE <frow> TO FIELD-SYMBOL(<fkv>).
-        IF <fkv> IS ASSIGNED. lv_kcheck &&= <fkv>. ENDIF.
-      ENDLOOP.
-      IF lv_kcheck NS p_keyf.
-        DELETE <lt_src>.
-      ENDIF.
-    ENDLOOP.
-  ENDIF.
 
   WRITE: / |Records eligible: { lines( <lt_src> ) }|.
 

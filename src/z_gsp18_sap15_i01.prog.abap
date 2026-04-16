@@ -184,6 +184,17 @@ MODULE check_variant_0300 INPUT.
     MESSAGE 'Chọn bảng archive trước khi dùng Variant' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
+
+  DATA lv_vlog_chk TYPE string.
+  lv_vlog_chk = gv_variant.
+  TRANSLATE lv_vlog_chk TO UPPER CASE.
+  CONDENSE lv_vlog_chk NO-GAPS.
+  IF lv_vlog_chk = 'DEFAULT'.
+    MESSAGE |"DEFAULT" là tên dành cho variant hệ thống. Dùng tên khác (vd VAR_01).| TYPE 'S' DISPLAY LIKE 'W'.
+    CLEAR gv_variant.
+    RETURN.
+  ENDIF.
+
   IF gv_prog_write IS INITIAL. PERFORM get_archive_programs. ENDIF.
 
   PERFORM arch_build_write_var_tech
@@ -201,8 +212,39 @@ MODULE check_variant_0300 INPUT.
     IMPORTING
       r_c     = lv_rc_chk.
 
+  IF lv_rc_chk = 0.
+    DATA: lt_vc_chk TYPE TABLE OF rsparams.
+    FIELD-SYMBOLS <vc_chk> TYPE rsparams.
+    CALL FUNCTION 'RS_VARIANT_CONTENTS'
+      EXPORTING
+        report  = gv_prog_write
+        variant = lv_vtech_c
+      TABLES
+        valutab = lt_vc_chk
+      EXCEPTIONS
+        OTHERS  = 99.
+    IF sy-subrc = 0.
+      READ TABLE lt_vc_chk ASSIGNING <vc_chk> WITH KEY selname = 'P_TABLE'.
+      IF sy-subrc = 0 AND <vc_chk>-low IS NOT INITIAL.
+        DATA lv_vc_tab TYPE tabname.
+        lv_vc_tab = <vc_chk>-low.
+        CONDENSE lv_vc_tab.
+        TRANSLATE lv_vc_tab TO UPPER CASE.
+        DATA lv_vc_cur TYPE tabname.
+        lv_vc_cur = gv_tabname.
+        CONDENSE lv_vc_cur.
+        TRANSLATE lv_vc_cur TO UPPER CASE.
+        IF lv_vc_tab <> lv_vc_cur.
+          MESSAGE |Variant { lv_vtech_c } chứa P_TABLE={ lv_vc_tab } nhưng bảng hiện tại là { lv_vc_cur }. Kiểm tra lại.| TYPE 'S' DISPLAY LIKE 'E'.
+          CLEAR gv_variant.
+          RETURN.
+        ENDIF.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+
   IF lv_rc_chk <> 0.
-    lv_q_c = |Chưa có variant cho bảng { gv_tabname }. Giữ nguyên ô Variant "{ gv_variant }" (không đổi sang tên kỹ thuật). Tên lưu trong SAP: { lv_vtech_c }. Tạo mới?|.
+    lv_q_c = |Chưa có variant { lv_vtech_c } cho bảng { gv_tabname }. Tạo mới?|.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
         titlebar              = 'Thông báo'
@@ -474,31 +516,74 @@ MODULE user_command_0600 INPUT.
       LEAVE SCREEN.
     WHEN 'BT_EDIT' OR 'EDIT_BTN'.
       IF gv_variant IS NOT INITIAL.
+        IF gv_tabname IS INITIAL.
+          MESSAGE 'Chọn bảng archive trước khi chỉnh Variant' TYPE 'S' DISPLAY LIKE 'E'.
+          RETURN.
+        ENDIF.
         IF gv_prog_del IS INITIAL.
           PERFORM get_archive_programs.
         ENDIF.
         IF gv_prog_del IS INITIAL.
           RETURN.
         ENDIF.
+
+        DATA: lv_vtech_600 TYPE variant,
+              lv_vok_600   TYPE abap_bool,
+              lv_ok_600    TYPE abap_bool.
+        PERFORM arch_build_write_var_tech
+          USING gv_tabname gv_variant
+          CHANGING lv_vtech_600 lv_vok_600.
+        IF lv_vok_600 = abap_false.
+          MESSAGE 'Tên Variant (ID) không hợp lệ hoặc quá dài.' TYPE 'S' DISPLAY LIKE 'E'.
+          RETURN.
+        ENDIF.
+
         CALL FUNCTION 'RS_VARIANT_EXISTS'
           EXPORTING
             report  = gv_prog_del
-            variant = gv_variant
+            variant = lv_vtech_600
           IMPORTING
             r_c     = lv_rc_600.
 
         IF lv_rc_600 = 0.
+          EXPORT zsp26_no_ss_exec = 'X' TO MEMORY ID 'Z_GSP18_WR_SS'.
           SUBMIT (gv_prog_del)
             WITH p_table = gv_tabname
-            WITH p_test  = gv_test_mode
+            USING SELECTION-SET lv_vtech_600
             VIA SELECTION-SCREEN
             AND RETURN.
+          FREE MEMORY ID 'Z_GSP18_WR_SS'.
         ELSE.
-          SUBMIT (gv_prog_del)
-            WITH p_table = gv_tabname
-            WITH p_test  = gv_test_mode
-            VIA SELECTION-SCREEN
-            AND RETURN.
+          DATA: lv_ans_600 TYPE char1,
+                lv_msg_600 TYPE string.
+          lv_msg_600 = |Variant { lv_vtech_600 } chưa tồn tại cho Delete program. Tạo mới?|.
+          CALL FUNCTION 'POPUP_TO_CONFIRM'
+            EXPORTING
+              titlebar              = 'Create Delete Variant'
+              text_question         = lv_msg_600
+              text_button_1         = 'Tạo'
+              text_button_2         = 'Hủy'
+              display_cancel_button = ' '
+            IMPORTING
+              answer                = lv_ans_600
+            EXCEPTIONS
+              OTHERS                = 1.
+          IF lv_ans_600 = '1'.
+            PERFORM arch_ensure_write_variant
+              USING gv_prog_del lv_vtech_600 gv_tabname
+              CHANGING lv_ok_600.
+            IF lv_ok_600 = abap_true.
+              EXPORT zsp26_no_ss_exec = 'X' TO MEMORY ID 'Z_GSP18_WR_SS'.
+              SUBMIT (gv_prog_del)
+                WITH p_table = gv_tabname
+                USING SELECTION-SET lv_vtech_600
+                VIA SELECTION-SCREEN
+                AND RETURN.
+              FREE MEMORY ID 'Z_GSP18_WR_SS'.
+            ELSE.
+              MESSAGE |Không tạo được variant { lv_vtech_600 }.| TYPE 'S' DISPLAY LIKE 'E'.
+            ENDIF.
+          ENDIF.
         ENDIF.
       ELSE.
         MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.

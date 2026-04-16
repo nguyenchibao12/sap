@@ -104,7 +104,8 @@ DATA: gv_reg_table  TYPE tabname,
 " gv_object = archive object id (AOBJ) — ví dụ Z_ARCH_EKK
 " gv_tabname = bảng DDIC đích (preview/write/delete SQL) — bổ sung cho object ở trên
 DATA: gv_object     TYPE arch_obj-object,
-      gv_variant    TYPE variant, " ID do user nhập (vd VAR_01); tên SAP = {tiền_tố bảng}_{ID}
+      gv_variant    TYPE variant,
+      gv_var_tech   TYPE char40,
       gv_prog_write TYPE programm,
       gv_prog_del   TYPE programm,
       gv_start_date TYPE char1,
