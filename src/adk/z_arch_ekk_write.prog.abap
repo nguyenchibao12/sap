@@ -44,7 +44,7 @@ FIELD-SYMBOLS: <lt_src> TYPE STANDARD TABLE,
                <lt_arch> TYPE STANDARD TABLE,
                <row>    TYPE any.
 
-" g_scr_h0 / g_scr_h1: do COMMENT /1(79) tự khai báo — không thêm DATA (trùng trên ADT/bản mới)
+" g_scr_h0 / g_scr_h1: do COMMENT /1(79) tự khai báo — không thêm DATA (trùng trên ADT/bản mới )
 
 SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME.
 SELECTION-SCREEN COMMENT /1(79) g_scr_h0.
