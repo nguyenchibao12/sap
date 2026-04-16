@@ -286,7 +286,7 @@ FORM apply_archive_rules
             lv_match = COND #( WHEN lv_row_d >= lv_lo AND lv_row_d <= lv_hi
                                THEN abap_true ELSE abap_false ).
           WHEN OTHERS.
-            lv_match = abap_true.
+            lv_match = abap_false.
         ENDCASE.
       ENDIF.
     ELSE.
@@ -317,7 +317,7 @@ FORM apply_archive_rules
                                 AND lv_fv_s <= ls_rule-value_high
                                THEN abap_true ELSE abap_false ).
           WHEN OTHERS.
-            lv_match = abap_true.
+            lv_match = abap_false.
         ENDCASE.
       ENDIF.
     ENDIF.

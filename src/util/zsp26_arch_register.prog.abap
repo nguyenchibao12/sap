@@ -221,13 +221,13 @@ START-OF-SELECTION.
   " ---------------------------------------------------------------
   " Bước 6: Kiểm tra config trùng
   " ---------------------------------------------------------------
-  DATA: lv_dup TYPE abap_bool VALUE abap_false.
-  SELECT SINGLE table_name FROM zsp26_arch_cfg
-    INTO @DATA(lv_dup_tab)
+  SELECT SINGLE config_id FROM zsp26_arch_cfg
+    INTO @DATA(lv_dup_cfgid)
     WHERE table_name = @p_table
       AND is_active  = 'X'.
   IF sy-subrc = 0.
-    WRITE: / |⚠ Đã tồn tại config active cho { p_table } — sẽ thêm config mới song song (không ghi đè).|.
+    WRITE: / |✗ Đã tồn tại config active cho { p_table } (ID: { lv_dup_cfgid }). Deactivate config cũ trước khi tạo mới.|.
+    lv_ok = abap_false.
   ENDIF.
 
   SKIP.

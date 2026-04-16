@@ -3,7 +3,8 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <DEVC>
-    <CTEXT>Data Archiving and Purge Management Tool</CTEXT>
+    <CTEXT>Archiving ADK Programs (Write/Delete/Read)</CTEXT>
+    <PARENTCL>ZSP26GSP18_SAP15</PARENTCL>
    </DEVC>
   </asx:values>
  </asx:abap>

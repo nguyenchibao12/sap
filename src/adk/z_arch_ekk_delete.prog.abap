@@ -104,6 +104,10 @@ START-OF-SELECTION.
         dfies_tab = lt_af_dd
       EXCEPTIONS
         OTHERS    = 1.
+    IF sy-subrc <> 0 OR lt_af_dd IS INITIAL.
+      WRITE: / 'ERROR: DDIF_FIELDINFO_GET failed for ADMI_FILES — cannot resolve archive columns.'.
+      RETURN.
+    ENDIF.
 
     CLEAR: lv_col_obj, lv_col_doc, lv_col_cli.
 
@@ -354,7 +358,11 @@ START-OF-SELECTION.
       wrong_access_to_archive = 2
       OTHERS                  = 3.
 
-  WRITE: / |GET_INFORMATION: obj={ lv_obj } arch={ lv_arch_name } doc={ lv_doc } rc={ sy-subrc }|.
+  IF sy-subrc <> 0.
+    WRITE: / |ERROR: ARCHIVE_GET_INFORMATION RC={ sy-subrc } — cannot determine archive structure.|.
+    RETURN.
+  ENDIF.
+  WRITE: / |GET_INFORMATION: obj={ lv_obj } arch={ lv_arch_name } doc={ lv_doc }|.
   IF gv_del_doc_log IS INITIAL AND lv_doc IS NOT INITIAL.
     gv_del_doc_log = lv_doc.
   ENDIF.
@@ -818,7 +826,9 @@ FORM flush_arch_log_delete
     LOOP AT ct_agg INTO ls_a.
       CLEAR ls_log.
       TRY. ls_log-log_id = cl_system_uuid=>create_uuid_x16_static( ).
-      CATCH cx_uuid_error. ENDTRY.
+      CATCH cx_uuid_error.
+        ls_log-log_id = CONV sysuuid_x16( |{ sy-datum }{ sy-uzeit }{ sy-tabix }| ).
+      ENDTRY.
       ls_log-table_name = ls_a-table_name.
       ls_log-action     = 'DELETE'.
       ls_log-rec_count  = ls_a-cnt.
@@ -829,21 +839,28 @@ FORM flush_arch_log_delete
       ls_log-exec_date  = sy-datum.
       ls_log-message    = |ADK DELETE DOC={ gv_del_doc_log } (GET_TABLE): { ls_a-cnt } rows, tab { ls_a-table_name }. err { pv_err }|.
       INSERT zsp26_arch_log FROM ls_log.
+      IF sy-subrc <> 0.
+        WRITE: / |WARNING: INSERT zsp26_arch_log failed for { ls_a-table_name }.|.
+      ENDIF.
     ENDLOOP.
   ELSEIF pv_err > 0.
     CLEAR ls_log.
     TRY. ls_log-log_id = cl_system_uuid=>create_uuid_x16_static( ).
-    CATCH cx_uuid_error. ENDTRY.
+    CATCH cx_uuid_error.
+      ls_log-log_id = CONV sysuuid_x16( |{ sy-datum }{ sy-uzeit }{ sy-tabix }| ).
+    ENDTRY.
     ls_log-table_name = 'Z_ARCH_EKK'.
     ls_log-action     = 'DELETE'.
     ls_log-rec_count  = 0.
-    ls_log-status     = 'W'.
+    ls_log-status     = 'E'.
     ls_log-start_time = lv_ts.
     ls_log-end_time   = lv_ts.
     ls_log-exec_user  = sy-uname.
     ls_log-exec_date  = sy-datum.
-    ls_log-message    = |ADK DELETE DOC={ gv_del_doc_log }: errors { pv_err } (no row aggregates).|.
+    ls_log-message    = |ADK DELETE DOC={ gv_del_doc_log }: errors { pv_err } — 0 rows deleted, ROLLBACK issued.|.
     INSERT zsp26_arch_log FROM ls_log.
+    ROLLBACK WORK.
+    RETURN.
   ENDIF.
   COMMIT WORK.
 ENDFORM.

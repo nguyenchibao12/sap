@@ -197,7 +197,7 @@ AT SELECTION-SCREEN.
         CHANGING lv_w2.
       lv_w0 = lv_w2.
       PERFORM append_rules_eq_to_where USING gs_cfg-config_id p_table CHANGING lv_w2.
-      SELECT * FROM (p_table) INTO TABLE <lt_src> WHERE (lv_w2).
+      SELECT * FROM (p_table) INTO TABLE <lt_src> UP TO lc_max_rows ROWS WHERE (lv_w2).
 
       lv_sql_elig_cnt = lines( <lt_src> ).
       PERFORM apply_rules_to_src.
@@ -294,9 +294,13 @@ START-OF-SELECTION.
   " Runtime memory for target rows: CREATE DATA creates heap data; ASSIGN binds field-symbol
   CREATE DATA gr_src TYPE TABLE OF (p_table).
   ASSIGN gr_src->* TO <lt_src>.
-  SELECT * FROM (p_table) INTO TABLE <lt_src> WHERE (lv_where).
+  CONSTANTS: lc_max_rows TYPE i VALUE 500000.
+  SELECT * FROM (p_table) INTO TABLE <lt_src> UP TO lc_max_rows ROWS WHERE (lv_where).
 
   lv_sql_elig_cnt = lines( <lt_src> ).
+  IF lv_sql_elig_cnt >= lc_max_rows.
+    WRITE: / |WARNING: Row limit { lc_max_rows } reached — not all eligible rows may be included.|.
+  ENDIF.
   PERFORM apply_rules_to_src.
 
   WRITE: / |Records eligible: { lines( <lt_src> ) }|.
@@ -335,6 +339,9 @@ START-OF-SELECTION.
       dfies_tab = lt_dd
     EXCEPTIONS
       OTHERS    = 1.
+  IF sy-subrc <> 0 OR lt_dd IS INITIAL.
+    MESSAGE |DDIF_FIELDINFO_GET failed for { p_table } — cannot build key info for archive.| TYPE 'A'.
+  ENDIF.
 
   LOOP AT <lt_src> ASSIGNING <row>.
     CLEAR: lv_keyvals, lv_json.
@@ -431,7 +438,11 @@ START-OF-SELECTION.
         wrong_access_to_archive     = 2
         OTHERS                      = 3.
     IF sy-subrc <> 0.
-      WRITE: / |WARN: ARCHIVE_REGISTER_STRUCTURES RC={ sy-subrc } (check ADK / DDIC)|.
+      lv_err = lv_err + 1.
+      WRITE: / |ERROR: ARCHIVE_REGISTER_STRUCTURES RC={ sy-subrc } (check ADK / DDIC)|.
+      CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+        EXPORTING archive_handle = lv_arch_h EXCEPTIONS OTHERS = 1.
+      MESSAGE 'ARCHIVE_REGISTER_STRUCTURES failed — cannot continue.' TYPE 'A'.
     ENDIF.
 
     CALL FUNCTION 'ARCHIVE_NEW_OBJECT'
@@ -442,6 +453,8 @@ START-OF-SELECTION.
         wrong_access_to_archive   = 2
         OTHERS                    = 3.
     IF sy-subrc <> 0.
+      CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+        EXPORTING archive_handle = lv_arch_h EXCEPTIONS OTHERS = 1.
       MESSAGE 'ARCHIVE_NEW_OBJECT failed.' TYPE 'A'.
     ENDIF.
 
@@ -498,7 +511,9 @@ START-OF-SELECTION.
 
     DATA: ls_log TYPE zsp26_arch_log.
     TRY. ls_log-log_id = cl_system_uuid=>create_uuid_x16_static( ).
-    CATCH cx_uuid_error. ENDTRY.
+    CATCH cx_uuid_error.
+      ls_log-log_id = CONV sysuuid_x16( |{ sy-datum }{ sy-uzeit }{ sy-tabix }| ).
+    ENDTRY.
     ls_log-config_id   = gs_cfg-config_id.
     ls_log-table_name  = p_table.
     ls_log-action      = 'ARCHIVE'.
@@ -510,6 +525,9 @@ START-OF-SELECTION.
     ls_log-exec_date   = sy-datum.
     ls_log-message     = |ADK PUT_TABLE generic { lv_cnt } rows. Tab { p_table }. Cutoff { lv_cutoff }. HANDLE={ lv_arch_h }|.
     INSERT zsp26_arch_log FROM ls_log.
+    IF sy-subrc <> 0.
+      WRITE: / |WARNING: INSERT zsp26_arch_log failed (RC={ sy-subrc }). Archive was written but log entry missing.|.
+    ENDIF.
     COMMIT WORK.
   ENDIF.
 

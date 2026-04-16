@@ -639,9 +639,10 @@ FORM arch_get_write_vrun
     RETURN.
   ENDIF.
 
+  IF gv_prog_write IS INITIAL. PERFORM get_archive_programs. ENDIF.
   CALL FUNCTION 'RS_VARIANT_EXISTS'
     EXPORTING
-      report  = 'Z_ARCH_EKK_WRITE'
+      report  = gv_prog_write
       variant = lv_vtech
     IMPORTING
       r_c     = lv_rc_var.
@@ -692,17 +693,17 @@ FORM do_archive_write_bg_job.
   PERFORM arch_get_write_vrun CHANGING lv_vrun lv_err.
   IF lv_err = abap_true.
     MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
+    CALL FUNCTION 'JOB_CLOSE' EXPORTING jobname = lv_jobname jobcount = lv_jobcount EXCEPTIONS OTHERS = 0.
     gv_tabname = lv_save.
     RETURN.
   ENDIF.
 
-  " Read S_DATE from variant so we can pass everything via WITH (no USING SELECTION-SET).
-  " This avoids SAP temp-variant issue where variant P_TEST can override WITH in VIA JOB.
+  " Read S_DATE from variant (pass everything via WITH, no USING SELECTION-SET).
   CLEAR lt_sdate.
   IF lv_vrun IS NOT INITIAL.
     CALL FUNCTION 'RS_VARIANT_CONTENTS'
       EXPORTING
-        report  = 'Z_ARCH_EKK_WRITE'
+        report  = gv_prog_write
         variant = lv_vrun
       TABLES
         valutab = lt_var_par
@@ -724,14 +725,14 @@ FORM do_archive_write_bg_job.
   ENDIF.
 
   IF lt_sdate IS NOT INITIAL.
-    SUBMIT z_arch_ekk_write
+    SUBMIT (gv_prog_write)
       WITH p_table = gv_tabname
       WITH p_test  = ' '
       WITH s_date  IN lt_sdate
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   ELSE.
-    SUBMIT z_arch_ekk_write
+    SUBMIT (gv_prog_write)
       WITH p_table = gv_tabname
       WITH p_test  = ' '
       VIA JOB lv_jobname NUMBER lv_jobcount
@@ -739,6 +740,7 @@ FORM do_archive_write_bg_job.
   ENDIF.
   IF sy-subrc <> 0.
     MESSAGE 'Không add được step Write vào background job.' TYPE 'S' DISPLAY LIKE 'E'.
+    CALL FUNCTION 'JOB_CLOSE' EXPORTING jobname = lv_jobname jobcount = lv_jobcount EXCEPTIONS OTHERS = 0.
     gv_tabname = lv_save.
     RETURN.
   ENDIF.
@@ -932,6 +934,7 @@ FORM do_archive_delete_bg_job.
       AND RETURN.
   IF sy-subrc <> 0.
     MESSAGE 'Không add được step Delete vào background job.' TYPE 'S' DISPLAY LIKE 'E'.
+    CALL FUNCTION 'JOB_CLOSE' EXPORTING jobname = lv_jobname jobcount = lv_jobcount EXCEPTIONS OTHERS = 0.
     RETURN.
   ENDIF.
 
