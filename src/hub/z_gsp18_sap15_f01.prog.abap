@@ -1217,8 +1217,8 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
     RETURN.
   ENDIF.
 
-  " Restore mode: luôn hiển thị tất cả session để user thấy session mới nhất.
-  " Kiểm tra DELETE-marker được giữ ở bước xác nhận restore (do_restore_from_hub).
+  " Restore mode: filter sessions with DELETE markers.
+  " Browse mode ('B'): show all sessions, no filter needed.
   IF pv_mode = 'R'.
     DATA: lt_run_rst TYPE TABLE OF admi_run,
           lv_like_doc TYPE string,
@@ -1250,9 +1250,10 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
     APPEND ls_f4 TO lt_f4.
   ENDLOOP.
 
-  " Popup-only return: không bind DYNPROFIELD — bind từ nút bấm thường làm SAP GUI không xác nhận (tick) được.
   IF pv_mode = 'R'.
     lv_title = 'Archive Administration: Select Sessions for Restore (DELETE done)'.
+  ELSEIF pv_mode = 'B'.
+    lv_title = 'Archive Administration: Select Session to Browse'.
   ELSE.
     lv_title = 'Archive Administration: Select Files for Delete Program'.
   ENDIF.
@@ -1573,16 +1574,23 @@ FORM do_archive.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_RESTORE_PREVIEW — Phase 4: Mở ADK Read Program
+*& FORM DO_RESTORE_PREVIEW — Browse archived data (read-only)
 *&---------------------------------------------------------------------*
 FORM do_restore_preview.
   DATA: lv_rtab TYPE tabname.
   lv_rtab = gv_tabname.
   CONDENSE lv_rtab.
   TRANSLATE lv_rtab TO UPPER CASE.
+
+  PERFORM arch_del_pick_session_popup USING 'B'.
+  IF gs_del_admi-document IS INITIAL.
+    RETURN.
+  ENDIF.
+
   SUBMIT z_arch_ekk_read
     WITH p_table = lv_rtab
     WITH p_rest  = ' '
+    WITH p_doc   = gs_del_admi-document
     AND RETURN.
 ENDFORM.
 
@@ -2132,7 +2140,9 @@ FORM show_hub_admi_session_groups.
         lv_dfrom   TYPE c LENGTH 10,
         lv_dto     TYPE c LENGTH 10,
         lv_sfrom   TYPE c LENGTH 20,
-        lv_sto     TYPE c LENGTH 20.
+        lv_sto     TYPE c LENGTH 20,
+        lv_like_chk TYPE string,
+        lv_del_chk  TYPE i.
 
   lv_obj = gv_object.
   IF lv_obj IS INITIAL.
@@ -2190,8 +2200,6 @@ FORM show_hub_admi_session_groups.
     ls_det-status     = ls_run_src-status.
     ls_det-user_name  = ls_run_src-user_name.
 
-    " Map trạng thái về 3 nhóm giống SARA.
-    " Dùng cả key + text output vì domain STATUS khác nhau theo release/system.
     CLEAR: lv_stat_k, lv_stat_t.
     lv_stat_k = ls_run_src-status.
     TRANSLATE lv_stat_k TO UPPER CASE.
@@ -2205,6 +2213,30 @@ FORM show_hub_admi_session_groups.
       ls_det-grp_ord  = 1.
       ls_det-grp_text = 'Archiving Sessions with Errors'.
       ls_det-grp_icon = icon_led_red.
+    ELSEIF lv_stat_t CS 'ERR'
+       OR lv_stat_t CS 'FAIL'
+       OR lv_stat_t CS 'PROBLEM'
+       OR lv_stat_t CS 'NOT OK'.
+      ls_det-grp_ord  = 1.
+      ls_det-grp_text = 'Archiving Sessions with Errors'.
+      ls_det-grp_icon = icon_led_red.
+    ELSEIF lv_stat_k CA 'FSC'
+       OR ( lv_stat_t CS 'COMPLETE' AND lv_stat_t NS 'INCOMPLETE' )
+       OR lv_stat_t CS 'FINISHED'
+       OR lv_stat_t CS 'SUCCESS'.
+      lv_like_chk = |%DOC={ ls_run_src-document }%|.
+      SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_chk
+        WHERE action = 'DELETE'
+          AND message LIKE @lv_like_chk.
+      IF lv_del_chk > 0.
+        ls_det-grp_ord  = 3.
+        ls_det-grp_text = 'Complete Archiving Sessions'.
+        ls_det-grp_icon = icon_led_green.
+      ELSE.
+        ls_det-grp_ord  = 2.
+        ls_det-grp_text = 'Incomplete Archiving Sessions'.
+        ls_det-grp_icon = icon_led_yellow.
+      ENDIF.
     ELSEIF lv_stat_t CS 'INCOMPLETE'
        OR lv_stat_t CS 'NOT COMPLETE'
        OR lv_stat_t CS 'PENDING'
@@ -2213,20 +2245,6 @@ FORM show_hub_admi_session_groups.
       ls_det-grp_ord  = 2.
       ls_det-grp_text = 'Incomplete Archiving Sessions'.
       ls_det-grp_icon = icon_led_yellow.
-    ELSEIF lv_stat_k CA 'FSC'
-       OR ( lv_stat_t CS 'COMPLETE' AND lv_stat_t NS 'INCOMPLETE' )
-       OR lv_stat_t CS 'FINISHED'
-       OR lv_stat_t CS 'SUCCESS'.
-      ls_det-grp_ord  = 3.
-      ls_det-grp_text = 'Complete Archiving Sessions'.
-      ls_det-grp_icon = icon_led_green.
-    ELSEIF lv_stat_t CS 'ERR'
-       OR lv_stat_t CS 'FAIL'
-       OR lv_stat_t CS 'PROBLEM'
-       OR lv_stat_t CS 'NOT OK'.
-      ls_det-grp_ord  = 1.
-      ls_det-grp_text = 'Archiving Sessions with Errors'.
-      ls_det-grp_icon = icon_led_red.
     ELSE.
       ls_det-grp_ord  = 2.
       ls_det-grp_text = 'Incomplete Archiving Sessions'.
