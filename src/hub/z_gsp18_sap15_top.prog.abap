@@ -249,4 +249,14 @@ CLASS lcl_cfg_handler DEFINITION.
       IMPORTING e_salv_function.
 ENDCLASS.
 
-"  lcl_handler + lcl_mon_handler + lcl_btc_handler + lcl_run_handler in F01
+CLASS lcl_log_handler DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS on_func
+      FOR EVENT added_function OF cl_salv_events
+      IMPORTING e_salv_function.
+ENDCLASS.
+
+DATA: go_log_alv  TYPE REF TO cl_salv_table,
+      gv_log_tab  TYPE tabname.
+
+"  lcl_handler + lcl_mon_handler + lcl_btc_handler + lcl_run_handler + lcl_log_handler in F01
