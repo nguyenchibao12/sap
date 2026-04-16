@@ -902,6 +902,36 @@ FORM do_archive_delete_bg_job.
     ENDIF.
   ENDIF.
 
+  " Pre-check: block duplicate delete on same session
+  IF lv_sel_doc IS NOT INITIAL.
+    DATA: lv_prev_like TYPE string,
+          lv_prev_cnt  TYPE i,
+          lv_prev_ans  TYPE char1.
+    lv_prev_like = |%DOC={ lv_sel_doc }%|.
+    SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_prev_cnt
+      WHERE action  = 'DELETE'
+        AND status  = 'S'
+        AND message LIKE @lv_prev_like.
+    IF lv_prev_cnt > 0.
+      CALL FUNCTION 'POPUP_TO_CONFIRM'
+        EXPORTING
+          titlebar              = 'Duplicate Delete Warning'
+          text_question         = |Session { lv_sel_doc } đã có { lv_prev_cnt } lần DELETE thành công. Chạy lại sẽ không xóa thêm dữ liệu DB. Tiếp tục?|
+          text_button_1         = 'Tiếp tục'
+          text_button_2         = 'Hủy'
+          default_button        = '2'
+          display_cancel_button = ' '
+        IMPORTING
+          answer                = lv_prev_ans
+        EXCEPTIONS
+          OTHERS                = 1.
+      IF lv_prev_ans <> '1'.
+        MESSAGE |Đã hủy — session { lv_sel_doc } đã được delete trước đó.| TYPE 'S' DISPLAY LIKE 'W'.
+        RETURN.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+
   PERFORM arch_resolve_del_variant CHANGING lv_vrun lv_verr.
   IF lv_verr = abap_true.
     MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
