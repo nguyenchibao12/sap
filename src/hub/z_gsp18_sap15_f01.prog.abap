@@ -3118,16 +3118,25 @@ FORM do_delete_old_logs.
 
   lv_cutoff = sy-datum - lv_days.
 
+  DATA: lv_log_cnt TYPE i,
+        lv_job_cnt TYPE i.
+
   SELECT COUNT(*) FROM zsp26_arch_log
     WHERE exec_date < @lv_cutoff
-    INTO @lv_deleted.
+    INTO @lv_log_cnt.
 
-  IF lv_deleted = 0.
-    MESSAGE |Không có log nào cũ hơn { lv_days } ngày.| TYPE 'S' DISPLAY LIKE 'W'.
+  SELECT COUNT(*) FROM tbtco
+    WHERE jobname LIKE 'ZARCH%'
+      AND strtdate < @lv_cutoff
+      AND status = 'F'
+    INTO @lv_job_cnt.
+
+  IF lv_log_cnt = 0 AND lv_job_cnt = 0.
+    MESSAGE |Không có log/job nào cũ hơn { lv_days } ngày.| TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  lv_q = |Xóa { lv_deleted } dòng log cũ hơn { lv_cutoff+6(2) }.{ lv_cutoff+4(2) }.{ lv_cutoff(4) }?|.
+  lv_q = |Xóa { lv_log_cnt } app log + { lv_job_cnt } finished job cũ hơn { lv_cutoff+6(2) }.{ lv_cutoff+4(2) }.{ lv_cutoff(4) }?|.
 
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
@@ -3147,14 +3156,42 @@ FORM do_delete_old_logs.
     RETURN.
   ENDIF.
 
-  DELETE FROM zsp26_arch_log WHERE exec_date < @lv_cutoff.
-  IF sy-subrc = 0.
-    lv_deleted = sy-dbcnt.
-    COMMIT WORK.
-    MESSAGE |Đã xóa { lv_deleted } dòng log cũ hơn { lv_days } ngày.| TYPE 'S'.
-  ELSE.
-    MESSAGE 'Không xóa được log (lỗi DB).' TYPE 'S' DISPLAY LIKE 'E'.
+  DATA: lv_del_log TYPE i,
+        lv_del_job TYPE i,
+        lv_msg     TYPE string.
+
+  IF lv_log_cnt > 0.
+    DELETE FROM zsp26_arch_log WHERE exec_date < @lv_cutoff.
+    IF sy-subrc = 0.
+      lv_del_log = sy-dbcnt.
+      COMMIT WORK.
+    ENDIF.
   ENDIF.
+
+  IF lv_job_cnt > 0.
+    DATA: lt_del_jobs TYPE TABLE OF tbtco-jobname,
+          ls_jn       TYPE tbtcjob-jobname,
+          ls_jc       TYPE tbtcjob-jobcount.
+    SELECT jobname, jobcount FROM tbtco
+      WHERE jobname LIKE 'ZARCH%'
+        AND strtdate < @lv_cutoff
+        AND status = 'F'
+      INTO TABLE @DATA(lt_old_jobs).
+    LOOP AT lt_old_jobs INTO DATA(ls_oj).
+      CALL FUNCTION 'BP_JOB_DELETE'
+        EXPORTING
+          jobcount = ls_oj-jobcount
+          jobname  = ls_oj-jobname
+        EXCEPTIONS
+          OTHERS   = 1.
+      IF sy-subrc = 0.
+        lv_del_job = lv_del_job + 1.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+  lv_msg = |Đã xóa { lv_del_log } app log + { lv_del_job } job cũ hơn { lv_days } ngày.|.
+  MESSAGE lv_msg TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
