@@ -535,11 +535,7 @@ FORM arch_ensure_write_variant
   ls_param-kind    = 'P'.
   ls_param-sign    = 'I'.
   ls_param-option  = 'EQ'.
-  IF gv_test_mode = 'X'.
-    ls_param-low = 'X'.
-  ELSE.
-    CLEAR ls_param-low.
-  ENDIF.
+  CLEAR ls_param-low.
   APPEND ls_param TO lt_params.
 
   CALL FUNCTION 'RS_CREATE_VARIANT'
@@ -663,6 +659,10 @@ FORM do_archive_write_bg_job.
         lv_jobname  TYPE tbtcjob-jobname,
         lv_jobcount TYPE tbtcjob-jobcount,
         lv_save     TYPE zsp26_de_tabname.
+  DATA: lt_var_par  TYPE TABLE OF rsparams,
+        ls_vp       TYPE rsparams,
+        lt_sdate    TYPE RANGE OF sy-datum,
+        ls_sdate    LIKE LINE OF lt_sdate.
 
   lv_save = gv_tabname.
 
@@ -695,21 +695,42 @@ FORM do_archive_write_bg_job.
     gv_tabname = lv_save.
     RETURN.
   ENDIF.
-  IF gv_test_mode = 'X'.
-    MESSAGE 'Write job chạy ở Test Mode — không ghi archive thật.' TYPE 'S' DISPLAY LIKE 'W'.
+
+  " Read S_DATE from variant so we can pass everything via WITH (no USING SELECTION-SET).
+  " This avoids SAP temp-variant issue where variant P_TEST can override WITH in VIA JOB.
+  CLEAR lt_sdate.
+  IF lv_vrun IS NOT INITIAL.
+    CALL FUNCTION 'RS_VARIANT_CONTENTS'
+      EXPORTING
+        report  = 'Z_ARCH_EKK_WRITE'
+        variant = lv_vrun
+      TABLES
+        valutab = lt_var_par
+      EXCEPTIONS
+        OTHERS  = 1.
+    IF sy-subrc = 0.
+      LOOP AT lt_var_par INTO ls_vp WHERE selname = 'S_DATE'.
+        CLEAR ls_sdate.
+        ls_sdate-sign   = ls_vp-sign.
+        ls_sdate-option = ls_vp-option.
+        ls_sdate-low    = ls_vp-low.
+        ls_sdate-high   = ls_vp-high.
+        APPEND ls_sdate TO lt_sdate.
+      ENDLOOP.
+    ENDIF.
   ENDIF.
 
-  IF lv_vrun IS NOT INITIAL.
+  IF lt_sdate IS NOT INITIAL.
     SUBMIT z_arch_ekk_write
       WITH p_table = gv_tabname
-      WITH p_test  = gv_test_mode
-      USING SELECTION-SET lv_vrun
+      WITH p_test  = ' '
+      WITH s_date  IN lt_sdate
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   ELSE.
     SUBMIT z_arch_ekk_write
       WITH p_table = gv_tabname
-      WITH p_test  = gv_test_mode
+      WITH p_test  = ' '
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   ENDIF.
@@ -829,20 +850,12 @@ FORM do_archive_delete_job.
     RETURN.
   ENDIF.
 
-  IF lv_vrun IS NOT INITIAL.
-    SUBMIT (gv_prog_del)
+  SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
       WITH p_doc   = lv_sel_doc
-      USING SELECTION-SET lv_vrun
+      WITH p_json  = ' '
       AND RETURN.
-  ELSE.
-    SUBMIT (gv_prog_del)
-      WITH p_table = gv_tabname
-      WITH p_test  = gv_test_mode
-      WITH p_doc   = lv_sel_doc
-      AND RETURN.
-  ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -907,22 +920,13 @@ FORM do_archive_delete_bg_job.
     RETURN.
   ENDIF.
 
-  IF lv_vrun IS NOT INITIAL.
-    SUBMIT (gv_prog_del)
+  SUBMIT (gv_prog_del)
       WITH p_table = gv_tabname
       WITH p_test  = gv_test_mode
       WITH p_doc   = lv_sel_doc
-      USING SELECTION-SET lv_vrun
+      WITH p_json  = ' '
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
-  ELSE.
-    SUBMIT (gv_prog_del)
-      WITH p_table = gv_tabname
-      WITH p_test  = gv_test_mode
-      WITH p_doc   = lv_sel_doc
-      VIA JOB lv_jobname NUMBER lv_jobcount
-      AND RETURN.
-  ENDIF.
   IF sy-subrc <> 0.
     MESSAGE 'Không add được step Delete vào background job.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
@@ -2717,6 +2721,42 @@ FORM show_hub_btc_job_list.
     ENDIF.
   ENDLOOP.
 
+  " Fallback: read P_TABLE from job step variant for rows still missing table_name
+  DATA: lv_step_var  TYPE variant,
+        lt_vpar      TYPE TABLE OF rsparams,
+        ls_vpar      TYPE rsparams.
+  LOOP AT gt_btc_rows INTO ls_btc WHERE table_name IS INITIAL.
+    lv_ix = sy-tabix.
+    IF ls_btc-progname IS INITIAL OR
+       ( ls_btc-progname NS '_WRITE' AND ls_btc-progname NS '_DELETE' ).
+      CONTINUE.
+    ENDIF.
+    CLEAR: lv_step_var, lt_vpar.
+    SELECT SINGLE variant
+      FROM tbtcp
+      INTO @lv_step_var
+      WHERE jobname  = @ls_btc-jobname
+        AND jobcount = @ls_btc-jobcount.
+    IF sy-subrc = 0 AND lv_step_var IS NOT INITIAL.
+      CALL FUNCTION 'RS_VARIANT_CONTENTS'
+        EXPORTING
+          report    = ls_btc-progname
+          variant   = lv_step_var
+        TABLES
+          valutab   = lt_vpar
+        EXCEPTIONS
+          OTHERS    = 1.
+      IF sy-subrc = 0.
+        READ TABLE lt_vpar INTO ls_vpar
+          WITH KEY selname = 'P_TABLE'.
+        IF sy-subrc = 0 AND ls_vpar-low IS NOT INITIAL.
+          ls_btc-table_name = ls_vpar-low.
+          MODIFY gt_btc_rows FROM ls_btc INDEX lv_ix.
+        ENDIF.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+
   " Include PURGE-only runs from application log so operators can review all run outcomes in one place.
   TYPES: BEGIN OF ty_purge_log,
            arch_id   TYPE zsp26_arch_log-arch_id,
@@ -4068,11 +4108,7 @@ FORM arch_copy_write_variant
     <p>-kind   = 'P'.
     <p>-sign   = 'I'.
     <p>-option = 'EQ'.
-    IF gv_test_mode = 'X'.
-      <p>-low = 'X'.
-    ELSE.
-      CLEAR <p>-low.
-    ENDIF.
+    CLEAR <p>-low.
   ENDLOOP.
   IF lv_hit = abap_false.
     CLEAR ls_param.
@@ -4080,9 +4116,6 @@ FORM arch_copy_write_variant
     ls_param-kind    = 'P'.
     ls_param-sign    = 'I'.
     ls_param-option  = 'EQ'.
-    IF gv_test_mode = 'X'.
-      ls_param-low = 'X'.
-    ENDIF.
     APPEND ls_param TO lt_params.
   ENDIF.
 

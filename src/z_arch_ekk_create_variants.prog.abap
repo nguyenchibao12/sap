@@ -115,13 +115,13 @@ START-OF-SELECTION.
     ls_param-low     = ls_table-tabname.
     APPEND ls_param TO lt_params.
 
-    " P_TEST = X (safe default)
+    " P_TEST = ' ' — variant sẵn sàng cho production; hub override nếu cần
     CLEAR ls_param.
     ls_param-selname = 'P_TEST'.
     ls_param-kind    = 'P'.
     ls_param-sign    = 'I'.
     ls_param-option  = 'EQ'.
-    ls_param-low     = 'X'.
+    CLEAR ls_param-low.
     APPEND ls_param TO lt_params.
 
     PERFORM zarc_var_tech
