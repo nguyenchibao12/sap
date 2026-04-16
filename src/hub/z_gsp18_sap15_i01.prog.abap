@@ -216,8 +216,9 @@ MODULE check_variant_0300 INPUT.
     FIELD-SYMBOLS <vc_chk> TYPE rsparams.
     CALL FUNCTION 'RS_VARIANT_CONTENTS'
       EXPORTING
-        report  = gv_prog_write
-        variant = lv_vtech_c
+        report        = gv_prog_write
+        variant       = lv_vtech_c
+        move_or_write = 'M'
       TABLES
         valutab = lt_vc_chk
       EXCEPTIONS

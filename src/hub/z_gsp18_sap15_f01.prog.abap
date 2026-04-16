@@ -698,13 +698,13 @@ FORM do_archive_write_bg_job.
     RETURN.
   ENDIF.
 
-  " Read S_DATE from variant (pass everything via WITH, no USING SELECTION-SET).
   CLEAR lt_sdate.
   IF lv_vrun IS NOT INITIAL.
     CALL FUNCTION 'RS_VARIANT_CONTENTS'
       EXPORTING
-        report  = gv_prog_write
-        variant = lv_vrun
+        report        = gv_prog_write
+        variant       = lv_vrun
+        move_or_write = 'M'
       TABLES
         valutab = lt_var_par
       EXCEPTIONS
@@ -2864,8 +2864,9 @@ FORM show_hub_btc_job_list.
     IF sy-subrc = 0 AND lv_step_var IS NOT INITIAL.
       CALL FUNCTION 'RS_VARIANT_CONTENTS'
         EXPORTING
-          report    = ls_btc-progname
-          variant   = lv_step_var
+          report        = ls_btc-progname
+          variant       = lv_step_var
+          move_or_write = 'M'
         TABLES
           valutab   = lt_vpar
         EXCEPTIONS
@@ -4322,8 +4323,9 @@ FORM arch_copy_write_variant
 
   CALL FUNCTION 'RS_VARIANT_CONTENTS'
     EXPORTING
-      report  = lv_rep
-      variant = iv_src
+      report        = lv_rep
+      variant       = iv_src
+      move_or_write = 'M'
     TABLES
       valutab = lt_params
     EXCEPTIONS
