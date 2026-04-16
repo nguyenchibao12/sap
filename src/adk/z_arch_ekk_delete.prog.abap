@@ -38,7 +38,10 @@ DATA: ls_arec      TYPE ty_arch_rec,
       lv_open_obj  TYPE arch_obj-object,
       lv_arch_key  TYPE admi_files-archiv_key,
       gv_del_doc_log TYPE admi_run-document,
-      lv_use_p_table TYPE abap_bool VALUE abap_true.
+      lv_use_p_table TYPE abap_bool VALUE abap_true,
+      lv_prev_del_like TYPE string,
+      lv_prev_del_cnt  TYPE i,
+      lv_dbcnt         TYPE i.
 
 PARAMETERS: p_table TYPE tabname DEFAULT 'ZSP26_EKKO'.
 PARAMETERS: p_test  TYPE c AS CHECKBOX DEFAULT 'X'.
@@ -267,8 +270,6 @@ START-OF-SELECTION.
 
   " Pre-check: warn if this session already has a DELETE log
   IF gv_del_doc_log IS NOT INITIAL AND p_test = ' '.
-    DATA: lv_prev_del_like TYPE string,
-          lv_prev_del_cnt  TYPE i.
     lv_prev_del_like = |%DOC={ gv_del_doc_log }%|.
     SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_prev_del_cnt
       WHERE action  = 'DELETE'
@@ -377,6 +378,9 @@ START-OF-SELECTION.
 
   IF sy-subrc <> 0.
     WRITE: / |ERROR: ARCHIVE_GET_INFORMATION RC={ sy-subrc } — cannot determine archive structure.|.
+    CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
+      EXPORTING archive_handle = lv_arch_h
+      EXCEPTIONS OTHERS         = 0.
     RETURN.
   ENDIF.
   WRITE: / |GET_INFORMATION: obj={ lv_obj } arch={ lv_arch_name } doc={ lv_doc }|.
@@ -620,7 +624,6 @@ FORM process_delete_adk_object
       lv_where_gen = |MANDT EQ '{ lv_mandt_q }' AND | && lv_where_gen.
 
       IF p_test = ' '.
-        DATA lv_dbcnt TYPE i.
         TRY.
             DELETE FROM (lv_del_tab) WHERE (lv_where_gen).
             lv_del_rc = sy-subrc.
@@ -885,7 +888,6 @@ FORM flush_arch_log_delete
     ROLLBACK WORK.
     RETURN.
   ELSE.
-    " No rows deleted AND no errors = session was already fully deleted
     CLEAR ls_log.
     TRY. ls_log-log_id = cl_system_uuid=>create_uuid_x16_static( ).
     CATCH cx_uuid_error.
@@ -899,9 +901,14 @@ FORM flush_arch_log_delete
     ls_log-end_time   = lv_ts.
     ls_log-exec_user  = sy-uname.
     ls_log-exec_date  = sy-datum.
-    ls_log-message    = |ADK DELETE DOC={ gv_del_doc_log }: 0 rows — DB data already deleted (duplicate run).|.
+    IF lv_prev_del_cnt > 0.
+      ls_log-message = |ADK DELETE DOC={ gv_del_doc_log }: 0 rows — DB data already deleted (duplicate run).|.
+      WRITE: / |WARNING: 0 DB rows deleted for session { gv_del_doc_log } — data was already removed.|.
+    ELSE.
+      ls_log-message = |ADK DELETE DOC={ gv_del_doc_log }: 0 rows — no archive objects found in session.|.
+      WRITE: / |WARNING: 0 DB rows processed for session { gv_del_doc_log } — no objects in archive file.|.
+    ENDIF.
     INSERT zsp26_arch_log FROM ls_log.
-    WRITE: / |WARNING: 0 DB rows deleted for session { gv_del_doc_log } — data was already removed.|.
   ENDIF.
   COMMIT WORK.
 ENDFORM.

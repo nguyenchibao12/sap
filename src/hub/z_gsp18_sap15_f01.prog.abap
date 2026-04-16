@@ -871,7 +871,10 @@ FORM do_archive_delete_bg_job.
         lv_jobcount TYPE tbtcjob-jobcount,
         lv_vrun     TYPE variant,
         lv_verr     TYPE abap_bool,
-        lv_sel_doc  TYPE admi_run-document.
+        lv_sel_doc  TYPE admi_run-document,
+        lv_prev_like TYPE string,
+        lv_prev_cnt  TYPE i,
+        lv_prev_ans  TYPE char1.
 
   IF gv_tabname IS INITIAL.
     MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
@@ -904,9 +907,6 @@ FORM do_archive_delete_bg_job.
 
   " Pre-check: block duplicate delete on same session
   IF lv_sel_doc IS NOT INITIAL.
-    DATA: lv_prev_like TYPE string,
-          lv_prev_cnt  TYPE i,
-          lv_prev_ans  TYPE char1.
     lv_prev_like = |%DOC={ lv_sel_doc }%|.
     SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_prev_cnt
       WHERE action  = 'DELETE'
@@ -4453,7 +4453,6 @@ FORM reset_flow_globals.
          gv_start_date,
          gs_btc_start,
          gv_spool_set,
-         gv_test_mode,
          gv_del_sess_def,
          gv_f4_sess,
          gs_del_admi,
@@ -4461,6 +4460,7 @@ FORM reset_flow_globals.
          gv_stat_arch_tx,
          gv_stat_start_tx,
          gv_stat_spool_tx.
+  gv_test_mode = 'X'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

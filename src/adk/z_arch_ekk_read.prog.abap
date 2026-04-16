@@ -380,7 +380,13 @@ FORM read_process_zstr_object
       lv_tn_row = ls_disp-table_name.
       CONDENSE lv_tn_row.
       TRANSLATE lv_tn_row TO UPPER CASE.
-      CREATE DATA gr_dyn TYPE (lv_tn_row).
+      TRY.
+          CREATE DATA gr_dyn TYPE (lv_tn_row).
+        CATCH cx_sy_create_data_error.
+          ADD 1 TO lv_ief.
+          WRITE: / |  SKIP restore: table { lv_tn_row } not found in DDIC.|.
+          CONTINUE.
+      ENDTRY.
       ASSIGN gr_dyn->* TO FIELD-SYMBOL(<rec_dyn>).
       TRY.
           /ui2/cl_json=>deserialize(
@@ -601,7 +607,12 @@ FORM run_read_legacy_json.
       lv_ltab = ls_disp-table_name.
       CONDENSE lv_ltab.
       TRANSLATE lv_ltab TO UPPER CASE.
-      CREATE DATA gr_rec TYPE (lv_ltab).
+      TRY.
+          CREATE DATA gr_rec TYPE (lv_ltab).
+        CATCH cx_sy_create_data_error.
+          ADD 1 TO lv_err.
+          CONTINUE.
+      ENDTRY.
       ASSIGN gr_rec->* TO FIELD-SYMBOL(<rec>).
       TRY.
         lv_json = ls_disp-data_json.
