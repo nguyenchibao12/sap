@@ -2532,17 +2532,19 @@ FORM run_pick_document_in_range
   TYPES: BEGIN OF ty_pick,
            document   TYPE admi_run-document,
            creat_date TYPE admi_run-creat_date,
-           status     TYPE admi_run-status,
+           status     TYPE char20,
            user_name  TYPE admi_run-user_name,
          END OF ty_pick.
 
-  DATA: lt_pick TYPE TABLE OF ty_pick,
-        ls_pick TYPE ty_pick,
-        lt_ret  TYPE TABLE OF ddshretval,
-        ls_ret  TYPE ddshretval,
-        lv_from TYPE i,
-        lv_to   TYPE i,
-        ls_src  TYPE ty_run_src_hub.
+  DATA: lt_pick     TYPE TABLE OF ty_pick,
+        ls_pick     TYPE ty_pick,
+        lt_ret      TYPE TABLE OF ddshretval,
+        ls_ret      TYPE ddshretval,
+        lv_from     TYPE i,
+        lv_to       TYPE i,
+        ls_src      TYPE ty_run_src_hub,
+        lv_like_doc TYPE string,
+        lv_del_cnt  TYPE i.
 
   CLEAR cv_doc.
   lv_from = pv_from.
@@ -2557,8 +2559,23 @@ FORM run_pick_document_in_range
     CLEAR ls_pick.
     ls_pick-document = ls_src-document.
     ls_pick-creat_date = ls_src-creat_date.
-    ls_pick-status = ls_src-status.
     ls_pick-user_name = ls_src-user_name.
+    " Show business status consistent with grouping
+    IF ls_src-grp_ord = 1.
+      ls_pick-status = 'Error'.
+    ELSEIF ls_src-grp_ord = 3.
+      ls_pick-status = 'Write+Delete done'.
+    ELSE.
+      lv_like_doc = |%DOC={ ls_src-document }%|.
+      SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_cnt
+        WHERE action = 'ARCHIVE'
+          AND message LIKE @lv_like_doc.
+      IF lv_del_cnt > 0.
+        ls_pick-status = 'Write done'.
+      ELSE.
+        ls_pick-status = 'Pending'.
+      ENDIF.
+    ENDIF.
     APPEND ls_pick TO lt_pick.
   ENDLOOP.
   IF lt_pick IS INITIAL.
@@ -2592,9 +2609,8 @@ FORM run_open_document USING VALUE(pv_doc) TYPE admi_run-document.
         lv_openrc TYPE sy-subrc.
 
   lv_tab = gv_tabname.
-  IF lv_tab IS INITIAL.
-    lv_tab = 'ZSP26_EKKO'.
-  ENDIF.
+  CONDENSE lv_tab.
+  TRANSLATE lv_tab TO UPPER CASE.
 
   lv_obj = gv_object.
   IF lv_obj IS INITIAL.
