@@ -264,6 +264,23 @@ START-OF-SELECTION.
     gv_del_doc_log = p_doc.
   ENDIF.
   lv_obj = lv_open_obj.
+
+  " Pre-check: warn if this session already has a DELETE log
+  IF gv_del_doc_log IS NOT INITIAL AND p_test = ' '.
+    DATA: lv_prev_del_like TYPE string,
+          lv_prev_del_cnt  TYPE i.
+    lv_prev_del_like = |%DOC={ gv_del_doc_log }%|.
+    SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_prev_del_cnt
+      WHERE action  = 'DELETE'
+        AND status  = 'S'
+        AND message LIKE @lv_prev_del_like.
+    IF lv_prev_del_cnt > 0.
+      WRITE: / |WARNING: Session { gv_del_doc_log } đã có { lv_prev_del_cnt } log DELETE thành công trước đó.|.
+      WRITE: / 'Dữ liệu DB có thể đã bị xóa. Nếu không có rows nào bị xóa lần này, log sẽ ghi cảnh báo.'.
+      WRITE: /.
+    ENDIF.
+  ENDIF.
+
   WRITE: /.
 
   IF p_json = 'X'.
@@ -603,24 +620,30 @@ FORM process_delete_adk_object
       lv_where_gen = |MANDT EQ '{ lv_mandt_q }' AND | && lv_where_gen.
 
       IF p_test = ' '.
+        DATA lv_dbcnt TYPE i.
         TRY.
             DELETE FROM (lv_del_tab) WHERE (lv_where_gen).
             lv_del_rc = sy-subrc.
+            lv_dbcnt  = sy-dbcnt.
           CATCH cx_sy_dynamic_osql_error INTO lo_osql.
             ADD 1 TO cv_err.
             lv_del_rc = 8.
+            lv_dbcnt  = 0.
             WRITE: / |  ERR: DELETE SQL { lv_del_tab }: { lo_osql->get_text( ) }|.
             WRITE: / |      WHERE { lv_where_gen }|.
           CATCH cx_root INTO lo_any.
             ADD 1 TO cv_err.
             lv_del_rc = 8.
+            lv_dbcnt  = 0.
             WRITE: / |  ERR: DELETE { lv_del_tab }: { lo_any->get_text( ) }|.
         ENDTRY.
-        IF lv_del_rc = 0 OR lv_del_rc = 4.
+        IF ( lv_del_rc = 0 OR lv_del_rc = 4 ) AND lv_dbcnt > 0.
           PERFORM archive_adk_mark_deleted_row USING pv_handle CHANGING lv_skip_rec_fm.
           ADD 1 TO lv_zstr_db_del.
           ADD 1 TO cv_cnt.
           PERFORM del_agg_bump_legacy USING lt_del_agg lv_del_tab.
+        ELSEIF ( lv_del_rc = 0 OR lv_del_rc = 4 ) AND lv_dbcnt = 0.
+          WRITE: / |  SKIP: { lv_del_tab } / { ls_arch_gen-key_vals } — row already deleted from DB.|.
         ELSEIF lv_del_rc <> 8.
           ADD 1 TO cv_err.
           WRITE: / |  ERR: DELETE { lv_del_tab } subrc={ lv_del_rc }|.
@@ -849,7 +872,7 @@ FORM flush_arch_log_delete
     CATCH cx_uuid_error.
       ls_log-log_id = CONV sysuuid_x16( |{ sy-datum }{ sy-uzeit }{ sy-tabix }| ).
     ENDTRY.
-    ls_log-table_name = 'Z_ARCH_EKK'.
+    ls_log-table_name = COND tabname( WHEN p_table IS NOT INITIAL THEN p_table ELSE 'Z_ARCH_EKK' ).
     ls_log-action     = 'DELETE'.
     ls_log-rec_count  = 0.
     ls_log-status     = 'E'.
@@ -861,6 +884,24 @@ FORM flush_arch_log_delete
     INSERT zsp26_arch_log FROM ls_log.
     ROLLBACK WORK.
     RETURN.
+  ELSE.
+    " No rows deleted AND no errors = session was already fully deleted
+    CLEAR ls_log.
+    TRY. ls_log-log_id = cl_system_uuid=>create_uuid_x16_static( ).
+    CATCH cx_uuid_error.
+      ls_log-log_id = CONV sysuuid_x16( |{ sy-datum }{ sy-uzeit }{ sy-tabix }| ).
+    ENDTRY.
+    ls_log-table_name = COND tabname( WHEN p_table IS NOT INITIAL THEN p_table ELSE 'Z_ARCH_EKK' ).
+    ls_log-action     = 'DELETE'.
+    ls_log-rec_count  = 0.
+    ls_log-status     = 'W'.
+    ls_log-start_time = lv_ts.
+    ls_log-end_time   = lv_ts.
+    ls_log-exec_user  = sy-uname.
+    ls_log-exec_date  = sy-datum.
+    ls_log-message    = |ADK DELETE DOC={ gv_del_doc_log }: 0 rows — DB data already deleted (duplicate run).|.
+    INSERT zsp26_arch_log FROM ls_log.
+    WRITE: / |WARNING: 0 DB rows deleted for session { gv_del_doc_log } — data was already removed.|.
   ENDIF.
   COMMIT WORK.
 ENDFORM.
