@@ -3076,7 +3076,8 @@ ENDFORM.
 FORM do_delete_old_logs.
   DATA: lv_adm     TYPE abap_bool,
         lv_answer  TYPE char1,
-        lv_days    TYPE numc4,
+        lv_days_c  TYPE char4,
+        lv_days    TYPE i,
         lv_cutoff  TYPE d,
         lv_deleted TYPE i,
         lv_q       TYPE string.
@@ -3087,7 +3088,7 @@ FORM do_delete_old_logs.
     RETURN.
   ENDIF.
 
-  lv_days = '0090'.
+  lv_days_c = '90'.
 
   CALL FUNCTION 'POPUP_TO_GET_ONE_VALUE'
     EXPORTING
@@ -3095,13 +3096,14 @@ FORM do_delete_old_logs.
       titel       = 'Delete Old Archive Logs'
       valuelength = 4
     IMPORTING
-      value1      = lv_days
+      value1      = lv_days_c
     EXCEPTIONS
       OTHERS      = 1.
-  IF sy-subrc <> 0 OR lv_days IS INITIAL.
+  IF sy-subrc <> 0 OR lv_days_c IS INITIAL.
     RETURN.
   ENDIF.
 
+  lv_days = lv_days_c.
   IF lv_days < 1.
     MESSAGE 'Số ngày phải >= 1.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
