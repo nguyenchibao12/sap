@@ -16,6 +16,24 @@
      <ENTRY>Z_ARCH_EKK: ADK Write Program</ENTRY>
      <LENGTH>30</LENGTH>
     </item>
+    <item>
+     <ID>I</ID>
+     <KEY>P_TABLE</KEY>
+     <ENTRY>Table name</ENTRY>
+     <LENGTH>10</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>S_DATE</KEY>
+     <ENTRY>Date range</ENTRY>
+     <LENGTH>10</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>P_TEST</KEY>
+     <ENTRY>Test mode</ENTRY>
+     <LENGTH>9</LENGTH>
+    </item>
    </TPOOL>
   </asx:values>
  </asx:abap>

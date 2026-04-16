@@ -806,7 +806,6 @@
        <VISLENGTH>014</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
-       <INPUT_FLD>X</INPUT_FLD>
        <OUTPUT_FLD>X</OUTPUT_FLD>
       </RPY_DYFATC>
       <RPY_DYFATC>
@@ -863,8 +862,8 @@
        <TEXT>Purge-only_(direct_DB_delete)</TEXT>
        <LINE>006</LINE>
        <COLUMN>004</COLUMN>
-       <LENGTH>028</LENGTH>
-       <VISLENGTH>028</VISLENGTH>
+       <LENGTH>029</LENGTH>
+       <VISLENGTH>029</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
