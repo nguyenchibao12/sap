@@ -4412,6 +4412,26 @@ ENDFORM.
 *& FORM IS_ARCH_ADMIN — Kiểm tra user có quyền Archive Admin không
 *&  Tra bảng ZSP26_ARCH_ADMIN — thêm/xóa user admin bằng SE16N/SM30
 *&  Admin: thấy và thao tác tất cả session
+*& FORM RESET_FLOW_GLOBALS — clear write/delete shared globals
+*&   so each flow (Write / Delete) starts fresh from the hub
+*&---------------------------------------------------------------------*
+FORM reset_flow_globals.
+  CLEAR: gv_variant,
+         gv_var_tech,
+         gv_start_date,
+         gs_btc_start,
+         gv_spool_set,
+         gv_test_mode,
+         gv_del_sess_def,
+         gv_f4_sess,
+         gs_del_admi,
+         gv_purge_mode,
+         gv_stat_arch_tx,
+         gv_stat_start_tx,
+         gv_stat_spool_tx.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *&  User thường: chỉ thấy và thao tác session của chính mình
 *&---------------------------------------------------------------------*
 FORM is_arch_admin CHANGING cv_admin TYPE abap_bool.

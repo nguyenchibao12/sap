@@ -79,9 +79,9 @@ MODULE user_command_0100 INPUT.
 
     WHEN 'BT_WRITE'.
       IF gv_tabname IS INITIAL.
-        " TYPE S + DISPLAY LIKE E: cảnh báo giống lỗi nhưng không 'khóa' dynpro như MESSAGE E
         MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
+        PERFORM reset_flow_globals.
         SET SCREEN 0500.
         LEAVE SCREEN.
       ENDIF.
@@ -97,6 +97,7 @@ MODULE user_command_0100 INPUT.
       IF gv_tabname IS INITIAL.
         MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
+        PERFORM reset_flow_globals.
         SET SCREEN 0600.
         LEAVE SCREEN.
       ENDIF.
