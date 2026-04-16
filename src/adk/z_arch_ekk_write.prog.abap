@@ -38,6 +38,8 @@ DATA: gs_cfg    TYPE zsp26_arch_cfg,
       lv_tpl_df       TYPE zsp26_arch_cfg-data_field,
       lv_tpl_ret      TYPE zsp26_arch_cfg-retention.
 
+CONSTANTS: lc_max_rows TYPE i VALUE 500000.
+
 FIELD-SYMBOLS: <lt_src> TYPE STANDARD TABLE,
                <lt_arch> TYPE STANDARD TABLE,
                <row>    TYPE any.
@@ -294,7 +296,6 @@ START-OF-SELECTION.
   " Runtime memory for target rows: CREATE DATA creates heap data; ASSIGN binds field-symbol
   CREATE DATA gr_src TYPE TABLE OF (p_table).
   ASSIGN gr_src->* TO <lt_src>.
-  CONSTANTS: lc_max_rows TYPE i VALUE 500000.
   SELECT * FROM (p_table) INTO TABLE <lt_src> UP TO lc_max_rows ROWS WHERE (lv_where).
 
   lv_sql_elig_cnt = lines( <lt_src> ).
