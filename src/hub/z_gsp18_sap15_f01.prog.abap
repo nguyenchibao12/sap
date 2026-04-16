@@ -34,13 +34,6 @@ CLASS lcl_cfg_handler IMPLEMENTATION.
   ENDMETHOD.
 ENDCLASS.
 
-CLASS lcl_log_handler IMPLEMENTATION.
-  METHOD on_func.
-    CHECK e_salv_function = 'LOG_DEL'.
-    PERFORM do_delete_old_logs.
-  ENDMETHOD.
-ENDCLASS.
-
 *&---------------------------------------------------------------------*
 *& Phase 4 — Monitor drill-down: Detail Log button handler
 *&---------------------------------------------------------------------*
@@ -1981,8 +1974,33 @@ ENDFORM.
 *& Hub: job ZARCH* + log DB — không cần mở SM37/SARA
 *&---------------------------------------------------------------------*
 FORM show_hub_run_diagnostics.
-  " Run log jobs = chỉ job list (SM37-style).
-  PERFORM show_hub_btc_job_list.
+  DATA: lv_rd_adm TYPE abap_bool,
+        lv_rd_ans TYPE char1.
+
+  PERFORM is_arch_admin CHANGING lv_rd_adm.
+
+  IF lv_rd_adm = abap_true.
+    CALL FUNCTION 'POPUP_TO_CONFIRM'
+      EXPORTING
+        titlebar              = 'Run Log'
+        text_question         = 'Chọn thao tác:'
+        text_button_1         = 'Xem job log'
+        text_button_2         = 'Xóa log cũ'
+        display_cancel_button = 'X'
+      IMPORTING
+        answer                = lv_rd_ans
+      EXCEPTIONS
+        OTHERS                = 1.
+    CASE lv_rd_ans.
+      WHEN '1'.
+        PERFORM show_hub_btc_job_list.
+      WHEN '2'.
+        PERFORM do_delete_old_logs.
+      WHEN OTHERS.
+    ENDCASE.
+  ELSE.
+    PERFORM show_hub_btc_job_list.
+  ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -3023,31 +3041,11 @@ FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
     RETURN.
   ENDIF.
 
-  gv_log_tab = lv_tn.
-
   TRY.
       cl_salv_table=>factory(
         IMPORTING r_salv_table = lo_alv
         CHANGING  t_table      = lt_lr ).
-      go_log_alv = lo_alv.
       lo_alv->get_functions( )->set_all( abap_true ).
-
-      DATA(lv_lr_admin) = abap_false.
-      PERFORM is_arch_admin CHANGING lv_lr_admin.
-      IF lv_lr_admin = abap_true.
-        TRY.
-            lo_alv->get_functions( )->add_function(
-              name     = 'LOG_DEL'
-              icon     = '@11@'
-              text     = 'Delete old logs'
-              tooltip  = 'Xóa log cũ theo ngày (chỉ admin)'
-              position = if_salv_c_function_position=>left_of_salv_functions ).
-          CATCH cx_salv_method_not_supported
-                cx_salv_wrong_call
-                cx_salv_existing. ENDTRY.
-        SET HANDLER lcl_log_handler=>on_func FOR lo_alv->get_event( ).
-      ENDIF.
-
       lo_c = lo_alv->get_columns( ).
       lo_c->set_optimize( abap_true ).
       TRY.
@@ -3147,10 +3145,6 @@ FORM do_delete_old_logs.
     MESSAGE |Đã xóa { lv_deleted } dòng log cũ hơn { lv_days } ngày.| TYPE 'S'.
   ELSE.
     MESSAGE 'Không xóa được log (lỗi DB).' TYPE 'S' DISPLAY LIKE 'E'.
-  ENDIF.
-
-  IF go_log_alv IS BOUND.
-    go_log_alv->close_screen( ).
   ENDIF.
 ENDFORM.
 
