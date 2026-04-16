@@ -52,7 +52,7 @@ PARAMETERS: p_table TYPE tabname OBLIGATORY.
 SELECTION-SCREEN END OF BLOCK b0.
 
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME.
-SELECTION-SCREEN COMMENT /1(83) g_scr_h1.
+SELECTION-SCREEN COMMENT /1(79) g_scr_h1.
 SELECT-OPTIONS: s_date FOR sy-datum.
 PARAMETERS:     p_test TYPE c AS CHECKBOX DEFAULT ' '.
 SELECTION-SCREEN END OF BLOCK b1.
@@ -76,7 +76,7 @@ INITIALIZATION.
   ENDIF.
 
   g_scr_h0 = 'Table: F4 = ZSP26_ARCH_CFG. Uncheck P_TEST for ADK PUT_TABLE (Z_ARCH_EKK).'.
-  g_scr_h1 = 'WHERE = DATA_FIELD/RETENTION (+ EQ rules w/o OR). ABAP rules: apply_archive_rules.'.
+  g_scr_h1 = 'WHERE: DATA_FIELD/RETENTION (+ EQ rules w/o OR). ABAP rules: apply_arch_rules.'.
   bt_tbls = 'Show All Tables'.
   bt_data = 'Show Eligible Data'.
 
