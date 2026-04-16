@@ -1,9 +1,9 @@
 *&---------------------------------------------------------------------*
 *& Report ZARCH_HUB_DEMO_DATA
 *&---------------------------------------------------------------------*
-*& Nạp dữ liệu mẫu vào ZARCH_HUB_DEMO (MANDT + SEQNO + BUDAT + TITLE).
-*& Dùng test Hub → Config → Register: table ZARCH_HUB_DEMO, date BUDAT.
-*& Activate bảng ZARCH_HUB_DEMO (abapGit/SE11) rồi chạy SE38.
+*& Load sample data into ZARCH_HUB_DEMO (MANDT + SEQNO + BUDAT + TITLE).
+*& Used to test Hub → Config → Register: table ZARCH_HUB_DEMO, date BUDAT.
+*& Activate table ZARCH_HUB_DEMO (abapGit/SE11) then run via SE38.
 *&---------------------------------------------------------------------*
 REPORT zarch_hub_demo_data.
 
@@ -18,14 +18,14 @@ START-OF-SELECTION.
         lv_off TYPE i.
 
   IF p_rows < 1 OR p_rows > 9999.
-    MESSAGE 'Số dòng hợp lệ: 1–9999.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Valid row count: 1-9999.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   IF p_clear = 'X'.
     DELETE FROM zarch_hub_demo.
     COMMIT WORK.
-    WRITE: / |Đã DELETE FROM ZARCH_HUB_DEMO ({ sy-dbcnt } dòng).|.
+    WRITE: / |Deleted from ZARCH_HUB_DEMO ({ sy-dbcnt } rows).|.
   ENDIF.
 
   CLEAR lv_i.
@@ -36,7 +36,7 @@ START-OF-SELECTION.
     ls_row-mandt = sy-mandt.
     ls_row-seqno = lv_i.
 
-    " BUDAT lệch theo tuần để test retention / preview
+    " BUDAT offset by weeks to test retention / preview
     lv_off = ( lv_i - 1 ) * 7.
     ls_row-budat = sy-datum - lv_off.
 
@@ -44,7 +44,7 @@ START-OF-SELECTION.
 
     INSERT zarch_hub_demo FROM ls_row.
     IF sy-subrc <> 0.
-      WRITE: / |Lỗi INSERT SEQNO={ ls_row-seqno } (có thể đã tồn tại).|.
+      WRITE: / |INSERT error SEQNO={ ls_row-seqno } (may already exist).|.
     ENDIF.
   ENDWHILE.
 
@@ -52,5 +52,5 @@ START-OF-SELECTION.
 
   SELECT COUNT(*) FROM zarch_hub_demo INTO @DATA(lv_cnt).
   SKIP.
-  WRITE: / |Xong. Tổng dòng ZARCH_HUB_DEMO (client hiện tại): { lv_cnt }|.
-  WRITE: / 'Tiếp theo: Hub → Config → Register — ZARCH_HUB_DEMO, Date field BUDAT.'.
+  WRITE: / |Done. Total rows in ZARCH_HUB_DEMO (current client): { lv_cnt }|.
+  WRITE: / 'Next: Hub > Config > Register - ZARCH_HUB_DEMO, Date field BUDAT.'.

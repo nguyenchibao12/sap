@@ -423,15 +423,15 @@ FORM zsp26_arch_fix_where_glued_and
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& F4 help: tables — ưu tiên ZSP26_ARCH_CFG (có config), fallback DD02V
-*&  Hiện tất cả Z* transparent table từ DDIC + đánh dấu nào đã config
+*& F4 help: tables — prioritize ZSP26_ARCH_CFG (configured), fallback DD02V
+*&  Show all Z* transparent tables from DDIC + mark which are configured
 *&---------------------------------------------------------------------*
 FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.
 
   TYPES: BEGIN OF ty_sht_f4,
            table_name  TYPE tabname,
            description TYPE char80,
-           configured  TYPE char3,   " 'YES' nếu đã có config active
+           configured  TYPE char3,   " 'YES' if active config exists
          END OF ty_sht_f4.
 
   DATA: lt_sht     TYPE STANDARD TABLE OF ty_sht_f4 WITH DEFAULT KEY,
@@ -439,21 +439,21 @@ FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.
         lt_cfg     TYPE STANDARD TABLE OF ty_sht_f4 WITH DEFAULT KEY,
         ls_cfg     TYPE ty_sht_f4.
 
-  " Bước 1: Đọc bảng đã có config active từ ZSP26_ARCH_CFG
+  " Step 1: Read tables with active config from ZSP26_ARCH_CFG
   SELECT table_name, description
     FROM zsp26_arch_cfg
     WHERE is_active = 'X'
     INTO CORRESPONDING FIELDS OF TABLE @lt_cfg
     UP TO 999 ROWS.
 
-  " Bước 2: Đọc tất cả Z* transparent table từ DDIC
+  " Step 2: Read all Z* transparent tables from DDIC
   SELECT tabname AS table_name, ddtext AS description
     FROM dd02v
     INTO CORRESPONDING FIELDS OF TABLE @lt_sht
     WHERE tabname  LIKE 'Z%'
       AND tabclass = 'TRANSP'.
 
-  " Bước 3: Đánh dấu bảng đã config
+  " Step 3: Mark tables that have config
   LOOP AT lt_sht ASSIGNING FIELD-SYMBOL(<row>).
     READ TABLE lt_cfg INTO ls_cfg WITH KEY table_name = <row>-table_name.
     IF sy-subrc = 0.
@@ -464,7 +464,7 @@ FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.
     ENDIF.
   ENDLOOP.
 
-  " Nếu DDIC trả về rỗng (hệ thống restrict dd02v) → fallback về CFG
+  " If DDIC returns empty (system restricts dd02v) → fallback to CFG
   IF lt_sht IS INITIAL.
     LOOP AT lt_cfg INTO ls_cfg.
       CLEAR ls_sht.
@@ -475,12 +475,12 @@ FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.
     ENDLOOP.
   ENDIF.
 
-  SORT lt_sht BY configured DESCENDING table_name.  " YES lên trước
+  SORT lt_sht BY configured DESCENDING table_name.  " YES first
 
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
       retfield     = 'TABLE_NAME'
-      window_title = 'Z Tables (YES=đã config archive)'
+      window_title = 'Z Tables (YES=archive configured)'
       dynpprog     = sy-repid
       dynpnr       = sy-dynnr
       dynprofield  = 'P_TABLE'

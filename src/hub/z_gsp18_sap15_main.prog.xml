@@ -109,7 +109,7 @@
       <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
       <SCREEN>0100</SCREEN>
       <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>ALV Screen</DESCRIPT>
+      <DESCRIPT>Archive Hub - Main Dashboard</DESCRIPT>
       <TYPE>N</TYPE>
       <NEXTSCREEN>0100</NEXTSCREEN>
       <LINES>027</LINES>
@@ -337,7 +337,7 @@
       <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
       <SCREEN>0200</SCREEN>
       <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>screen 0200</DESCRIPT>
+      <DESCRIPT>Archive Inventory and Statistics</DESCRIPT>
       <TYPE>N</TYPE>
       <NEXTSCREEN>0200</NEXTSCREEN>
       <LINES>027</LINES>
@@ -485,7 +485,7 @@
       <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
       <SCREEN>0500</SCREEN>
       <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>Create archive file (ADK session)</DESCRIPT>
+      <DESCRIPT>Archive Write - Create Session</DESCRIPT>
       <TYPE>N</TYPE>
       <NEXTSCREEN>0500</NEXTSCREEN>
       <LINES>027</LINES>
@@ -723,7 +723,7 @@
       <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
       <SCREEN>0600</SCREEN>
       <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>Delete archive (ADK delete program)</DESCRIPT>
+      <DESCRIPT>Archive Delete - Remove DB Data</DESCRIPT>
       <TYPE>N</TYPE>
       <NEXTSCREEN>0600</NEXTSCREEN>
       <LINES>027</LINES>
@@ -990,7 +990,7 @@
       <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
       <SCREEN>0700</SCREEN>
       <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>Archive admin users</DESCRIPT>
+      <DESCRIPT>Archive Administration - User Management</DESCRIPT>
       <TYPE>N</TYPE>
       <NEXTSCREEN>0700</NEXTSCREEN>
       <LINES>027</LINES>
@@ -1105,7 +1105,7 @@
       <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
       <SCREEN>0800</SCREEN>
       <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>Register archive table</DESCRIPT>
+      <DESCRIPT>Archive Configuration - Register Table</DESCRIPT>
       <TYPE>M</TYPE>
       <NEXTSCREEN>0000</NEXTSCREEN>
       <LINES>015</LINES>
@@ -1330,7 +1330,7 @@
       <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
       <SCREEN>0810</SCREEN>
       <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>Config: register or list</DESCRIPT>
+      <DESCRIPT>Archive Configuration - Register or List</DESCRIPT>
       <TYPE>M</TYPE>
       <NEXTSCREEN>0000</NEXTSCREEN>
       <LINES>008</LINES>

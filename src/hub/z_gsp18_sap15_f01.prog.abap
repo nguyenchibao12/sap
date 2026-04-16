@@ -54,7 +54,7 @@ CLASS lcl_mon_handler IMPLEMENTATION.
     lt_rows = lo_sels->get_selected_rows( ).
 
     IF lt_rows IS INITIAL.
-      MESSAGE 'Vui lòng chọn 1 dòng trước khi xem Detail Log.' TYPE 'S' DISPLAY LIKE 'W'.
+      MESSAGE 'Please select a row before viewing Detail Log.' TYPE 'S' DISPLAY LIKE 'W'.
       RETURN.
     ENDIF.
 
@@ -80,7 +80,7 @@ CLASS lcl_btc_handler IMPLEMENTATION.
         lo_sel = go_btc_alv->get_selections( ).
         lt_rows = lo_sel->get_selected_rows( ).
         IF lines( lt_rows ) <> 1.
-          MESSAGE 'Chọn đúng 1 job, rồi bấm Job protocol (log SM37).' TYPE 'S' DISPLAY LIKE 'W'.
+          MESSAGE 'Select exactly 1 job, then click Job protocol (SM37 log).' TYPE 'S' DISPLAY LIKE 'W'.
           RETURN.
         ENDIF.
         READ TABLE lt_rows INTO lv_idx INDEX 1.
@@ -102,13 +102,13 @@ CLASS lcl_btc_handler IMPLEMENTATION.
         lo_sel = go_btc_alv->get_selections( ).
         lt_rows = lo_sel->get_selected_rows( ).
         IF lines( lt_rows ) <> 1.
-          MESSAGE 'Chọn đúng 1 job.' TYPE 'S' DISPLAY LIKE 'W'.
+          MESSAGE 'Select exactly 1 job.' TYPE 'S' DISPLAY LIKE 'W'.
           RETURN.
         ENDIF.
         READ TABLE lt_rows INTO lv_idx INDEX 1.
         READ TABLE gt_btc_rows INTO ls_b INDEX lv_idx.
         IF sy-subrc <> 0 OR ls_b-listident IS INITIAL.
-          MESSAGE 'Không có spool list id cho step job này.' TYPE 'S' DISPLAY LIKE 'W'.
+          MESSAGE 'No spool list ID found for this job step.' TYPE 'S' DISPLAY LIKE 'W'.
           RETURN.
         ENDIF.
         PERFORM show_btc_spool_popup USING ls_b-listident.
@@ -147,10 +147,10 @@ CLASS lcl_btc_handler IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    " Double-click theo cột: LISTIDENT mở spool, cột khác mở job protocol.
+    " Double-click by column: LISTIDENT opens spool, others open job protocol.
     IF column = 'LISTIDENT' OR column = 'SPOOL_ID' OR column = 'LIST ID'.
       IF ls_b-listident IS INITIAL.
-        MESSAGE 'Dòng này không có spool list id.' TYPE 'S' DISPLAY LIKE 'W'.
+        MESSAGE 'This row has no spool list ID.' TYPE 'S' DISPLAY LIKE 'W'.
         RETURN.
       ENDIF.
       PERFORM show_btc_spool_popup USING ls_b-listident.
@@ -173,7 +173,7 @@ CLASS lcl_run_handler IMPLEMENTATION.
     lo_sel = go_run_alv->get_selections( ).
     lt_rows = lo_sel->get_selected_rows( ).
     IF lines( lt_rows ) <> 1.
-      MESSAGE 'Chọn đúng 1 dòng session/range rồi bấm Open Session.' TYPE 'S' DISPLAY LIKE 'W'.
+      MESSAGE 'Select exactly 1 session/range row, then click Open Session.' TYPE 'S' DISPLAY LIKE 'W'.
       RETURN.
     ENDIF.
 
@@ -191,35 +191,35 @@ ENDCLASS.
 
 *&---------------------------------------------------------------------*
 *& FORM DO_ARCHIVE_WRITE — Phase 2+3: Preview & Archive
-*& Đọc config → dynamic SELECT → SALV Preview → Archive Now
+*& Read config → dynamic SELECT → SALV Preview → Archive Now
 *&---------------------------------------------------------------------*
 FORM do_archive_write.
-  " 1. Kiểm tra bảng nhập vs ZSP26_ARCH_CFG + DDIC (FIELDINFO + DATA_FIELD tồn tại)
+  " 1. Validate table against ZSP26_ARCH_CFG + DDIC
   DATA: lv_cfg_ok TYPE abap_bool.
   PERFORM validate_table_against_cfg
     USING gv_tabname CHANGING gs_cfg lv_cfg_ok.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Bảng '{ gv_tabname }' không hợp lệ: không có dòng active ZSP26_ARCH_CFG hoặc DATA_FIELD không có trong DDIC.|
+    MESSAGE |Table '{ gv_tabname }' is invalid: no active ZSP26_ARCH_CFG row or DATA_FIELD not found in DDIC.|
             TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
-  " 2. Dynamic SELECT toàn bộ bảng
+  " 2. Dynamic SELECT entire table
   CREATE DATA gr_all TYPE TABLE OF (gv_tabname).
   ASSIGN gr_all->* TO <lt_all>.
   SELECT * FROM (gv_tabname) INTO TABLE <lt_all>.
 
   IF <lt_all> IS INITIAL.
-    MESSAGE |Không có dữ liệu trong { gv_tabname }| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No data found in { gv_tabname }| TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  " 3. Hiển thị SALV Preview
+  " 3. Display SALV Preview
   PERFORM show_archive_preview.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM SHOW_ARCHIVE_PREVIEW — Phân loại READY/TOO NEW, hiển thị SALV
+*& FORM SHOW_ARCHIVE_PREVIEW — Classify READY/TOO NEW, display SALV
 *&---------------------------------------------------------------------*
 FORM show_archive_preview.
   DATA: lt_prev TYPE TABLE OF ty_prev,
@@ -231,7 +231,7 @@ FORM show_archive_preview.
   CLEAR: gv_rdy_cnt, gv_skp_cnt.
   lv_cutoff = sy-datum - gs_cfg-retention.
 
-  " Lấy key field đầu tiên (để hiển thị)
+  " Get first key field for display
   DATA: lt_dd   TYPE TABLE OF dfies,
         lv_kfld TYPE string.
 
@@ -245,7 +245,7 @@ FORM show_archive_preview.
     lv_kfld = ls_dd-fieldname. EXIT.
   ENDLOOP.
 
-  " Phân loại từng record
+  " Classify each record
   DATA: lv_rule_pass TYPE abap_bool,
         lv_fail_cnt  TYPE i VALUE 0.
 
@@ -353,8 +353,8 @@ FORM show_archive_preview.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Variant Z_ARCH_EKK_WRITE — tách theo bảng (SAP chỉ có report+variant)
-*& Tên lưu VARID: {tab_prefix}_{logical} ≤14 ký tự, vd BKPF_VAR_01 / EKKO_VAR_01
+*& Variant Z_ARCH_EKK_WRITE — split by table (SAP only supports report+variant)
+*& VARID name: {tab_prefix}_{logical} ≤14 chars, e.g. BKPF_VAR_01 / EKKO_VAR_01
 *&---------------------------------------------------------------------*
 FORM arch_variant_tab_prefix
   USING    iv_tabname TYPE tabname
@@ -405,8 +405,8 @@ FORM arch_build_write_var_tech
     RETURN.
   ENDIF.
 
-  " Nếu user nhập trùng tiền tố bảng (vd EKKO_VAR_02) thì tách thành logical VAR_02
-  " để tên VARID = EKKO_VAR_02, tránh EK_EKKO_VAR_02 do giới hạn 14 ký tự.
+  " If user input already includes table prefix (e.g. EKKO_VAR_02), strip it to logical VAR_02
+  " so VARID = EKKO_VAR_02 instead of EK_EKKO_VAR_02 (14-char limit).
   lv_plen = strlen( lv_pfx ).
   IF lv_plen > 0 AND strlen( lv_log ) >= lv_plen + 2.
     IF substring( val = lv_log len = lv_plen ) = lv_pfx AND
@@ -483,8 +483,8 @@ ENDFORM.
 
 *&---------------------------------------------------------------------*
 *& Ensure write variant exists (auto-create for first edit)
-*& RS_CREATE_VARIANT: vari_desc = VARID (không phải chuỗi) — tránh
-*& CALL_FUNCTION_CONFLICT_LENG trên một số release với RS_CHANGE_CREATED_VARIANT
+*& RS_CREATE_VARIANT: vari_desc = VARID (not a string) — avoids
+*& CALL_FUNCTION_CONFLICT_LENG on some releases with RS_CHANGE_CREATED_VARIANT
 *&---------------------------------------------------------------------*
 FORM arch_ensure_write_variant
   USING    iv_report  TYPE programm
@@ -566,8 +566,8 @@ FORM arch_ensure_write_variant
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& SUBMIT write report — selection screen chỉ để sửa variant (ẩn Execute)
-*& Hub sets EXPORT trước SUBMIT; Z_ARCH_EKK_WRITE đọc ở AT SS OUTPUT.
+*& SUBMIT write report — selection screen only for editing variant (hides Execute)
+*& Hub sets EXPORT before SUBMIT; Z_ARCH_EKK_WRITE reads it at AT SS OUTPUT.
 *&---------------------------------------------------------------------*
 FORM arch_submit_wvar_ss
   USING iv_variant TYPE variant.
@@ -584,7 +584,7 @@ FORM arch_submit_wvar_ss
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM REFRESH_VAR_TECH_DISPLAY — PBO: show tên kỹ thuật đầy đủ
+*& FORM REFRESH_VAR_TECH_DISPLAY — PBO: show full technical name
 *&---------------------------------------------------------------------*
 FORM refresh_var_tech_display.
   DATA: lv_vt TYPE variant,
@@ -601,12 +601,12 @@ FORM refresh_var_tech_display.
   IF lv_ok = abap_true.
     gv_var_tech = lv_vt.
   ELSE.
-    gv_var_tech = '(tên quá dài / không hợp lệ)'.
+    gv_var_tech = '(name too long / invalid)'.
   ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_ARCHIVE_VIA_ADK — gọi ADK Write Program (từ lcl_handler)
+*& FORM DO_ARCHIVE_VIA_ADK — invoke ADK Write Program (from lcl_handler)
 *&---------------------------------------------------------------------*
 FORM do_archive_via_adk.
   " Keep this entry-point for compatibility, but force background scheduling
@@ -615,7 +615,7 @@ FORM do_archive_via_adk.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM ARCH_GET_WRITE_VRUN — variant thực tế cho Z_ARCH_EKK_WRITE (theo gv_tabname)
+*& FORM ARCH_GET_WRITE_VRUN — actual variant for Z_ARCH_EKK_WRITE (by gv_tabname)
 *&---------------------------------------------------------------------*
 FORM arch_get_write_vrun
   CHANGING cv_vrun TYPE variant
@@ -652,7 +652,7 @@ FORM arch_get_write_vrun
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_ARCHIVE_WRITE_BG_JOB — schedule ADK Write in SM37 (1 bảng)
+*& FORM DO_ARCHIVE_WRITE_BG_JOB — schedule ADK Write in SM37 (single table)
 *&---------------------------------------------------------------------*
 FORM do_archive_write_bg_job.
   DATA: lv_vrun     TYPE variant,
@@ -668,7 +668,7 @@ FORM do_archive_write_bg_job.
   lv_save = gv_tabname.
 
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Please select a table on the previous screen' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -685,14 +685,14 @@ FORM do_archive_write_bg_job.
       jobname_missing  = 3
       OTHERS           = 4.
   IF sy-subrc <> 0.
-    MESSAGE 'Không mở được background job cho Write.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Failed to open background job for Write.' TYPE 'S' DISPLAY LIKE 'E'.
     gv_tabname = lv_save.
     RETURN.
   ENDIF.
 
   PERFORM arch_get_write_vrun CHANGING lv_vrun lv_err.
   IF lv_err = abap_true.
-    MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Invalid variant name or exceeds SAP 14-character limit.' TYPE 'S' DISPLAY LIKE 'E'.
     CALL FUNCTION 'JOB_CLOSE' EXPORTING jobname = lv_jobname jobcount = lv_jobcount EXCEPTIONS OTHERS = 0.
     gv_tabname = lv_save.
     RETURN.
@@ -739,7 +739,7 @@ FORM do_archive_write_bg_job.
       AND RETURN.
   ENDIF.
   IF sy-subrc <> 0.
-    MESSAGE 'Không add được step Write vào background job.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Failed to add Write step to background job.' TYPE 'S' DISPLAY LIKE 'E'.
     CALL FUNCTION 'JOB_CLOSE' EXPORTING jobname = lv_jobname jobcount = lv_jobcount EXCEPTIONS OTHERS = 0.
     gv_tabname = lv_save.
     RETURN.
@@ -762,11 +762,11 @@ FORM do_archive_write_bg_job.
       lock_failed          = 7
       OTHERS               = 8.
   IF sy-subrc <> 0.
-    MESSAGE 'Đã tạo job nhưng không close/start được. Kiểm tra SM37/SM21.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Job created but failed to close/start. Check SM37/SM21.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
-  MESSAGE |Đã schedule WRITE job { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S'.
+  MESSAGE |Write job scheduled: { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -821,14 +821,14 @@ FORM do_archive_delete_job.
         lv_sel_doc TYPE admi_run-document.
 
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Please select a table on the previous screen' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   IF gv_prog_del IS INITIAL.
     PERFORM get_archive_programs.
   ENDIF.
   IF gv_prog_del IS INITIAL.
-    MESSAGE 'Chưa cấu hình delete program (AOBJ)' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Delete program not configured (AOBJ)' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -839,19 +839,19 @@ FORM do_archive_delete_job.
     lv_sel_doc = gv_f4_sess.
   ENDIF.
 
-  " --- Ownership guard: chặn xóa session của user khác ---
+  " --- Ownership guard: block deleting sessions owned by another user ---
   IF gs_del_admi-document IS NOT INITIAL.
     DATA: lv_del_adm TYPE abap_bool.
     PERFORM is_arch_admin CHANGING lv_del_adm.
     IF lv_del_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
-      MESSAGE |Bạn không có quyền xóa session của user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE |You do not have permission to delete sessions owned by user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
   ENDIF.
 
   PERFORM arch_resolve_del_variant CHANGING lv_vrun lv_verr.
   IF lv_verr = abap_true.
-    MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Invalid variant name or exceeds SAP 14-character limit.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -877,14 +877,14 @@ FORM do_archive_delete_bg_job.
         lv_prev_ans  TYPE char1.
 
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Vui lòng chọn bảng ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Please select a table on the previous screen' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   IF gv_prog_del IS INITIAL.
     PERFORM get_archive_programs.
   ENDIF.
   IF gv_prog_del IS INITIAL.
-    MESSAGE 'Chưa cấu hình delete program (AOBJ)' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Delete program not configured (AOBJ)' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -895,12 +895,12 @@ FORM do_archive_delete_bg_job.
     lv_sel_doc = gv_f4_sess.
   ENDIF.
 
-  " --- Ownership guard: chặn xóa session của user khác (background job) ---
+  " --- Ownership guard: block deleting sessions owned by another user (background job) ---
   IF gs_del_admi-document IS NOT INITIAL.
     DATA: lv_bgdel_adm TYPE abap_bool.
     PERFORM is_arch_admin CHANGING lv_bgdel_adm.
     IF lv_bgdel_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
-      MESSAGE |Bạn không có quyền xóa session của user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE |You do not have permission to delete sessions owned by user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
   ENDIF.
@@ -916,9 +916,9 @@ FORM do_archive_delete_bg_job.
       CALL FUNCTION 'POPUP_TO_CONFIRM'
         EXPORTING
           titlebar              = 'Duplicate Delete Warning'
-          text_question         = |Session { lv_sel_doc } đã có { lv_prev_cnt } lần DELETE thành công. Chạy lại sẽ không xóa thêm dữ liệu DB. Tiếp tục?|
-          text_button_1         = 'Tiếp tục'
-          text_button_2         = 'Hủy'
+          text_question         = |Session { lv_sel_doc } already has { lv_prev_cnt } successful DELETE runs. Re-running will not delete additional DB data. Continue?|
+          text_button_1         = 'Continue'
+          text_button_2         = 'Cancel'
           default_button        = '2'
           display_cancel_button = ' '
         IMPORTING
@@ -926,7 +926,7 @@ FORM do_archive_delete_bg_job.
         EXCEPTIONS
           OTHERS                = 1.
       IF lv_prev_ans <> '1'.
-        MESSAGE |Đã hủy — session { lv_sel_doc } đã được delete trước đó.| TYPE 'S' DISPLAY LIKE 'W'.
+        MESSAGE |Cancelled — session { lv_sel_doc } was already deleted previously.| TYPE 'S' DISPLAY LIKE 'W'.
         RETURN.
       ENDIF.
     ENDIF.
@@ -934,7 +934,7 @@ FORM do_archive_delete_bg_job.
 
   PERFORM arch_resolve_del_variant CHANGING lv_vrun lv_verr.
   IF lv_verr = abap_true.
-    MESSAGE 'Variant không hợp lệ hoặc quá dài (giới hạn tên SAP 14 ký tự).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Invalid variant name or exceeds SAP 14-character limit.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -951,7 +951,7 @@ FORM do_archive_delete_bg_job.
       jobname_missing  = 3
       OTHERS           = 4.
   IF sy-subrc <> 0.
-    MESSAGE 'Không mở được background job cho Delete.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Failed to open background job for Delete.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -963,7 +963,7 @@ FORM do_archive_delete_bg_job.
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   IF sy-subrc <> 0.
-    MESSAGE 'Không add được step Delete vào background job.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Failed to add Delete step to background job.' TYPE 'S' DISPLAY LIKE 'E'.
     CALL FUNCTION 'JOB_CLOSE' EXPORTING jobname = lv_jobname jobcount = lv_jobcount EXCEPTIONS OTHERS = 0.
     RETURN.
   ENDIF.
@@ -983,11 +983,11 @@ FORM do_archive_delete_bg_job.
       lock_failed          = 7
       OTHERS               = 8.
   IF sy-subrc <> 0.
-    MESSAGE 'Đã tạo job nhưng không close/start được. Kiểm tra SM37/SM21.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Job created but failed to close/start. Check SM37/SM21.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
-  MESSAGE |Đã schedule DELETE job { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S'.
+  MESSAGE |Delete job scheduled: { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -1026,14 +1026,14 @@ FORM do_purge_only_direct.
   GET TIME STAMP FIELD lv_ts_s.
 
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Vui lòng chọn bảng ở màn trước.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Please select a table on the previous screen.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   PERFORM validate_table_against_cfg
     USING gv_tabname CHANGING ls_cfg lv_cfg_ok.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Purge-only: bảng { gv_tabname } chưa có config active hợp lệ (DATE field/retention).| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -1049,7 +1049,7 @@ FORM do_purge_only_direct.
   ASSIGN gr_all->* TO <lt_src>.
   SELECT * FROM (gv_tabname) INTO TABLE <lt_src> WHERE (lv_where_all).
   IF <lt_src> IS INITIAL.
-    MESSAGE |Purge-only: không có record nào phù hợp điều kiện purge của { gv_tabname }.| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |Purge-only: no records match purge criteria for { gv_tabname }.| TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -1058,7 +1058,7 @@ FORM do_purge_only_direct.
     TABLES     dfies_tab = lt_df
     EXCEPTIONS OTHERS    = 1.
   IF sy-subrc <> 0 OR lt_df IS INITIAL.
-    MESSAGE |Purge-only: không đọc được DDIC field list của { gv_tabname }.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Purge-only: failed to read DDIC field list for { gv_tabname }.| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -1066,7 +1066,7 @@ FORM do_purge_only_direct.
     APPEND ls_df-fieldname TO lt_kfs.
   ENDLOOP.
   IF lt_kfs IS INITIAL.
-    MESSAGE 'Purge-only yêu cầu bảng có key ngoài MANDT để xóa an toàn.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Purge-only requires table to have keys beyond MANDT.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -1111,7 +1111,7 @@ FORM do_purge_only_direct.
       TRY.
         lv_purge_id = cl_system_uuid=>create_uuid_c32_static( ).
       CATCH cx_uuid_error.
-        MESSAGE 'Purge-only: không tạo được PURGE run id.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Purge-only: failed to create PURGE run ID.' TYPE 'S' DISPLAY LIKE 'E'.
         RETURN.
       ENDTRY.
     ENDIF.
@@ -1176,22 +1176,22 @@ FORM do_purge_only_direct.
     IF sy-subrc = 0.
       COMMIT WORK AND WAIT.
     ELSE.
-      MESSAGE |Purge-only: ghi log ZSP26_ARCH_LOG thất bại (sy-subrc={ sy-subrc }).| TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE |Purge-only: failed to write ZSP26_ARCH_LOG (sy-subrc={ sy-subrc }).| TYPE 'S' DISPLAY LIKE 'E'.
     ENDIF.
   ENDIF.
 
   IF gv_test_mode = 'X'.
-    lv_msg = |Purge-only TEST: { lv_purge_ok } row(s) sẽ bị xóa (không xóa DB). Rule-skip: { lv_rule_skip }.|.
+    lv_msg = |Purge-only TEST: { lv_purge_ok } row(s) would be deleted (no DB delete). Rule-skip: { lv_rule_skip }.|.
     MESSAGE lv_msg TYPE 'S' DISPLAY LIKE 'W'.
   ELSE.
-    lv_msg = |Purge-only DONE: đã xóa { lv_purge_ok } row(s) khỏi { gv_tabname }. Snapshot errors: { lv_snap_err }.|.
+    lv_msg = |Purge-only DONE: deleted { lv_purge_ok } row(s) from { gv_tabname }. Snapshot errors: { lv_snap_err }.|.
     MESSAGE lv_msg TYPE 'S'.
   ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM ARCH_DEL_PICK_SESSION_POPUP — chọn session/file delete (ADMI_RUN, AOBJ)
-*&  Popup F4 nội bộ — không gọi transaction SARA
+*& FORM ARCH_DEL_PICK_SESSION_POPUP — pick session/file for delete (ADMI_RUN, AOBJ)
+*&  Internal F4 popup — does not call transaction SARA
 *&---------------------------------------------------------------------*
 FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
   TYPES: BEGIN OF ty_arch_del_f4,
@@ -1243,7 +1243,7 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
   ENDIF.
 
   IF lt_run IS INITIAL.
-    MESSAGE 'Không có session trên ADMI_RUN cho AOBJ này (đã archive/write chưa?).' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'No sessions found in ADMI_RUN for this AOBJ (has archive/write been run?).' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -1264,10 +1264,10 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
       ENDIF.
     ENDLOOP.
     IF lt_run_rst IS INITIAL.
-      " Legacy logs (chưa có DOC=...) vẫn cho chọn session, kiểm tra kỹ ở bước xác nhận restore.
-      MESSAGE 'Chưa có marker DOC trong log DELETE (legacy). Vẫn hiển thị session; sẽ kiểm tra thêm trước khi restore.' TYPE 'S'.
+      " Legacy logs (no DOC=... marker) still allow session selection; verified at restore confirmation step.
+      MESSAGE 'No DOC marker in DELETE log (legacy). Sessions displayed; will verify before restore.' TYPE 'S'.
     ELSEIF lines( lt_run_rst ) < lines( lt_run ).
-      MESSAGE |Có { lines( lt_run ) - lines( lt_run_rst ) } session chưa có DELETE marker; vẫn hiển thị để bạn kiểm tra.| TYPE 'S'.
+      MESSAGE |{ lines( lt_run ) - lines( lt_run_rst ) } sessions have no DELETE marker; still displayed for review.| TYPE 'S'.
     ENDIF.
   ENDIF.
 
@@ -1308,8 +1308,8 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
 
   CLEAR: gs_del_admi, lv_doc, gv_f4_sess, lv_rp_doc.
 
-  " recordpos theo từng cột — không được lấy MAX trên cả return_tab (dễ luôn ra index 1 = session mới nhất).
-  " Gộp mọi dòng có FIELDNAME = DOCUMENT: lấy fieldval và recordpos (thường nằm ở các dòng khác nhau).
+  " recordpos is per column — do not take MAX across the entire return_tab (always yields index 1 = newest session).
+  " Merge all rows with FIELDNAME = DOCUMENT: extract fieldval and recordpos (usually on different rows).
   LOOP AT lt_ret INTO ls_ret.
     lv_fn = ls_ret-fieldname.
     CONDENSE lv_fn.
@@ -1364,7 +1364,7 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
   ENDIF.
 
   IF gs_del_admi-document IS INITIAL.
-    MESSAGE 'Không chọn được session từ danh sách.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'No session selected from list.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -1377,7 +1377,7 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_RESTORE_MENU — popup chọn Browse hoặc Restore
+*& FORM DO_RESTORE_MENU — popup to choose Browse or Restore
 *&---------------------------------------------------------------------*
 FORM do_restore_menu.
   DATA: lv_ans TYPE char1.
@@ -1385,9 +1385,9 @@ FORM do_restore_menu.
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
       titlebar              = 'Archive Read / Restore'
-      text_question         = 'Chọn thao tác:'
-      text_button_1         = 'Xem archived data'
-      text_button_2         = 'Restore vào DB'
+      text_question         = 'Select an action:'
+      text_button_1         = 'Browse archived data'
+      text_button_2         = 'Restore to database'
       display_cancel_button = 'X'
     IMPORTING
       answer                = lv_ans
@@ -1397,7 +1397,7 @@ FORM do_restore_menu.
   CASE lv_ans.
     WHEN '1'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Vui lòng nhập Table Name để xem archived data.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Please enter a Table Name to browse archived data.' TYPE 'S' DISPLAY LIKE 'E'.
         RETURN.
       ENDIF.
       PERFORM do_restore_preview.
@@ -1408,24 +1408,24 @@ FORM do_restore_menu.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_RESTORE_FROM_HUB — Restore từ archive (xác nhận → ADK + p_rest=X)
+*& FORM DO_RESTORE_FROM_HUB — Restore from archive (confirm → ADK + p_rest=X)
 *&---------------------------------------------------------------------*
 FORM do_restore_from_hub.
-  " Bước 1: Chọn session (popup đã filter theo user / admin)
+  " Step 1: Pick session (popup already filtered by user / admin)
   PERFORM arch_del_pick_session_popup USING 'R'.
   IF gs_del_admi-document IS INITIAL.
     RETURN.
   ENDIF.
 
-  " Bước 2: Ownership guard (defense-in-depth)
+  " Step 2: Ownership guard (defense-in-depth)
   DATA: lv_rst_adm TYPE abap_bool.
   PERFORM is_arch_admin CHANGING lv_rst_adm.
   IF lv_rst_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
-    MESSAGE |Bạn không có quyền restore session của user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |You do not have permission to restore sessions owned by user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
-  " Bước 2c: Chỉ cho restore khi session đã có log DELETE tương ứng
+  " Step 2c: Only allow restore when session has a matching DELETE log
   DATA: lv_like_doc TYPE string,
         lv_del_hit  TYPE i.
   lv_like_doc = |%DOC={ gs_del_admi-document }%|.
@@ -1440,17 +1440,17 @@ FORM do_restore_from_hub.
         AND message LIKE @lv_like_doc.
   ENDIF.
   IF lv_del_hit = 0.
-    MESSAGE |Session { gs_del_admi-document } chưa có DELETE marker theo DOC=... nên không được restore.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Session { gs_del_admi-document } has no DELETE marker (DOC=...) and cannot be restored.| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
-  " Bước 3: Xác nhận theo role (admin = full session)
+  " Step 3: Confirm by role (admin = full session)
   DATA: lv_ans TYPE c LENGTH 1,
         lv_q   TYPE string.
   IF lv_rst_adm = abap_true.
     lv_q = |Session { gs_del_admi-document } → restore FULL SESSION (all tables)?|.
   ELSE.
-    lv_q = |Session { gs_del_admi-document } → ghi dữ liệu vào bảng { gv_tabname }?|.
+    lv_q = |Session { gs_del_admi-document } → restore data into table { gv_tabname }?|.
   ENDIF.
 
   CALL FUNCTION 'POPUP_TO_CONFIRM'
@@ -1472,7 +1472,7 @@ FORM do_restore_from_hub.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_RESTORE_VIA_ADK — gọi ADK Read Program (p_rest=X → INSERT DB)
+*& FORM DO_RESTORE_VIA_ADK — invoke ADK Read Program (p_rest=X → INSERT DB)
 *&---------------------------------------------------------------------*
 FORM do_restore_via_adk.
   DATA: lv_rtab    TYPE tabname,
@@ -1480,8 +1480,8 @@ FORM do_restore_via_adk.
 
   PERFORM is_arch_admin CHANGING lv_rst_adm.
 
-  " Truyền p_doc từ session đã chọn → z_arch_ekk_read mở thẳng session đó,
-  " bỏ qua SAP standard file picker (không hiện tất cả session nữa).
+  " Pass p_doc from selected session → z_arch_ekk_read opens that session directly,
+  " bypassing the SAP standard file picker.
   IF lv_rst_adm = abap_true.
     SUBMIT z_arch_ekk_read
       WITH p_table = space
@@ -1505,7 +1505,7 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM do_archive.
   IF NOT <lt_ready> IS ASSIGNED OR <lt_ready> IS INITIAL.
-    MESSAGE 'Không có records READY để archive' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'No records READY to archive' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -1523,7 +1523,7 @@ FORM do_archive.
     lv_arch_id = cl_system_uuid=>create_uuid_c32_static( ).
     lv_log_id  = cl_system_uuid=>create_uuid_x16_static( ).
   CATCH cx_uuid_error.
-    MESSAGE 'Lỗi tạo UUID' TYPE 'E'. RETURN.
+    MESSAGE 'UUID generation error' TYPE 'E'. RETURN.
   ENDTRY.
   GET TIME STAMP FIELD lv_ts_s.
 
@@ -1599,7 +1599,7 @@ FORM do_archive.
   INSERT zsp26_arch_log FROM ls_alog.
   COMMIT WORK AND WAIT.
 
-  MESSAGE |Archive xong: { lv_ok } records từ { gv_tabname } → ZSP26_ARCH_DATA|
+  MESSAGE |Archiving complete: { lv_ok } records from { gv_tabname } → ZSP26_ARCH_DATA|
           TYPE 'S'.
 ENDFORM.
 
@@ -1625,11 +1625,11 @@ FORM do_restore_preview.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_RESTORE_NOW — thực hiện restore (gọi từ lcl_handler)
+*& FORM DO_RESTORE_NOW — execute restore (called from lcl_handler)
 *&---------------------------------------------------------------------*
 FORM do_restore_now.
   IF gt_arch_rows IS INITIAL.
-    MESSAGE 'Không có records để restore' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'No records to restore' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -1644,7 +1644,7 @@ FORM do_restore_now.
   CLEAR: gv_restored, gv_errors.
   GET TIME STAMP FIELD lv_ts_s.
 
-  " Kiểm tra có record nào được tick không
+  " Check if any record is selected
   DATA(lv_any_sel) = abap_false.
   LOOP AT gt_arch_rows ASSIGNING FIELD-SYMBOL(<chk>).
     IF <chk>-sel = 'X'. lv_any_sel = abap_true. EXIT. ENDIF.
@@ -1693,7 +1693,7 @@ FORM do_restore_now.
   INSERT zsp26_arch_log FROM ls_alog.
   COMMIT WORK AND WAIT.
 
-  MESSAGE |Restore xong: { gv_restored } records về { gv_tabname }. Lỗi: { gv_errors }|
+  MESSAGE |Restore complete: { gv_restored } records into { gv_tabname }. Errors: { gv_errors }|
           TYPE 'S'.
 ENDFORM.
 
@@ -1706,7 +1706,7 @@ ENDFORM.
 *&   Phase 1: Fix duplicates  — GROUP BY table_name
 *&   Phase 2: Extra columns   — arch_recs, del_recs, pct_saved,
 *&---------------------------------------------------------------------*
-*& FORM DO_MONITOR_MENU — popup chọn Dashboard hoặc Archive Inventory
+*& FORM DO_MONITOR_MENU — popup to choose Dashboard or Archive Inventory
 *&---------------------------------------------------------------------*
 FORM do_monitor_menu.
   DATA: lv_ans TYPE char1.
@@ -1714,7 +1714,7 @@ FORM do_monitor_menu.
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
       titlebar              = 'Monitor'
-      text_question         = 'Chọn loại báo cáo:'
+      text_question         = 'Select report type:'
       text_button_1         = 'Dashboard (traffic light)'
       text_button_2         = 'Archive Inventory'
       display_cancel_button = 'X'
@@ -1773,7 +1773,7 @@ FORM do_monitor.
   SORT lt_cfg_sum BY table_name.
 
   IF lt_cfg_sum IS INITIAL.
-    MESSAGE 'Chưa có config nào. Chạy ZSP26_LOAD_SAMPLE_DATA.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'No configuration found. Run ZSP26_LOAD_SAMPLE_DATA.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -1833,7 +1833,7 @@ FORM do_monitor.
     ENDIF.
 
     " ── Phase 2a: Archived & Deleted record counts ───────────────────
-    " SUM(rec_count) từ log — ZSP26_ARCH_DATA chỉ có data khi ADK write thực
+    " SUM(rec_count) from log — ZSP26_ARCH_DATA only has data after actual ADK write
     SELECT SUM( rec_count ) FROM zsp26_arch_log INTO @lv_cnt
       WHERE table_name = @ls_cfg-table_name AND action = 'ARCHIVE'.
     ls_disp-arch_recs = lv_cnt.
@@ -1941,13 +1941,13 @@ FORM do_monitor.
         name     = 'MON_DETAIL'
         icon     = '@2I@'
         text     = 'Detail Log'
-        tooltip  = 'Xem log chi tiết cho bảng được chọn'
+        tooltip  = 'View detailed log for the selected table'
         position = if_salv_c_function_position=>right_of_salv_functions ).
       lo_funcs->add_function(
         name     = 'MON_HELP'
         icon     = '@0S@'
-        text     = 'Huong dan'
-        tooltip  = 'Giai thich cac cot va cach doc so lieu'
+        text     = 'Guide'
+        tooltip  = 'Column guide and how to read the data'
         position = if_salv_c_function_position=>right_of_salv_functions ).
     CATCH cx_salv_method_not_supported
           cx_salv_wrong_call
@@ -1958,37 +1958,37 @@ FORM do_monitor.
     lo_cols->set_optimize( abap_true ).
 
     TRY.
-      lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( 'Bang' ).
+      lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( 'Table' ).
       lo_col ?= lo_cols->get_column( 'STATUS_ICON' ).
-      lo_col->set_long_text( 'Trang thai' ).
+      lo_col->set_long_text( 'Status' ).
       lo_col->set_icon( if_salv_c_bool_sap=>true ).
       lo_col ?= lo_cols->get_column( 'STATUS_TXT' ).
       lo_col->set_visible( if_salv_c_bool_sap=>false ).
-      lo_col ?= lo_cols->get_column( 'LIVE_RECS' ).   lo_col->set_long_text( 'So dong hien co' ).
-      lo_col ?= lo_cols->get_column( 'ARCH_RECS' ).   lo_col->set_long_text( 'Da archive' ).
-      lo_col ?= lo_cols->get_column( 'DEL_RECS' ).    lo_col->set_long_text( 'Da xoa' ).
-      lo_col ?= lo_cols->get_column( 'PCT_SAVED' ).   lo_col->set_long_text( '% da archive' ).
-      lo_col ?= lo_cols->get_column( 'ARCH_RUNS' ).   lo_col->set_long_text( 'So lan archive' ).
-      lo_col ?= lo_cols->get_column( 'REST_RUNS' ).   lo_col->set_long_text( 'So lan restore' ).
-      lo_col ?= lo_cols->get_column( 'DEL_RUNS' ).    lo_col->set_long_text( 'So lan delete' ).
-      lo_col ?= lo_cols->get_column( 'LAST_ACTION' ). lo_col->set_long_text( 'Tac vu gan nhat' ).
-      lo_col ?= lo_cols->get_column( 'LAST_DATE' ).   lo_col->set_long_text( 'Ngay gan nhat' ).
-      lo_col ?= lo_cols->get_column( 'LAST_ARCH_D' ). lo_col->set_long_text( 'Ngay archive cuoi' ).
-      lo_col ?= lo_cols->get_column( 'LAST_DEL_D' ).  lo_col->set_long_text( 'Ngay xoa cuoi' ).
-      lo_col ?= lo_cols->get_column( 'LAST_USER' ).   lo_col->set_long_text( 'User gan nhat' ).
-      lo_col ?= lo_cols->get_column( 'RETENTION' ).   lo_col->set_long_text( 'Giu lai (ngay)' ).
-      lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).   lo_col->set_long_text( 'Dang bat' ).
+      lo_col ?= lo_cols->get_column( 'LIVE_RECS' ).   lo_col->set_long_text( 'Current Rows' ).
+      lo_col ?= lo_cols->get_column( 'ARCH_RECS' ).   lo_col->set_long_text( 'Archived' ).
+      lo_col ?= lo_cols->get_column( 'DEL_RECS' ).    lo_col->set_long_text( 'Deleted' ).
+      lo_col ?= lo_cols->get_column( 'PCT_SAVED' ).   lo_col->set_long_text( '% Archived' ).
+      lo_col ?= lo_cols->get_column( 'ARCH_RUNS' ).   lo_col->set_long_text( 'Archive Runs' ).
+      lo_col ?= lo_cols->get_column( 'REST_RUNS' ).   lo_col->set_long_text( 'Restore Runs' ).
+      lo_col ?= lo_cols->get_column( 'DEL_RUNS' ).    lo_col->set_long_text( 'Delete Runs' ).
+      lo_col ?= lo_cols->get_column( 'LAST_ACTION' ). lo_col->set_long_text( 'Last Action' ).
+      lo_col ?= lo_cols->get_column( 'LAST_DATE' ).   lo_col->set_long_text( 'Last Date' ).
+      lo_col ?= lo_cols->get_column( 'LAST_ARCH_D' ). lo_col->set_long_text( 'Last Archive Date' ).
+      lo_col ?= lo_cols->get_column( 'LAST_DEL_D' ).  lo_col->set_long_text( 'Last Delete Date' ).
+      lo_col ?= lo_cols->get_column( 'LAST_USER' ).   lo_col->set_long_text( 'Last User' ).
+      lo_col ?= lo_cols->get_column( 'RETENTION' ).   lo_col->set_long_text( 'Retention (days)' ).
+      lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).   lo_col->set_long_text( 'Active' ).
       lo_col ?= lo_cols->get_column( 'ELIG_RECS' ).
-      lo_col->set_long_text( 'Co the archive (uoc tinh)' ).
+      lo_col->set_long_text( 'Eligible to Archive (est.)' ).
       lo_col ?= lo_cols->get_column( 'EST_ROW_B' ).
-      lo_col->set_long_text( 'Kich thuoc 1 dong (B)' ).
+      lo_col->set_long_text( 'Row Size (B)' ).
       lo_col ?= lo_cols->get_column( 'EST_ELIG_MB' ).
-      lo_col->set_long_text( '~MB tiet kiem (uoc tinh)' ).
+      lo_col->set_long_text( '~MB Saved (est.)' ).
     CATCH cx_salv_not_found. ENDTRY.
 
     lo_disp = go_mon_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |PHAN TICH DUNG LUONG & GIAM SAT — { lines( gt_mon_disp ) } bang — { sy-datum }| ).
+      |CAPACITY ANALYSIS & MONITORING — { lines( gt_mon_disp ) } tables — { sy-datum }| ).
     go_mon_alv->display( ).
 
   CATCH cx_salv_msg INTO DATA(lx).
@@ -1997,16 +1997,16 @@ FORM do_monitor.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM SHOW_MON_HELP — hướng dẫn đọc nhanh Monitor
+*& FORM SHOW_MON_HELP — quick guide for reading the Monitor
 *&---------------------------------------------------------------------*
 FORM show_mon_help.
   CALL FUNCTION 'POPUP_TO_DISPLAY_TEXT'
     EXPORTING
-      titel     = 'Huong dan man hinh Monitor'
-      textline1 = '1) Co the archive = so dong uoc tinh theo retention + rule EQ.'
-      textline2 = '2) Kich thuoc 1 dong (B) lay theo DDIC, chi la uoc tinh.'
-      textline3 = '3) ~MB tiet kiem = Co the archive x Kich thuoc dong / 1MB.'
-      textline4 = '4) Neu rule OR phuc tap: so thuc te co the khac (he thong loc them).'.
+      titel     = 'Monitor Screen Guide'
+      textline1 = '1) Eligible to archive = estimated rows based on retention + EQ rule.'
+      textline2 = '2) Row size (B) is from DDIC and is only an estimate.'
+      textline3 = '3) ~MB saved = Eligible to archive x Row size / 1MB.'
+      textline4 = '4) Complex OR rules: actual counts may differ (system filters further).'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -2035,7 +2035,7 @@ FORM show_mon_detail USING iv_table TYPE tabname.
     ORDER BY exec_date DESCENDING.
 
   IF lt_log IS INITIAL.
-    MESSAGE |Không có log nào cho bảng { iv_table }.| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No logs found for table { iv_table }.| TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -2068,7 +2068,7 @@ FORM show_mon_detail USING iv_table TYPE tabname.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Hub: job ZARCH* + log DB — không cần mở SM37/SARA
+*& Hub: job ZARCH* + log DB — no need to open SM37/SARA
 *&---------------------------------------------------------------------*
 FORM show_hub_run_diagnostics.
   DATA: lv_rd_adm TYPE abap_bool,
@@ -2080,9 +2080,9 @@ FORM show_hub_run_diagnostics.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
         titlebar              = 'Run Log'
-        text_question         = 'Chọn thao tác:'
-        text_button_1         = 'Xem job log'
-        text_button_2         = 'Xóa log cũ'
+        text_question         = 'Select an action:'
+        text_button_1         = 'View job log'
+        text_button_2         = 'Delete old logs'
         display_cancel_button = 'X'
       IMPORTING
         answer                = lv_rd_ans
@@ -2199,12 +2199,12 @@ FORM show_hub_admi_session_groups.
   ENDIF.
 
   IF lt_run_src IS INITIAL.
-    MESSAGE 'Không có archiving session trong ADMI_RUN cho object này.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'No archiving sessions found in ADMI_RUN for this object.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  " Chú thích nghiệp vụ: ADMI_RUN Complete != đã DELETE DB.
-  " Dựa trên log ứng dụng theo bảng hiện tại để báo pending delete.
+  " Business rule: ADMI_RUN Complete != DB rows already DELETEd.
+  " Check application log for the current table to report pending deletes.
   IF gv_tabname IS NOT INITIAL.
     SELECT COUNT(*)
       FROM zsp26_arch_log
@@ -2456,7 +2456,7 @@ FORM show_hub_admi_session_groups.
             name     = 'RUN_OPEN'
             icon     = '@2L@'
             text     = 'Open Session'
-            tooltip  = 'Mở session được chọn (hoặc chọn 1 session trong range)'
+            tooltip  = 'Open selected session (or pick one session within a range)'
             position = if_salv_c_function_position=>right_of_salv_functions ).
         CATCH cx_salv_method_not_supported
               cx_salv_wrong_call
@@ -2515,18 +2515,18 @@ FORM run_open_selected_range USING VALUE(pv_idx) TYPE i.
   ENDIF.
 
   IF ls_view-is_header = 'X'.
-    MESSAGE 'Đây là dòng group. Hãy chọn dòng range bên dưới.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'This is a group row. Please select a range row below.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
   IF ls_view-doc_from_n IS INITIAL OR ls_view-doc_to_n IS INITIAL.
-    MESSAGE 'Dòng này không có session để mở.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'This row has no session to open.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
   IF ls_view-doc_from_n = ls_view-doc_to_n.
     PERFORM run_docnum_to_document USING ls_view-doc_from_n CHANGING lv_doc_str.
     IF lv_doc_str IS INITIAL.
-      MESSAGE 'Không resolve được session document.' TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE 'Failed to resolve session document.' TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
     PERFORM run_open_document USING lv_doc_str.
@@ -2609,7 +2609,7 @@ FORM run_pick_document_in_range
     APPEND ls_pick TO lt_pick.
   ENDLOOP.
   IF lt_pick IS INITIAL.
-    MESSAGE 'Không có session trong range này.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'No sessions found in this range.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
   SORT lt_pick BY document DESCENDING.
@@ -2967,7 +2967,7 @@ FORM show_hub_btc_job_list.
   ENDLOOP.
 
   IF gt_btc_rows IS INITIAL.
-    MESSAGE 'Chưa có job nền ZARCH* của user này (hoặc đã bị xóa khỏi TBTCO).' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'No background ZARCH* jobs found for this user (or removed from TBTCO).' TYPE 'S' DISPLAY LIKE 'W'.
   ENDIF.
 
   TRY.
@@ -2982,25 +2982,25 @@ FORM show_hub_btc_job_list.
             name     = 'BTC_PROT'
             icon     = '@12@'
             text     = 'Job protocol'
-            tooltip  = 'Đọc job log (BP_JOBLOG_READ) — tương đương SM37 log'
+            tooltip  = 'Read job log (BP_JOBLOG_READ) — equivalent to SM37 log'
             position = if_salv_c_function_position=>left_of_salv_functions ).
           lo_funcs->add_function(
             name     = 'BTC_SPOOL'
             icon     = '@0X@'
             text     = 'Spool ID'
-            tooltip  = 'Xem List ID spool của step (nếu có)'
+            tooltip  = 'View spool List ID for step (if available)'
             position = if_salv_c_function_position=>left_of_salv_functions ).
           lo_funcs->add_function(
             name     = 'BTC_Z26LOG'
             icon     = '@3W@'
             text     = 'ZSP26_ARCH_LOG'
-            tooltip  = 'Log ứng dụng ARCHIVE/DELETE theo bảng hub hoặc user'
+            tooltip  = 'Application log ARCHIVE/DELETE by hub table or user'
             position = if_salv_c_function_position=>left_of_salv_functions ).
           lo_funcs->add_function(
             name     = 'BTC_SESS'
             icon     = '@3I@'
             text     = 'Archive sessions'
-            tooltip  = 'Mở danh sách session để Open Session và xem archived data'
+            tooltip  = 'Open session list to browse or open archived data'
             position = if_salv_c_function_position=>left_of_salv_functions ).
         CATCH cx_salv_method_not_supported
               cx_salv_wrong_call
@@ -3061,7 +3061,7 @@ FORM show_btc_job_protocol
       OTHERS    = 9.
 
   IF sy-subrc <> 0 OR lt_log IS INITIAL.
-    MESSAGE |Không đọc được job log { pv_name }/{ pv_cnt } (đã xóa, chưa ghi log, hoặc quyền).|
+    MESSAGE |Failed to read job log { pv_name }/{ pv_cnt } (deleted, no log written, or no authorization).|
             TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
@@ -3083,7 +3083,7 @@ FORM show_btc_job_protocol
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Mở spool: SP01 trước, nếu lỗi thì thử SP02 (cùng SPI), không dùng FM.
+*& Open spool: try SP01 first, fallback to SP02 (same SPI); no FM used.
 *&---------------------------------------------------------------------*
 FORM show_btc_spool_popup USING VALUE(pv_list) TYPE clike.
 
@@ -3104,13 +3104,13 @@ FORM show_btc_spool_popup USING VALUE(pv_list) TYPE clike.
     RETURN.
   ENDIF.
 
-  lv_text = |Không mở tự động được. Vào SP01 hoặc SP02, List ID: { pv_list }|.
+  lv_text = |Cannot open automatically. Go to SP01 or SP02, List ID: { pv_list }|.
   MESSAGE lv_text TYPE 'S' DISPLAY LIKE 'W'.
 
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& ZSP26_ARCH_LOG — theo GV_TABNAME hoặc user (ARCHIVE/DELETE/PURGE gần đây)
+*& ZSP26_ARCH_LOG — by GV_TABNAME or user (recent ARCHIVE/DELETE/PURGE)
 *&---------------------------------------------------------------------*
 FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
 
@@ -3161,7 +3161,7 @@ FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
   ENDIF.
 
   IF lt_lr IS INITIAL.
-    MESSAGE 'Không có dòng ZSP26_ARCH_LOG phù hợp.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'No matching ZSP26_ARCH_LOG entries found.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -3195,7 +3195,7 @@ FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Admin: xóa log cũ từ ZSP26_ARCH_LOG
+*& Admin: delete old log entries from ZSP26_ARCH_LOG
 *&---------------------------------------------------------------------*
 FORM do_delete_old_logs.
   DATA: lv_adm     TYPE abap_bool,
@@ -3210,19 +3210,19 @@ FORM do_delete_old_logs.
 
   PERFORM is_arch_admin CHANGING lv_adm.
   IF lv_adm = abap_false.
-    MESSAGE 'Chỉ admin mới được xóa log.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Only admins can delete logs.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   ls_field-tabname   = 'ZSP26_ARCH_LOG'.
   ls_field-fieldname = 'REC_COUNT'.
-  ls_field-fieldtext = 'Số ngày giữ lại'.
+  ls_field-fieldtext = 'Days to retain'.
   ls_field-value     = '90'.
   APPEND ls_field TO lt_fields.
 
   CALL FUNCTION 'POPUP_GET_VALUES'
     EXPORTING
-      popup_title = 'Xóa log cũ — nhập số ngày giữ lại'
+      popup_title = 'Delete old logs — enter days to retain'
     IMPORTING
       returncode  = lv_rc
     TABLES
@@ -3236,7 +3236,7 @@ FORM do_delete_old_logs.
   READ TABLE lt_fields INTO ls_field INDEX 1.
   lv_days = ls_field-value.
   IF lv_days < 1.
-    MESSAGE 'Số ngày phải >= 1.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Number of days must be >= 1.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3256,18 +3256,18 @@ FORM do_delete_old_logs.
     INTO @lv_job_cnt.
 
   IF lv_log_cnt = 0 AND lv_job_cnt = 0.
-    MESSAGE |Không có log/job nào cũ hơn { lv_days } ngày.| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No logs/jobs older than { lv_days } days found.| TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  lv_q = |Xóa { lv_log_cnt } app log + { lv_job_cnt } finished job cũ hơn { lv_cutoff+6(2) }.{ lv_cutoff+4(2) }.{ lv_cutoff(4) }?|.
+  lv_q = |Delete { lv_log_cnt } app logs + { lv_job_cnt } finished jobs older than { lv_cutoff+6(2) }.{ lv_cutoff+4(2) }.{ lv_cutoff(4) }?|.
 
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
       titlebar              = 'Confirm Delete Logs'
       text_question         = lv_q
-      text_button_1         = 'Xóa'
-      text_button_2         = 'Hủy'
+        text_button_1         = 'Delete'
+        text_button_2         = 'Cancel'
       default_button        = '2'
       display_cancel_button = ' '
     IMPORTING
@@ -3276,7 +3276,7 @@ FORM do_delete_old_logs.
       OTHERS                = 1.
 
   IF lv_answer <> '1'.
-    MESSAGE 'Đã hủy xóa log.' TYPE 'S'.
+    MESSAGE 'Log deletion cancelled.' TYPE 'S'.
     RETURN.
   ENDIF.
 
@@ -3314,7 +3314,7 @@ FORM do_delete_old_logs.
     ENDLOOP.
   ENDIF.
 
-  lv_msg = |Đã xóa { lv_del_log } app log + { lv_del_job } job cũ hơn { lv_days } ngày.|.
+  lv_msg = |Deleted { lv_del_log } app logs + { lv_del_job } jobs older than { lv_days } days.|.
   MESSAGE lv_msg TYPE 'S'.
 ENDFORM.
 
@@ -3351,7 +3351,7 @@ FORM show_purge_run_data USING VALUE(pv_arch_id) TYPE zsp26_de_archid.
     ORDER BY data_seq.
 
   IF lt_pv IS INITIAL.
-    MESSAGE |Không có snapshot purge cho run { pv_arch_id }.| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No purge snapshot found for run { pv_arch_id }.| TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -3380,7 +3380,7 @@ FORM show_purge_run_data USING VALUE(pv_arch_id) TYPE zsp26_de_archid.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_CONFIG — ZSP26_ARCH_CFG + [Đăng ký Bảng Mới] → screen 0800
+*& FORM DO_CONFIG — ZSP26_ARCH_CFG + [Register New Table] → screen 0800
 *&---------------------------------------------------------------------*
 FORM do_config.
   DATA: lt_cfg   TYPE TABLE OF zsp26_arch_cfg,
@@ -3390,14 +3390,14 @@ FORM do_config.
         lo_funcs TYPE REF TO cl_salv_functions,
         lo_disp  TYPE REF TO cl_salv_display_settings.
 
-  " Popup 0810: nhiều GUI (đặc biệt theme mới) không hiện nút add_function của SALV —
-  " luôn có 2 nút dynpro rõ ràng trước khi mở danh sách SALV.
+  " Popup 0810: many GUI themes (especially newer ones) hide SALV add_function buttons —
+  " always provide 2 explicit dynpro buttons before opening the SALV list.
   CALL SCREEN 0810 STARTING AT 18 8 ENDING AT 78 22.
 
   SELECT * FROM zsp26_arch_cfg INTO TABLE lt_cfg ORDER BY table_name.
 
   IF lt_cfg IS INITIAL.
-    MESSAGE 'Chưa có dòng config — dùng [Đăng ký Bảng Mới] trên toolbar để thêm.' TYPE 'S'
+    MESSAGE 'No config rows found — use [Register New Table] on the toolbar to add one.' TYPE 'S'
             DISPLAY LIKE 'W'.
   ENDIF.
 
@@ -3411,16 +3411,16 @@ FORM do_config.
       lo_funcs->add_function(
         name     = 'REG_TAB'
         icon     = '@0Y@'
-        text     = 'Đăng ký'
-        tooltip  = 'Đăng ký bảng Z (thêm nếu GUI hiện; chính: popup vừa rồi)'
+        text     = 'Register'
+        tooltip  = 'Register a Z table (add if GUI shows; main: previous popup)'
         position = if_salv_c_function_position=>left_of_salv_functions ).
     CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported.
       TRY.
         lo_funcs->add_function(
           name     = 'REG_TAB'
           icon     = '@0Y@'
-          text     = 'Đăng ký'
-          tooltip  = 'Đăng ký bảng Z mới'
+          text     = 'Register'
+          tooltip  = 'Register a new Z table'
           position = if_salv_c_function_position=>right_of_salv_functions ).
       CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported.
       ENDTRY.
@@ -3450,8 +3450,8 @@ FORM do_config.
 
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |ARCHIVE CONFIG — { lines( lt_cfg ) } dòng | &&
-      |/ Đăng ký: đã qua popup chọn; toolbar [Đăng ký] nếu có.| ).
+      |ARCHIVE CONFIG — { lines( lt_cfg ) } rows | &&
+      |/ Register: use popup or toolbar [Register] if available.| ).
 
     lo_alv->display( ).
 
@@ -3461,7 +3461,7 @@ FORM do_config.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& F4 screen 0800 — Table (Z* TRANSP từ DD02V), tái ZSP26_ARCH_REGISTER
+*& F4 screen 0800 — Table (Z* TRANSP from DD02V), mirrors ZSP26_ARCH_REGISTER
 *&---------------------------------------------------------------------*
 FORM f4_reg_table.
   TYPES: BEGIN OF ty_dd_tab,
@@ -3500,7 +3500,7 @@ FORM f4_reg_table.
   ENDLOOP.
 
   IF lt_dd IS INITIAL.
-    MESSAGE 'Không có bảng Z* TRANSP nào có field DATE để đăng ký.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'No Z* TRANSP tables found with a DATE field for registration.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -3527,7 +3527,7 @@ FORM f4_reg_table.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& F4 screen 0800 — Date field (inttype D), tái ZSP26_ARCH_REGISTER
+*& F4 screen 0800 — Date field (inttype D), mirrors ZSP26_ARCH_REGISTER
 *&---------------------------------------------------------------------*
 FORM f4_reg_datfld.
   TYPES: BEGIN OF ty_fld_f4,
@@ -3543,7 +3543,7 @@ FORM f4_reg_datfld.
         lv_win(40) TYPE c.
 
   IF gv_reg_table IS INITIAL.
-    MESSAGE 'Nhập Table Name trước khi chọn Date Field.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'Enter Table Name before selecting Date Field.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -3553,7 +3553,7 @@ FORM f4_reg_datfld.
     EXCEPTIONS OTHERS    = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE |Không đọc được cấu trúc bảng { gv_reg_table } từ DDIC.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Failed to read table structure for { gv_reg_table } from DDIC.| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3566,7 +3566,7 @@ FORM f4_reg_datfld.
   ENDLOOP.
 
   IF lt_flds IS INITIAL.
-    MESSAGE |Bảng { gv_reg_table } không có field kiểu DATE.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Table { gv_reg_table } has no DATE-type field.| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3616,19 +3616,19 @@ FORM do_reg_validate_and_save.
   TRANSLATE: lv_tab TO UPPER CASE, lv_fld TO UPPER CASE.
 
   IF lv_tab IS INITIAL OR lv_fld IS INITIAL.
-    MESSAGE 'Nhập đủ Table Name và Date Field.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Enter both Table Name and Date Field.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   lv_ret_raw = gv_reg_ret.
   CONDENSE lv_ret_raw NO-GAPS.
   IF lv_ret_raw IS INITIAL OR NOT lv_ret_raw CO '0123456789'.
-    MESSAGE 'Retention: nhập số ngày (chỉ chữ số, vd 365).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Retention: enter number of days (digits only, e.g. 365).' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   lv_ret_days = CONV i( lv_ret_raw ).
   IF lv_ret_days <= 0 OR lv_ret_days > 9999.
-    MESSAGE 'Retention phải từ 1 đến 9999.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Retention must be between 1 and 9999.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3637,11 +3637,11 @@ FORM do_reg_validate_and_save.
     WHERE tabname = @lv_tab.
 
   IF sy-subrc <> 0.
-    MESSAGE |Bảng { lv_tab } không tồn tại trong DDIC hoặc chưa activate.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Table { lv_tab } does not exist in DDIC or is not activated.| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   IF ls_dd02-tabclass <> 'TRANSP'.
-    MESSAGE |Bảng { lv_tab } không phải TRANSP (type: { ls_dd02-tabclass }).| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Table { lv_tab } is not TRANSP (type: { ls_dd02-tabclass }).| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3651,7 +3651,7 @@ FORM do_reg_validate_and_save.
     EXCEPTIONS OTHERS    = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE |Không đọc được field list của { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Failed to read field list for { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3659,7 +3659,7 @@ FORM do_reg_validate_and_save.
     lv_has_mandt = abap_true. EXIT.
   ENDLOOP.
   IF lv_has_mandt = abap_false.
-    MESSAGE 'Bảng không có MANDT (client-dependent).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Table does not have MANDT (client-dependent).' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3668,17 +3668,17 @@ FORM do_reg_validate_and_save.
     lv_has_key = abap_true. EXIT.
   ENDLOOP.
   IF lv_has_key = abap_false.
-    MESSAGE 'Cần ít nhất một key field ngoài MANDT.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'At least one key field besides MANDT is required.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   READ TABLE lt_fields INTO ls_field WITH KEY fieldname = lv_fld.
   IF sy-subrc <> 0.
-    MESSAGE |Field { lv_fld } không tồn tại trong bảng { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Field { lv_fld } does not exist in table { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   IF ls_field-inttype <> 'D'.
-    MESSAGE |Field { lv_fld } không phải kiểu DATE (inttype { ls_field-inttype }).|
+    MESSAGE |Field { lv_fld } is not of type DATE (inttype { ls_field-inttype }).|
             TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
@@ -3690,10 +3690,10 @@ FORM do_reg_validate_and_save.
   IF sy-subrc = 0.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
-        titlebar              = 'Trùng config active'
-        text_question         = |Đã có config active cho { lv_tab }. Vẫn INSERT thêm dòng mới?|
-        text_button_1         = 'Có'
-        text_button_2         = 'Không'
+        titlebar              = 'Duplicate Active Config'
+        text_question         = |An active config already exists for { lv_tab }. Insert anyway?|
+        text_button_1         = 'Yes'
+        text_button_2         = 'No'
         display_cancel_button = ' '
       IMPORTING
         answer                = lv_ans
@@ -3707,7 +3707,7 @@ FORM do_reg_validate_and_save.
   TRY.
     lv_uuid = cl_system_uuid=>create_uuid_x16_static( ).
   CATCH cx_uuid_error.
-    MESSAGE 'Lỗi tạo UUID.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'UUID generation error.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDTRY.
 
@@ -3724,18 +3724,18 @@ FORM do_reg_validate_and_save.
   INSERT zsp26_arch_cfg FROM ls_cfg.
   IF sy-subrc = 0.
     COMMIT WORK.
-    MESSAGE |Đã đăng ký { lv_tab }. Mở lại [Config] để thấy dòng mới.| TYPE 'S'.
+    MESSAGE |Registered { lv_tab }. Reopen [Config] to see the new row.| TYPE 'S'.
     CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
     gv_reg_ret    = '365'.
     gv_reg_active = 'X'.
     LEAVE TO SCREEN 0.
   ELSE.
-    MESSAGE |Lỗi INSERT ZSP26_ARCH_CFG (sy-subrc={ sy-subrc }).| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |INSERT ZSP26_ARCH_CFG failed (sy-subrc={ sy-subrc }).| TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM GET_DATA — đọc thống kê cho screen 0200 ALV
+*& FORM GET_DATA — read statistics for screen 0200 ALV
 *&---------------------------------------------------------------------*
 FORM get_data.
   DATA: lv_cnt     TYPE i,
@@ -3772,7 +3772,7 @@ FORM get_data.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM BUILD_FIELDCAT — cột cho ALV screen 0200
+*& FORM BUILD_FIELDCAT — columns for ALV screen 0200
 *&---------------------------------------------------------------------*
 FORM build_fieldcat.
   DATA: ls_fc TYPE lvc_s_fcat.
@@ -3796,7 +3796,7 @@ FORM build_fieldcat.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DISPLAY_ALV — hiển thị ALV trong container screen 0200
+*& FORM DISPLAY_ALV — display ALV in container on screen 0200
 *&---------------------------------------------------------------------*
 FORM display_alv.
   IF go_cont_200 IS BOUND.
@@ -3809,7 +3809,7 @@ FORM display_alv.
     EXCEPTIONS OTHERS        = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE 'Lỗi tạo container ALV' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Failed to create ALV container' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3824,7 +3824,7 @@ FORM display_alv.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM GET_ARCHIVE_PROGRAMS — đọc Write/Delete program từ ARCH_OBJ
+*& FORM GET_ARCHIVE_PROGRAMS — read Write/Delete programs from ARCH_OBJ
 *&---------------------------------------------------------------------*
 FORM get_archive_programs.
   SELECT SINGLE reorga_prg, delete_prg FROM arch_obj
@@ -3833,15 +3833,15 @@ FORM get_archive_programs.
 
   IF sy-subrc <> 0.
     CLEAR: gv_prog_write, gv_prog_del.
-    MESSAGE 'Archiving Object không hợp lệ hoặc chưa cấu hình trong AOBJ'
+    MESSAGE 'Archiving Object is invalid or not configured in AOBJ'
             TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
 *& FORM MAINTENANCE_SPOOL_PARAMS
-*&  (ARCHIVE_ADMIN_SET_PRINT_PARAMS không tồn tại trên hầu hết hệ thống)
-*&  Dùng GET_PRINT_PARAMETERS (SAPLSPRI) — hộp thoại spool + archive list.
+*&  (ARCHIVE_ADMIN_SET_PRINT_PARAMS does not exist on most systems)
+*&  Uses GET_PRINT_PARAMETERS (SAPLSPRI) — spool + archive list dialog.
 *&---------------------------------------------------------------------*
 FORM maintenance_spool_params.
   DATA: ls_pri   TYPE pri_params,
@@ -3882,19 +3882,19 @@ FORM maintenance_spool_params.
 
   IF sy-subrc = 0 AND lv_valid = 'X'.
     gv_spool_set = 'X'.
-    MESSAGE 'Đã thiết lập tham số máy in (Spool)' TYPE 'S'.
+    MESSAGE 'Print parameters set (Spool)' TYPE 'S'.
   ELSEIF sy-subrc = 0.
-    MESSAGE 'Đã hủy hoặc tham số spool không hợp lệ' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'Cancelled or invalid spool parameters' TYPE 'S' DISPLAY LIKE 'W'.
   ELSE.
-    MESSAGE 'Không gọi được GET_PRINT_PARAMETERS' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Failed to call GET_PRINT_PARAMETERS' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
 *& FORM MAINTENANCE_START_DATE
-*&  Chuẩn SAP: BP_START_DATE_EDITOR — cùng hộp thoại "Start Time" như
-*&  job scheduling (Immediate / Date/Time / After job / Event / …).
-*&  Không dùng POPUP_GET_VALUES + SYST-DATUM (dễ hỏng format F4 / hiển thị).
+*&  SAP standard: BP_START_DATE_EDITOR — same "Start Time" dialog as
+*&  job scheduling (Immediate / Date/Time / After job / Event / ...).
+*&  Avoids POPUP_GET_VALUES + SYST-DATUM (breaks F4 format / display).
 *&---------------------------------------------------------------------*
 FORM maintenance_start_date.
   CONSTANTS:
@@ -3903,7 +3903,7 @@ FORM maintenance_start_date.
 
   DATA: lv_mod TYPE i.
 
-  " STDT_TITLE không có trên một số bản kernel / FM — gây CALL_FUNCTION_PARM_UNKNOWN.
+  " STDT_TITLE is absent on some kernel / FM releases — causes CALL_FUNCTION_PARM_UNKNOWN.
   CALL FUNCTION 'BP_START_DATE_EDITOR'
     EXPORTING
       stdt_dialog = gc_btc_yes
@@ -3916,12 +3916,12 @@ FORM maintenance_start_date.
       OTHERS           = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE 'Không mở được hộp thoại Start Time (BP_START_DATE_EDITOR).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Failed to open Start Time dialog (BP_START_DATE_EDITOR).' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   gv_start_date = 'X'.
-  MESSAGE 'Đã thiết lập thời gian bắt đầu (chuẩn lập lịch job)' TYPE 'S'.
+  MESSAGE 'Start date/time set (standard job scheduling)' TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -3988,7 +3988,7 @@ FORM check_dependencies
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM F4_GV_TABNAME_DYNP — F4 ô GV_TABNAME (dynpro 0400), khớp ZSP26_SH_TABLES
+*& FORM F4_GV_TABNAME_DYNP — F4 for GV_TABNAME (dynpro 0400), matches ZSP26_SH_TABLES
 *&---------------------------------------------------------------------*
 FORM f4_gv_tabname_dynp.
   TYPES: BEGIN OF ty_sht_f4,
@@ -4026,8 +4026,8 @@ FORM f4_gv_tabname_dynp.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Popup 3 lựa chọn: Change / Copy / Delete — 2× POPUP_TO_DECIDE (Basis)
-*& Không dùng POPUP_WITH_3_BUTTONS_TO_CHOOSE (CO, tham số DIAGNOSETEXT* tùy release).
+*& Popup 3 choices: Change / Copy / Delete — 2× POPUP_TO_DECIDE (Basis)
+*& Avoids POPUP_WITH_3_BUTTONS_TO_CHOOSE (CO, DIAGNOSETEXT* params vary by release).
 *&---------------------------------------------------------------------*
 FORM arch_popup_wvar_3ch
   USING    iv_titel TYPE string
@@ -4041,7 +4041,7 @@ FORM arch_popup_wvar_3ch
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Hai bước: Change vs Copy/Delete → Copy vs Delete (trả về 1 / 2 / 3)
+*& Two steps: Change vs Copy/Delete → Copy vs Delete (returns 1 / 2 / 3)
 *&---------------------------------------------------------------------*
 FORM arch_popup_wvar_3ch_fb
   USING    iv_titel TYPE char40
@@ -4070,7 +4070,7 @@ FORM arch_popup_wvar_3ch_fb
     RETURN.
   ENDIF.
   IF lv_a <> '2'.
-    MESSAGE |Lựa chọn không hợp lệ ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |Invalid selection ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -4094,13 +4094,13 @@ FORM arch_popup_wvar_3ch_fb
   ELSEIF lv_a = '2'.
     cv_answer = '3'.
   ELSE.
-    MESSAGE |Lựa chọn không hợp lệ ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |Invalid selection ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W'.
   ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Màn 0500 — Edit variant: Create / Change / Delete / Copy (chỉ POPUP_TO_CONFIRM).
-*& Tên form đổi để tránh trùng bản cũ trên SAP còn gọi POPUP_TO_DECIDE.
+*& Screen 0500 — Edit variant: Create / Change / Delete / Copy (POPUP_TO_CONFIRM only).
+*& Form name changed to avoid collision with old version that calls POPUP_TO_DECIDE.
 *&---------------------------------------------------------------------*
 FORM zsp26_hub_edit_wvar_0500.
   DATA: lv_vtech TYPE variant,
@@ -4116,11 +4116,11 @@ FORM zsp26_hub_edit_wvar_0500.
         lv_vlog  TYPE string.
 
   IF gv_variant IS INITIAL.
-    MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
+    MESSAGE 'Please enter a Variant name' TYPE 'I'.
     RETURN.
   ENDIF.
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Chọn bảng archive trước khi chỉnh Variant' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Select an archive table before editing Variant' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -4128,7 +4128,7 @@ FORM zsp26_hub_edit_wvar_0500.
   TRANSLATE lv_vlog TO UPPER CASE.
   CONDENSE lv_vlog NO-GAPS.
   IF lv_vlog = 'DEFAULT'.
-    MESSAGE |"DEFAULT" là tên dành cho variant hệ thống (do utility tạo). Dùng tên khác (vd VAR_01).| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |"DEFAULT" is reserved for system variants (created by utility). Use a different name (e.g. VAR_01).| TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
   IF gv_prog_write IS INITIAL.
@@ -4142,7 +4142,7 @@ FORM zsp26_hub_edit_wvar_0500.
     USING gv_tabname gv_variant
     CHANGING lv_vtech lv_vok.
   IF lv_vok = abap_false.
-    MESSAGE 'Tên Variant (ID) không hợp lệ hoặc quá dài.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Variant name (ID) is invalid or too long.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -4158,7 +4158,7 @@ FORM zsp26_hub_edit_wvar_0500.
   ENDIF.
 
   IF lv_run IS INITIAL.
-    lv_msg = |Variant { gv_variant } chưa tồn tại. Tạo variant SAP { lv_vtech }?|.
+    lv_msg = |Variant { gv_variant } does not exist. Create SAP variant { lv_vtech }?|.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
         titlebar              = 'Create Variant'
@@ -4177,14 +4177,14 @@ FORM zsp26_hub_edit_wvar_0500.
       USING gv_prog_write lv_vtech gv_tabname
       CHANGING lv_ok.
     IF lv_ok = abap_false.
-      MESSAGE |Không tạo được variant { lv_vtech }. Kiểm tra quyền variant.| TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE |Failed to create variant { lv_vtech }. Check variant authorization.| TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
     PERFORM arch_submit_wvar_ss USING lv_vtech.
     RETURN.
   ENDIF.
 
-  " Variant đã tồn tại: một popup Change / Copy / Delete (giống SE91-style)
+  " Variant already exists: one popup for Change / Copy / Delete (SE91-style)
   lv_tit_s = |Variant { lv_run } ({ gv_variant })|.
   PERFORM arch_popup_wvar_3ch USING lv_tit_s CHANGING lv_pick.
   IF lv_pick <> '1' AND lv_pick <> '2' AND lv_pick <> '3'.
@@ -4233,7 +4233,7 @@ FORM zsp26_hub_edit_wvar_0500.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM ARCH_COPY_WRITE_VARIANT_DIALOG — nhập tên logical mới → copy
+*& FORM ARCH_COPY_WRITE_VARIANT_DIALOG — enter new logical name → copy
 *&---------------------------------------------------------------------*
 FORM arch_copy_write_variant_dialog
   USING    iv_report  TYPE programm
@@ -4270,25 +4270,25 @@ FORM arch_copy_write_variant_dialog
       error_in_fields = 1
       OTHERS            = 2.
   IF sy-subrc = 1.
-    MESSAGE 'Không mở được popup nhập tên (POPUP_GET_VALUES / RSVARI-VARIANT). Kiểm tra DDIC.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Failed to open name input popup (POPUP_GET_VALUES / RSVARI-VARIANT). Check DDIC.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   IF sy-subrc <> 0 OR lv_ret = 'A'.
     IF lv_ret = 'A'.
-      MESSAGE 'Đã hủy copy variant.' TYPE 'S'.
+      MESSAGE 'Variant copy cancelled.' TYPE 'S'.
     ENDIF.
     RETURN.
   ENDIF.
 
   READ TABLE lt_fields INTO ls_field INDEX 1.
   IF sy-subrc <> 0.
-    MESSAGE 'Không đọc được giá trị nhập.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Failed to read input value.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   lv_new = ls_field-value.
   CONDENSE lv_new.
   IF lv_new IS INITIAL.
-    MESSAGE 'Vui long nhap ten variant moi (khong de trong).' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'Please enter a new variant name (cannot be empty).' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -4296,7 +4296,7 @@ FORM arch_copy_write_variant_dialog
     USING iv_tabname lv_new
     CHANGING lv_tgt lv_ok.
   IF lv_ok = abap_false.
-    MESSAGE 'Tên variant đích không hợp lệ hoặc quá dài.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Target variant name is invalid or too long.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -4307,7 +4307,7 @@ FORM arch_copy_write_variant_dialog
     IMPORTING
       r_c     = lv_rc.
   IF lv_rc = 0.
-    MESSAGE 'Variant đích đã tồn tại.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Target variant already exists.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -4441,9 +4441,9 @@ FORM arch_copy_write_variant
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM IS_ARCH_ADMIN — Kiểm tra user có quyền Archive Admin không
-*&  Tra bảng ZSP26_ARCH_ADMIN — thêm/xóa user admin bằng SE16N/SM30
-*&  Admin: thấy và thao tác tất cả session
+*& FORM IS_ARCH_ADMIN — Check if user has Archive Admin privileges
+*&  Looks up ZSP26_ARCH_ADMIN — add/remove admin users via SE16N/SM30
+*&  Admin: sees and operates on all sessions
 *& FORM RESET_FLOW_GLOBALS — clear write/delete shared globals
 *&   so each flow (Write / Delete) starts fresh from the hub
 *&---------------------------------------------------------------------*
@@ -4464,7 +4464,7 @@ FORM reset_flow_globals.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*&  User thường: chỉ thấy và thao tác session của chính mình
+*&  Regular user: can only see and operate on own sessions
 *&---------------------------------------------------------------------*
 FORM is_arch_admin CHANGING cv_admin TYPE abap_bool.
   SELECT SINGLE uname FROM zsp26_arch_admin
@@ -4475,7 +4475,7 @@ FORM is_arch_admin CHANGING cv_admin TYPE abap_bool.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& Screen 0700 — ZSP26_ARCH_ADMIN (danh sách + thêm / xóa)
+*& Screen 0700 — ZSP26_ARCH_ADMIN (list + add / remove)
 *&---------------------------------------------------------------------*
 FORM arch_admin_load_list.
   SELECT * FROM zsp26_arch_admin
@@ -4509,7 +4509,7 @@ FORM arch_admin_display_alv.
     EXPORTING container_name = 'ADM_ALV_CONT'
     EXCEPTIONS OTHERS        = 1.
   IF sy-subrc <> 0.
-    MESSAGE 'Lỗi tạo container ALV (Admin)' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Failed to create ALV container (Admin)' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -4532,7 +4532,7 @@ FORM arch_admin_do_add.
 
   CONDENSE gv_adm_pick.
   IF gv_adm_pick IS INITIAL.
-    MESSAGE 'Nhập user (F4) hoặc gõ tên user.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Enter user (F4) or type username.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   TRANSLATE gv_adm_pick TO UPPER CASE.
@@ -4544,11 +4544,11 @@ FORM arch_admin_do_add.
   IF sy-subrc = 0.
     COMMIT WORK.
     CLEAR gv_adm_pick.
-    MESSAGE |Đã thêm admin { ls_adm-uname }| TYPE 'S'.
+    MESSAGE |Admin added: { ls_adm-uname }| TYPE 'S'.
   ELSEIF sy-subrc = 4.
-    MESSAGE |User { ls_adm-uname } đã là admin| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |User { ls_adm-uname } is already an admin| TYPE 'S' DISPLAY LIKE 'W'.
   ELSE.
-    MESSAGE 'Không thêm được (kiểm tra bảng / trùng khóa).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Failed to add (check table / duplicate key).' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
@@ -4568,7 +4568,7 @@ FORM arch_admin_do_remove.
       et_index_rows = lt_rows.
 
   IF lt_rows IS INITIAL.
-    MESSAGE 'Chọn một dòng trong danh sách rồi bấm Remove admin.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Select a row from the list, then click Remove admin.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -4580,17 +4580,17 @@ FORM arch_admin_do_remove.
 
   SELECT COUNT(*) FROM zsp26_arch_admin INTO @lv_cnt.
   IF lv_cnt <= 1.
-    MESSAGE 'Không xóa admin cuối cùng.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Cannot remove the last admin.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   IF ls_adm-uname = sy-uname.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
-        titlebar              = 'Xác nhận'
-        text_question         = 'Bạn đang xóa chính mình khỏi admin. Tiếp tục?'
-        text_button_1         = 'Có'
-        text_button_2         = 'Không'
+        titlebar              = 'Confirm'
+        text_question         = 'You are removing yourself from the admin list. Continue?'
+        text_button_1         = 'Yes'
+        text_button_2         = 'No'
         display_cancel_button = ' '
       IMPORTING
         answer                = lv_ans
@@ -4604,9 +4604,9 @@ FORM arch_admin_do_remove.
   DELETE FROM zsp26_arch_admin WHERE uname = @ls_adm-uname.
   IF sy-subrc = 0.
     COMMIT WORK.
-    MESSAGE |Đã xóa { ls_adm-uname } khỏi admin| TYPE 'S'.
+    MESSAGE |Removed { ls_adm-uname } from admin list| TYPE 'S'.
   ELSE.
-    MESSAGE 'Không xóa được dòng đã chọn.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Failed to remove the selected row.' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 

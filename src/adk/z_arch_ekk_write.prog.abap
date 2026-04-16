@@ -44,7 +44,7 @@ FIELD-SYMBOLS: <lt_src> TYPE STANDARD TABLE,
                <lt_arch> TYPE STANDARD TABLE,
                <row>    TYPE any.
 
-" g_scr_h0 / g_scr_h1: do COMMENT /1(79) tự khai báo — không thêm DATA (trùng trên ADT/bản mới )
+" g_scr_h0 / g_scr_h1: COMMENT /1(79) auto-declares these — do not add DATA (conflicts on ADT/newer releases)
 
 SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME.
 SELECTION-SCREEN COMMENT /1(79) g_scr_h0.
@@ -83,7 +83,7 @@ INITIALIZATION.
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN OUTPUT.
 *----------------------------------------------------------------------*
-  " Hub mở màn hình này chỉ để tạo/sửa variant: ẩn Execute (F8) — xem FORM arch_submit_wvar_ss (Z_GSP18_SAP15_F01)
+  " Hub opens this screen only to create/edit variant: hide Execute (F8) — see FORM arch_submit_wvar_ss (Z_GSP18_SAP15_F01)
   DATA lv_hide_exec TYPE xfeld.
   CLEAR lv_hide_exec.
   IMPORT zsp26_no_ss_exec = lv_hide_exec FROM MEMORY ID 'Z_GSP18_WR_SS'.

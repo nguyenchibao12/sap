@@ -1,9 +1,9 @@
 *&---------------------------------------------------------------------*
 *& Report ZSP26_ARCH_REGISTER
 *&---------------------------------------------------------------------*
-*& Đăng ký bảng Z bất kỳ vào hệ thống archive
+*& Register any Z table into the archive system
 *& Validate DDIC → INSERT ZSP26_ARCH_CFG
-*& Chạy từ SE38, không cần Basis, không sửa code archive
+*& Run from SE38, no Basis required, no archive code changes needed
 *&---------------------------------------------------------------------*
 REPORT zsp26_arch_register.
 
@@ -13,12 +13,12 @@ REPORT zsp26_arch_register.
 PARAMETERS:
   p_table  TYPE tabname   OBLIGATORY,
   p_datfld TYPE fieldname OBLIGATORY,
-  p_ret    TYPE i         DEFAULT 1825,   " days — mặc định 5 năm
+  p_ret    TYPE i         DEFAULT 1825,   " days — default 5 years
   p_desc   TYPE char80,
   p_active TYPE char1     AS CHECKBOX DEFAULT 'X'.
 
 *----------------------------------------------------------------------*
-* F4: TABLE_NAME — tất cả Z* transparent table từ DDIC
+* F4: TABLE_NAME — all Z* transparent tables from DDIC
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
   TYPES: BEGIN OF ty_dd_tab,
@@ -57,7 +57,7 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
   ENDIF.
 
 *----------------------------------------------------------------------*
-* F4: DATA_FIELD — chỉ hiện DATE field của bảng đang chọn
+* F4: DATA_FIELD — show only DATE fields of selected table
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_datfld.
   TYPES: BEGIN OF ty_fld_f4,
@@ -72,7 +72,7 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_datfld.
         ls_ret2 TYPE ddshretval.
 
   IF p_table IS INITIAL.
-    MESSAGE 'Nhập Table Name trước khi chọn Data Field.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'Enter Table Name before selecting Data Field.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -82,11 +82,11 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_datfld.
     EXCEPTIONS OTHERS    = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE |Không đọc được cấu trúc bảng { p_table } từ DDIC.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Cannot read table structure for { p_table } from DDIC.| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
-  " Chỉ lấy field kiểu DATE (inttype='D'), loại MANDT
+  " Only DATE-type fields (inttype='D'), excluding MANDT
   LOOP AT lt_dd2 INTO ls_dd2
     WHERE inttype = 'D' AND fieldname <> 'MANDT'.
     CLEAR ls_fld.
@@ -96,7 +96,7 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_datfld.
   ENDLOOP.
 
   IF lt_flds IS INITIAL.
-    MESSAGE |Bảng { p_table } không có field kiểu DATE — không thể archive theo ngày.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Table { p_table } has no DATE-type field - cannot archive by date.| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -106,7 +106,7 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_datfld.
       dynpprog     = sy-repid
       dynpnr       = sy-dynnr
       dynprofield  = 'P_DATFLD'
-      window_title = |Date Fields của { p_table }|
+      window_title = |Date Fields of { p_table }|
       value_org    = 'S'
     TABLES
       value_tab    = lt_flds
@@ -139,7 +139,7 @@ START-OF-SELECTION.
         lv_datfld_ok TYPE abap_bool VALUE abap_false.
 
   " ---------------------------------------------------------------
-  " Bước 1: Bảng có tồn tại trong DDIC không?
+  " Step 1: Does the table exist in DDIC?
   " ---------------------------------------------------------------
   DATA: ls_dd02 TYPE dd02v.
   SELECT SINGLE tabname, tabclass FROM dd02v
@@ -147,19 +147,19 @@ START-OF-SELECTION.
     WHERE tabname = @p_table.
 
   IF sy-subrc <> 0.
-    WRITE: / |✗ Bảng { p_table } không tồn tại trong DDIC hoặc chưa activate.|.
+    WRITE: / |✗ Table { p_table } does not exist in DDIC or is not activated.|.
     lv_ok = abap_false.
   ELSEIF ls_dd02-tabclass <> 'TRANSP'.
-    WRITE: / |✗ Bảng { p_table } không phải transparent table (type: { ls_dd02-tabclass }).|.
+    WRITE: / |✗ Table { p_table } is not a transparent table (type: { ls_dd02-tabclass }).|.
     lv_ok = abap_false.
   ELSE.
-    WRITE: / |✓ Bảng { p_table } tồn tại trong DDIC (TRANSP).|.
+    WRITE: / |✓ Table { p_table } exists in DDIC (TRANSP).|.
   ENDIF.
 
   IF lv_ok = abap_false. STOP. ENDIF.
 
   " ---------------------------------------------------------------
-  " Bước 2: Đọc cấu trúc bảng từ DDIC
+  " Step 2: Read table structure from DDIC
   " ---------------------------------------------------------------
   CALL FUNCTION 'DDIF_FIELDINFO_GET'
     EXPORTING  tabname   = p_table
@@ -167,26 +167,26 @@ START-OF-SELECTION.
     EXCEPTIONS OTHERS    = 1.
 
   IF sy-subrc <> 0.
-    WRITE: / |✗ Không đọc được field list của { p_table }.|.
+    WRITE: / |✗ Cannot read field list of { p_table }.|.
     STOP.
   ENDIF.
 
   " ---------------------------------------------------------------
-  " Bước 3: Kiểm tra MANDT
+  " Step 3: Check MANDT
   " ---------------------------------------------------------------
   LOOP AT lt_fields INTO ls_field WHERE fieldname = 'MANDT'.
     lv_has_mandt = abap_true. EXIT.
   ENDLOOP.
 
   IF lv_has_mandt = abap_true.
-    WRITE: / |✓ Có field MANDT (client-dependent).|.
+    WRITE: / |✓ MANDT field found (client-dependent).|.
   ELSE.
-    WRITE: / |✗ Không có field MANDT — bảng không client-dependent, không thể archive.|.
+    WRITE: / |✗ No MANDT field - table is not client-dependent, cannot archive.|.
     lv_ok = abap_false.
   ENDIF.
 
   " ---------------------------------------------------------------
-  " Bước 4: Kiểm tra key field ngoài MANDT
+  " Step 4: Check key field besides MANDT
   " ---------------------------------------------------------------
   LOOP AT lt_fields INTO ls_field
     WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
@@ -194,53 +194,53 @@ START-OF-SELECTION.
   ENDLOOP.
 
   IF lv_has_key = abap_true.
-    WRITE: / |✓ Có key field ngoài MANDT (cần cho DELETE).|.
+    WRITE: / |✓ Key field found besides MANDT (required for DELETE).|.
   ELSE.
-    WRITE: / |✗ Không có key field ngoài MANDT — DELETE sẽ không hoạt động.|.
+    WRITE: / |✗ No key field besides MANDT - DELETE will not work.|.
     lv_ok = abap_false.
   ENDIF.
 
   " ---------------------------------------------------------------
-  " Bước 5: Kiểm tra DATA_FIELD tồn tại và kiểu DATE
+  " Step 5: Check DATA_FIELD exists and is DATE type
   " ---------------------------------------------------------------
   LOOP AT lt_fields INTO ls_field WHERE fieldname = p_datfld.
     IF ls_field-inttype = 'D'.
       lv_datfld_ok = abap_true.
-      WRITE: / |✓ Field { p_datfld } tồn tại và kiểu DATE (DATS).|.
+      WRITE: / |✓ Field { p_datfld } exists and is DATE type (DATS).|.
     ELSE.
-      WRITE: / |✗ Field { p_datfld } tồn tại nhưng không phải kiểu DATE (type: { ls_field-inttype }) — nên chọn field DATE.|.
+      WRITE: / |✗ Field { p_datfld } exists but is not DATE type (type: { ls_field-inttype }) - please select a DATE field.|.
       lv_ok = abap_false.
     ENDIF.
     EXIT.
   ENDLOOP.
   IF sy-subrc <> 0.
-    WRITE: / |✗ Field { p_datfld } không tồn tại trong bảng { p_table }.|.
+    WRITE: / |✗ Field { p_datfld } does not exist in table { p_table }.|.
     lv_ok = abap_false.
   ENDIF.
 
   " ---------------------------------------------------------------
-  " Bước 6: Kiểm tra config trùng
+  " Step 6: Check for duplicate config
   " ---------------------------------------------------------------
   SELECT SINGLE config_id FROM zsp26_arch_cfg
     INTO @DATA(lv_dup_cfgid)
     WHERE table_name = @p_table
       AND is_active  = 'X'.
   IF sy-subrc = 0.
-    WRITE: / |✗ Đã tồn tại config active cho { p_table } (ID: { lv_dup_cfgid }). Deactivate config cũ trước khi tạo mới.|.
+    WRITE: / |✗ Active config already exists for { p_table } (ID: { lv_dup_cfgid }). Deactivate old config before creating a new one.|.
     lv_ok = abap_false.
   ENDIF.
 
   SKIP.
 
   " ---------------------------------------------------------------
-  " Kết quả validation
+  " Validation result
   " ---------------------------------------------------------------
   IF lv_ok = abap_false.
-    WRITE: / '--- Validation THẤT BẠI — không insert config. Kiểm tra các lỗi ✗ ở trên. ---'.
+    WRITE: / '--- Validation FAILED - config not inserted. Check errors marked above. ---'.
     STOP.
   ENDIF.
 
-  WRITE: / '--- Validation THÀNH CÔNG — đang insert config... ---'.
+  WRITE: / '--- Validation PASSED - inserting config... ---'.
 
   " ---------------------------------------------------------------
   " INSERT ZSP26_ARCH_CFG
@@ -251,7 +251,7 @@ START-OF-SELECTION.
   TRY.
     lv_uuid = cl_system_uuid=>create_uuid_x16_static( ).
   CATCH cx_uuid_error.
-    WRITE: / 'Lỗi tạo UUID.'. STOP.
+    WRITE: / 'UUID generation error.'. STOP.
   ENDTRY.
 
   CLEAR ls_cfg.
@@ -271,14 +271,14 @@ START-OF-SELECTION.
     DATA: lv_years TYPE p DECIMALS 1.
     lv_years = p_ret / 365.
     SKIP.
-    WRITE: / |✓ Đã đăng ký bảng { p_table } vào hệ thống archive.|.
+    WRITE: / |✓ Table { p_table } registered in archive system.|.
     WRITE: / |  Config ID : { lv_uuid }|.
     WRITE: / |  Data Field: { p_datfld }|.
-    WRITE: / |  Retention : { p_ret } ngày (|.
-    WRITE: lv_years. WRITE: 'năm)'.
+    WRITE: / |  Retention : { p_ret } days (|.
+    WRITE: lv_years. WRITE: 'years)'.
     WRITE: / |  Active    : { p_active }|.
     SKIP.
-    WRITE: / 'Tiếp theo: Vào Z_GSP18_SAP15_MAIN → chọn bảng → Preview → Archive.'.
+    WRITE: / 'Next: Go to Z_GSP18_SAP15_MAIN > select table > Preview > Archive.'.
   ELSE.
-    WRITE: / |✗ Lỗi INSERT ZSP26_ARCH_CFG (sy-subrc={ sy-subrc }).|.
+    WRITE: / |✗ INSERT error ZSP26_ARCH_CFG (sy-subrc={ sy-subrc }).|.
   ENDIF.

@@ -1,10 +1,10 @@
 *&---------------------------------------------------------------------*
 *& Include Z_GSP18_SAP15_TOP
-*& Fields / Types / Classes — tương đương "Fields" + "Types" + "Classes"
-*& trong cây object của SE80
+*& Fields / Types / Classes — equivalent to "Fields" + "Types" + "Classes"
+*& in the SE80 object tree
 *&---------------------------------------------------------------------*
 "----------------------------------------------------------------------
-" OK-Code (mọi screen đều dùng chung)
+" OK-Code (shared across all screens)
 "----------------------------------------------------------------------
 DATA: ok_code TYPE sy-ucomm.
 
@@ -55,12 +55,12 @@ TYPES: BEGIN OF ty_log_det,
        END OF ty_log_det.
 
 "----------------------------------------------------------------------
-" Fields (Global Data) — tương đương tab "Fields" trong SE80
+" Fields (Global Data) — equivalent to "Fields" tab in SE80
 "----------------------------------------------------------------------
 
-" Screen 0100 — input chính
-DATA: gv_tabname TYPE zsp26_de_tabname. " Khớp DDIC màn 0400 (ROLLNAME) + F4 Search Help chuẩn
-" Chỉ cho phép vào hub 0100 sau khi user Continue từ 0400 (tránh TSTC sai DYPNO mở thẳng 0100)
+" Screen 0100 — main input
+DATA: gv_tabname TYPE zsp26_de_tabname. " Matches DDIC screen 0400 (ROLLNAME) + standard F4 Search Help
+" Only allow entering hub 0100 after user clicks Continue from 0400 (prevents wrong TSTC DYPNO opening 0100 directly)
 DATA: gv_hub_allowed TYPE abap_bool VALUE abap_false.
 DATA: gv_admin_pick_table TYPE xfeld VALUE space. " Admin requested to stay on table-selection screen
 DATA: gv_full_restore TYPE xfeld VALUE space. " Admin only: restore all tables in selected session
@@ -93,7 +93,7 @@ DATA: gt_adm_list TYPE TABLE OF zsp26_arch_admin,
       gt_fcat_700 TYPE lvc_t_fcat,
       gv_adm_pick TYPE syuname.
 
-" Screen 0800 — đăng ký bảng mới vào ZSP26_ARCH_CFG (từ [Config])
+" Screen 0800 — register new table into ZSP26_ARCH_CFG (from [Config])
 DATA: gv_reg_table  TYPE tabname,
       gv_reg_datfld TYPE fieldname,
       gv_reg_ret    TYPE char6,
@@ -101,15 +101,15 @@ DATA: gv_reg_table  TYPE tabname,
       gv_reg_active TYPE char1.
 
 " Screen 0300 / 0500 — archive / job scheduler (variant, start, spool)
-" gv_object = archive object id (AOBJ) — ví dụ Z_ARCH_EKK
-" gv_tabname = bảng DDIC đích (preview/write/delete SQL) — bổ sung cho object ở trên
+" gv_object = archive object id (AOBJ) — e.g. Z_ARCH_EKK
+" gv_tabname = target DDIC table (preview/write/delete SQL) — complements the object above
 DATA: gv_object     TYPE arch_obj-object,
       gv_variant    TYPE variant,
       gv_var_tech   TYPE char40,
       gv_prog_write TYPE programm,
       gv_prog_del   TYPE programm,
       gv_start_date TYPE char1,
-      gs_btc_start  TYPE tbtcstrt, " BP_START_DATE_EDITOR (Start Time — như SM37)
+      gs_btc_start  TYPE tbtcstrt, " BP_START_DATE_EDITOR (Start Time — same as SM37)
       gv_spool_set  TYPE char1,
       gv_test_mode  TYPE xfeld VALUE 'X',
       gv_det_log    TYPE char1 VALUE 'X'.
@@ -203,8 +203,8 @@ DATA: gt_run_src_hub  TYPE TABLE OF ty_run_src_hub,
       go_run_alv      TYPE REF TO cl_salv_table.
 
 "----------------------------------------------------------------------
-" Classes — Event handler cho SALV custom buttons
-" (tương đương tab "Classes" trong SE80)
+" Classes — Event handler for SALV custom buttons
+" (equivalent to "Classes" tab in SE80)
 "----------------------------------------------------------------------
 CLASS lcl_handler DEFINITION.
   PUBLIC SECTION.
@@ -241,7 +241,7 @@ CLASS lcl_run_handler DEFINITION.
       IMPORTING row column.
 ENDCLASS.
 
-" Config SALV — mở popup đăng ký bảng
+" Config SALV — opens table registration popup
 CLASS lcl_cfg_handler DEFINITION.
   PUBLIC SECTION.
     CLASS-METHODS on_func

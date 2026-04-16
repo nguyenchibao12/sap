@@ -63,10 +63,10 @@ MODULE status_0100 OUTPUT.
 ENDMODULE.
 
 MODULE status_0200 OUTPUT.
-  " STATUS_200 không tồn tại trong CUA — dùng lại STATUS_100
+  " STATUS_200 does not exist in CUA — reuse STATUS_100
   SET PF-STATUS 'STATUS_100'.
   SET TITLEBAR 'TITLE_100'.
-  " Load và build field catalog nếu chưa có dữ liệu
+  " Load and build field catalog if no data yet
   IF gt_arch_stat IS INITIAL.
     PERFORM get_data.
     PERFORM build_fieldcat.
@@ -81,7 +81,7 @@ MODULE display_alv_0200 OUTPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Module STATUS_0700 OUTPUT — quản lý ZSP26_ARCH_ADMIN
+*& Module STATUS_0700 OUTPUT — manage ZSP26_ARCH_ADMIN
 *&---------------------------------------------------------------------*
 MODULE status_0700 OUTPUT.
   DATA: lv_adm_700 TYPE abap_bool.
@@ -116,7 +116,7 @@ ENDMODULE.
 *& Module INIT_FIELDS_0300 OUTPUT
 *&---------------------------------------------------------------------*
 MODULE init_fields_0300 OUTPUT.
-  " Giá trị mặc định cho màn hình Write Job
+  " Default values for Write Job screen
   IF gv_object IS INITIAL.
     gv_object = 'Z_ARCH_EKK'.
   ENDIF.
@@ -132,7 +132,7 @@ MODULE status_0300 OUTPUT.
   DATA: lt_excl_300 TYPE TABLE OF sy-ucomm,
         lv_excl_300 TYPE sy-ucomm.
 
-  " Màn Edit Variant: không cho Execute/F8 và không hiện action Preview
+  " Edit Variant screen: disable Execute/F8 and hide Preview action
   lv_excl_300 = 'ONLI'.       APPEND lv_excl_300 TO lt_excl_300.
   lv_excl_300 = 'BT_PREVIEW'. APPEND lv_excl_300 TO lt_excl_300.
 
@@ -141,7 +141,7 @@ MODULE status_0300 OUTPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Module INIT_FIELDS_0500 OUTPUT — Client / User / trạng thái Start & Spool
+*& Module INIT_FIELDS_0500 OUTPUT — Client / User / Start & Spool status
 *&---------------------------------------------------------------------*
 MODULE init_fields_0500 OUTPUT.
   IF gv_object IS INITIAL.
@@ -224,7 +224,7 @@ MODULE init_fields_0600 OUTPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Module STATUS_0600 OUTPUT — toolbar giống hub (Back/Exit)
+*& Module STATUS_0600 OUTPUT — toolbar same as hub (Back/Exit)
 *&---------------------------------------------------------------------*
 MODULE status_0600 OUTPUT.
   SET PF-STATUS 'STATUS_300'.
@@ -232,14 +232,14 @@ MODULE status_0600 OUTPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& F4 màn 0700 — chọn user từ USR02
+*& F4 screen 0700 — select user from USR02
 *&---------------------------------------------------------------------*
 MODULE f4_gv_adm_pick INPUT.
   PERFORM arch_admin_f4_usr02.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Screen 0800 — đăng ký bảng vào ZSP26_ARCH_CFG
+*& Screen 0800 — register table into ZSP26_ARCH_CFG
 *&---------------------------------------------------------------------*
 MODULE status_0800 OUTPUT.
   IF gv_reg_active IS INITIAL.
@@ -253,7 +253,7 @@ MODULE status_0800 OUTPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Screen 0810 — chọn: xem danh sách config hay đăng ký bảng (Fiori ẩn nút SALV tùy chỉnh)
+*& Screen 0810 — choose: view config list or register table (Fiori hides custom SALV buttons)
 *&---------------------------------------------------------------------*
 MODULE status_0810 OUTPUT.
   SET PF-STATUS 'STATUS_300'.

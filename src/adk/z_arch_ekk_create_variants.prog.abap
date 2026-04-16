@@ -115,7 +115,7 @@ START-OF-SELECTION.
     ls_param-low     = ls_table-tabname.
     APPEND ls_param TO lt_params.
 
-    " P_TEST = ' ' — variant sẵn sàng cho production; hub override nếu cần
+    " P_TEST = ' ' — variant ready for production; hub overrides if needed
     CLEAR ls_param.
     ls_param-selname = 'P_TEST'.
     ls_param-kind    = 'P'.
@@ -128,7 +128,7 @@ START-OF-SELECTION.
       USING ls_table-tabname 'DEFAULT'
       CHANGING lv_vname lv_vok.
     IF lv_vok = abap_false.
-      WRITE: / |  ✗ Tên variant quá dài: { ls_table-tabname }|.
+      WRITE: / |  ✗ Variant name too long: { ls_table-tabname }|.
       CONTINUE.
     ENDIF.
 

@@ -1,17 +1,17 @@
 *&---------------------------------------------------------------------*
 *& Report ZSP26_ARCH_ADMIN_SETUP
 *&---------------------------------------------------------------------*
-*& Bootstrap one-time utility: chạy từ SE38 khi ZSP26_ARCH_ADMIN còn rỗng
-*& để thêm admin đầu tiên. Sau khi có admin, dùng Hub → [Admin] (screen 0700).
+*& Bootstrap one-time utility: run from SE38 when ZSP26_ARCH_ADMIN is empty
+*& to add the first admin. After that, use Hub → [Admin] (screen 0700).
 *&---------------------------------------------------------------------*
-*& Tiện ích thêm/xóa user admin cho hệ thống archive hub
-*& Chạy từ SE38 sau khi activate bảng ZSP26_ARCH_ADMIN
+*& Utility to add/remove admin users for the archive hub
+*& Run from SE38 after activating table ZSP26_ARCH_ADMIN
 *&---------------------------------------------------------------------*
 REPORT zsp26_arch_admin_setup.
 
 PARAMETERS:
   p_uname TYPE syuname DEFAULT sy-uname OBLIGATORY,
-  p_del   TYPE char1  AS CHECKBOX DEFAULT ' '.  " Tick = XÓA khỏi admin
+  p_del   TYPE char1  AS CHECKBOX DEFAULT ' '.  " Tick = REMOVE from admin
 
 START-OF-SELECTION.
 
@@ -23,36 +23,36 @@ START-OF-SELECTION.
   ls_adm-uname = p_uname.
 
   IF p_del = 'X'.
-    " Xóa khỏi danh sách admin
+    " Remove from admin list
     DELETE FROM zsp26_arch_admin
       WHERE uname = @p_uname.
     IF sy-subrc = 0.
-      WRITE: / |User { p_uname } đã bị XÓA khỏi danh sách admin.|.
+      WRITE: / |User { p_uname } has been REMOVED from admin list.|.
     ELSE.
-      WRITE: / |User { p_uname } không có trong danh sách admin.|.
+      WRITE: / |User { p_uname } is not in the admin list.|.
     ENDIF.
   ELSE.
-    " Thêm vào danh sách admin
+    " Add to admin list
     INSERT zsp26_arch_admin FROM ls_adm.
     IF sy-subrc = 0.
-      WRITE: / |User { p_uname } đã được thêm làm ADMIN.|.
+      WRITE: / |User { p_uname } has been added as ADMIN.|.
     ELSEIF sy-subrc = 4.
-      WRITE: / |User { p_uname } đã là ADMIN rồi (không thay đổi).|.
+      WRITE: / |User { p_uname } is already an ADMIN (no change).|.
     ELSE.
-      WRITE: / |Lỗi khi thêm user { p_uname } (sy-subrc={ sy-subrc }).|.
+      WRITE: / |Error adding user { p_uname } (sy-subrc={ sy-subrc }).|.
     ENDIF.
   ENDIF.
 
   COMMIT WORK.
 
-  " Hiển thị danh sách admin hiện tại
+  " Display current admin list
   SKIP.
-  WRITE: / '--- Danh sách Admin hiện tại ---'.
+  WRITE: / '--- Current Admin List ---'.
   SELECT * FROM zsp26_arch_admin
     INTO TABLE lt_admins
     ORDER BY uname.
   IF lt_admins IS INITIAL.
-    WRITE: / '(Chưa có admin nào)'.
+    WRITE: / '(No admins found)'.
   ELSE.
     LOOP AT lt_admins INTO ls_u.
       WRITE: / ls_u-uname.

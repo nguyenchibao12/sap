@@ -195,7 +195,7 @@ START-OF-SELECTION.
   IF lt_disp IS INITIAL.
     MESSAGE |No data for { p_table } (generic). Check archive session/file = WRITE run; ZSP26_ARCH_LOG. Try P_JSON for legacy ty_arch_rec.| TYPE 'S' DISPLAY LIKE 'W'.
   ELSEIF p_rest = 'X'.
-    " INSERT + log + MESSAGE đã chạy trong read_process_zstr_object — không mở ALV lần nữa.
+    " INSERT + log + MESSAGE already done in read_process_zstr_object — do not open ALV again.
   ELSE.
     DATA: lo_alv    TYPE REF TO cl_salv_table,
           lo_funcs  TYPE REF TO cl_salv_functions,
@@ -285,9 +285,9 @@ FORM read_process_zstr_object
       OTHERS                   = 4.
   lv_gt_rc = sy-subrc.
 
-  " RC=1 end_of_object vẫn có thể kèm dữ liệu trong TABLE — không được bỏ qua (trước đây → Restore 0).
+  " RC=1 end_of_object may still contain data in TABLE — do not skip (previously → Restore 0).
   IF lt_arch IS INITIAL.
-    " Một số stack ADK: GET_TABLE sau PUT_TABLE trả TABLE rỗng dù có dữ liệu — đọc tuần tự bằng ZSTR_ARCH_REC.
+    " Some ADK stacks: GET_TABLE after PUT_TABLE returns empty TABLE despite data — read sequentially via ZSTR_ARCH_REC.
     DO.
       CLEAR ls_fill.
       CALL FUNCTION 'ARCHIVE_GET_NEXT_RECORD'
@@ -713,7 +713,7 @@ FORM handle_ucomm USING r_ucomm TYPE sy-ucomm rs_selfield TYPE slis_selfield.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM F4_ARCH_DOC_USER — F4 cho p_doc: admin thấy tất cả, user thấy của mình
+*& FORM F4_ARCH_DOC_USER — F4 for p_doc: admin sees all, user sees own sessions
 *&---------------------------------------------------------------------*
 FORM f4_arch_doc_user CHANGING cv_doc TYPE admi_run-document.
   TYPES: BEGIN OF ty_doc_f4,
@@ -732,7 +732,7 @@ FORM f4_arch_doc_user CHANGING cv_doc TYPE admi_run-document.
         lv_obj TYPE arch_obj-object VALUE 'Z_ARCH_EKK',
         lv_is_admin TYPE abap_bool.
 
-  " Kiểm tra admin qua bảng ZSP26_ARCH_ADMIN
+  " Check admin via ZSP26_ARCH_ADMIN table
   SELECT SINGLE uname FROM zsp26_arch_admin
     INTO @DATA(lv_u)
     WHERE uname = @sy-uname.

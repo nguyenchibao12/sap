@@ -134,8 +134,8 @@ START-OF-SELECTION.
       ENDIF.
     ENDIF.
 
-    " Ưu tiên ARCH_DOCID vì nhiều hệ lưu số session tại cột này;
-    " DOCUMENT có thể mang định danh khác và dẫn tới lấy sai ARCHIV_KEY.
+    " Prefer ARCH_DOCID because many systems store the session number in this column;
+    " DOCUMENT may hold a different identifier and lead to wrong ARCHIV_KEY.
     READ TABLE lt_af_dd INTO ls_af_dd WITH KEY fieldname = 'ARCH_DOCID'.
     IF sy-subrc = 0.
       lv_col_doc = 'ARCH_DOCID'.
@@ -176,7 +176,7 @@ START-OF-SELECTION.
       LOOP AT lt_af_dd INTO ls_af_dd.
         WRITE: / '  - ' && ls_af_dd-fieldname.
       ENDLOOP.
-      MESSAGE 'Cấu trúc ADMI_FILES trên hệ này khác chuẩn (không thấy cột document).' TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE 'ADMI_FILES structure on this system is non-standard (document column not found).' TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
 
@@ -190,7 +190,7 @@ START-OF-SELECTION.
     PERFORM zsp26_sql_escape_quote CHANGING lv_obj_esc.
     lv_where_af = |{ lv_col_doc } = '{ lv_doc_esc }'|.
 
-    " Một số hệ có cột object, một số hệ không có (như spool bạn gửi)
+    " Some systems have an object column, some do not
     IF lv_col_obj IS NOT INITIAL.
       lv_where_af = |{ lv_col_obj } = '{ lv_obj_esc }' AND | && lv_where_af.
     ENDIF.
@@ -204,7 +204,7 @@ START-OF-SELECTION.
       WHERE (lv_where_af)
       INTO @lv_arch_key.
     IF sy-subrc <> 0.
-      " Fallback mềm: một số hệ lưu document theo format khác (ARCH_DOCID có hậu tố, hoặc khác cột ưu tiên).
+      " Soft fallback: some systems store document in a different format (ARCH_DOCID has suffix, or different preferred column).
       DATA: lt_af_scan TYPE TABLE OF admi_files,
             ls_af_scan TYPE admi_files,
             lv_doc_in  TYPE string,
@@ -257,7 +257,7 @@ START-OF-SELECTION.
 
       IF lv_ok_hit = abap_false OR lv_arch_key IS INITIAL.
         FREE MEMORY ID 'Z_GSP18_ADMI_DEL'.
-        MESSAGE 'Không tìm thấy khóa file trong ADMI_FILES cho session đã chọn (OBJECT/DOCUMENT).' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'File key not found in ADMI_FILES for the selected session (OBJECT/DOCUMENT).' TYPE 'S' DISPLAY LIKE 'E'.
         RETURN.
       ENDIF.
     ENDIF.
@@ -276,8 +276,8 @@ START-OF-SELECTION.
         AND status  = 'S'
         AND message LIKE @lv_prev_del_like.
     IF lv_prev_del_cnt > 0.
-      WRITE: / |WARNING: Session { gv_del_doc_log } đã có { lv_prev_del_cnt } log DELETE thành công trước đó.|.
-      WRITE: / 'Dữ liệu DB có thể đã bị xóa. Nếu không có rows nào bị xóa lần này, log sẽ ghi cảnh báo.'.
+      WRITE: / |WARNING: Session { gv_del_doc_log } already has { lv_prev_del_cnt } successful DELETE log(s) from prior run(s).|.
+      WRITE: / 'DB data may already have been deleted. If no rows are deleted this time, a warning will be logged.'.
       WRITE: /.
     ENDIF.
   ENDIF.
@@ -319,7 +319,7 @@ START-OF-SELECTION.
 
   IF lv_open_rc <> 0.
     WRITE: / |Open by key failed, rc={ lv_open_rc }. Try open by object only.|.
-    " Fallback: mở theo object khi key/session mapping khác format trên hệ thống.
+    " Fallback: open by object when key/session mapping differs on this system.
     CALL FUNCTION 'ARCHIVE_OPEN_FOR_DELETE'
       EXPORTING
         aindflag     = space
@@ -344,11 +344,11 @@ START-OF-SELECTION.
     WRITE: / |Open for delete failed rc={ lv_open_rc } object={ lv_open_obj } key={ lv_arch_key }|.
     CASE lv_open_rc.
       WHEN 4.
-        MESSAGE 'Không mở được archive cho delete (không có file phù hợp).' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Cannot open archive for delete (no matching files).' TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 5.
-        MESSAGE 'Không tìm thấy đối tượng archive (AOBJ) hoặc chưa đăng ký.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Archive object (AOBJ) not found or not registered.' TYPE 'S' DISPLAY LIKE 'E'.
       WHEN OTHERS.
-        MESSAGE 'Không mở được archive cho delete (kiểm tra quyền, file, session).' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Cannot open archive for delete (check permissions, files, session).' TYPE 'S' DISPLAY LIKE 'E'.
     ENDCASE.
     RETURN.
   ENDIF.
@@ -755,7 +755,7 @@ FORM process_one_arch_table
         lv_t     TYPE i,
         lv_fb    TYPE abap_bool VALUE abap_false.
 
-  " FM ARCHIVE_GET_TABLE — TABLES chỉ chấp nhận STANDARD TABLE (ANY TABLE → SYNTAX_ERROR).
+  " FM ARCHIVE_GET_TABLE — TABLES only accepts STANDARD TABLE (ANY TABLE → SYNTAX_ERROR).
   FIELD-SYMBOLS <lt> TYPE STANDARD TABLE.
 
   cv_got = abap_false.
@@ -938,7 +938,7 @@ FORM run_delete_legacy_json.
       archive_handle = lv_leg_h
     EXCEPTIONS OTHERS = 1.
   IF sy-subrc <> 0.
-    MESSAGE 'Không mở được archive (legacy / P_JSON).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Cannot open archive (legacy / P_JSON).' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 

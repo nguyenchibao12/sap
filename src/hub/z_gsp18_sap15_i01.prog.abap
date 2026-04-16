@@ -3,7 +3,7 @@
 *&---------------------------------------------------------------------*
 
 *&---------------------------------------------------------------------*
-*& Module USER_COMMAND_0400 INPUT — chọn bảng → Continue → 0100
+*& Module USER_COMMAND_0400 INPUT — select table → Continue → 0100
 *&---------------------------------------------------------------------*
 MODULE user_command_0400 INPUT.
   DATA: lv_cmd_400    TYPE sy-ucomm,
@@ -23,7 +23,7 @@ MODULE user_command_0400 INPUT.
       LEAVE SCREEN.
     WHEN 'BT_CONTINUE'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Please enter a Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         gv_hub_allowed = abap_true.
         IF lv_adm_0400_i = abap_true.
@@ -37,7 +37,7 @@ MODULE user_command_0400 INPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Module F4_GV_TABNAME INPUT — POV màn 0400: hiện nút F4 + cùng nguồn ZSP26_ARCH_CFG
+*& Module F4_GV_TABNAME INPUT — POV screen 0400: show F4 help + same source ZSP26_ARCH_CFG
 *&---------------------------------------------------------------------*
 MODULE f4_gv_tabname INPUT.
   PERFORM f4_gv_tabname_dynp.
@@ -79,7 +79,7 @@ MODULE user_command_0100 INPUT.
 
     WHEN 'BT_WRITE'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Please enter a Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM reset_flow_globals.
         SET SCREEN 0500.
@@ -88,14 +88,14 @@ MODULE user_command_0100 INPUT.
 
     WHEN 'BT_RESTORE'.
       IF gv_tabname IS INITIAL AND lv_is_admin = abap_false.
-        MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Please enter a Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM do_restore_menu.
       ENDIF.
 
     WHEN 'BT_ADK_DELETE'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Vui lòng nhập Table Name' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Please enter a Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM reset_flow_globals.
         SET SCREEN 0600.
@@ -109,7 +109,7 @@ MODULE user_command_0100 INPUT.
       IF lv_is_admin = abap_true.
         PERFORM do_config.
       ELSE.
-        MESSAGE 'Chỉ admin mới được mở Config.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Configuration is restricted to admins only' TYPE 'S' DISPLAY LIKE 'E'.
       ENDIF.
 
     WHEN 'BT_ADMIN'.
@@ -118,7 +118,7 @@ MODULE user_command_0100 INPUT.
         SET SCREEN 0700.
         LEAVE SCREEN.
       ELSE.
-        MESSAGE 'Chỉ admin mới được mở quản lý Admin.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Admin management is restricted to admins only' TYPE 'S' DISPLAY LIKE 'E'.
       ENDIF.
 
     WHEN 'BT_RUN_LOG'.
@@ -180,7 +180,7 @@ MODULE check_variant_0300 INPUT.
 
   CHECK gv_variant IS NOT INITIAL.
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Chọn bảng archive trước khi dùng Variant' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Select an archive table before editing the variant' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -189,7 +189,7 @@ MODULE check_variant_0300 INPUT.
   TRANSLATE lv_vlog_chk TO UPPER CASE.
   CONDENSE lv_vlog_chk NO-GAPS.
   IF lv_vlog_chk = 'DEFAULT'.
-    MESSAGE |"DEFAULT" là tên dành cho variant hệ thống. Dùng tên khác (vd VAR_01).| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |"DEFAULT" is reserved for the system variant. Please use a different name (e.g. VAR_01).| TYPE 'S' DISPLAY LIKE 'W'.
     CLEAR gv_variant.
     RETURN.
   ENDIF.
@@ -200,7 +200,7 @@ MODULE check_variant_0300 INPUT.
     USING gv_tabname gv_variant
     CHANGING lv_vtech_c lv_vok_c.
   IF lv_vok_c = abap_false.
-    MESSAGE 'Tên Variant (ID) không hợp lệ hoặc quá dài so với tên bảng (max 14 ký tự SAP).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Invalid Variant name (ID) or exceeds length limit (max 14 characters for SAP).' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -235,7 +235,7 @@ MODULE check_variant_0300 INPUT.
         CONDENSE lv_vc_cur.
         TRANSLATE lv_vc_cur TO UPPER CASE.
         IF lv_vc_tab <> lv_vc_cur.
-          MESSAGE |Variant { lv_vtech_c } chứa P_TABLE={ lv_vc_tab } nhưng bảng hiện tại là { lv_vc_cur }. Kiểm tra lại.| TYPE 'S' DISPLAY LIKE 'E'.
+          MESSAGE |Variant { lv_vtech_c } contains P_TABLE={ lv_vc_tab } but the current table is { lv_vc_cur }. Please verify.| TYPE 'S' DISPLAY LIKE 'E'.
           CLEAR gv_variant.
           RETURN.
         ENDIF.
@@ -244,13 +244,13 @@ MODULE check_variant_0300 INPUT.
   ENDIF.
 
   IF lv_rc_chk <> 0.
-    lv_q_c = |Chưa có variant { lv_vtech_c } cho bảng { gv_tabname }. Tạo mới?|.
+    lv_q_c = |Variant { lv_vtech_c } does not exist for table { gv_tabname }. Create it?|.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
-        titlebar              = 'Thông báo'
+        titlebar              = 'Notice'
         text_question         = lv_q_c
-        text_button_1         = 'Có'
-        text_button_2         = 'Không'
+        text_button_1         = 'Yes'
+        text_button_2         = 'No'
         display_cancel_button = ' '
       IMPORTING
         answer                = lv_ans_chk
@@ -261,7 +261,7 @@ MODULE check_variant_0300 INPUT.
         USING gv_prog_write lv_vtech_c gv_tabname
         CHANGING lv_ok_c.
       IF lv_ok_c = abap_false.
-        MESSAGE |Không tạo được variant SAP "{ lv_vtech_c }". Kiểm tra quyền variant cho report { gv_prog_write }.|
+        MESSAGE |Failed to create SAP variant "{ lv_vtech_c }". Check variant authorization for report { gv_prog_write }.|
           TYPE 'S' DISPLAY LIKE 'E'.
         RETURN.
       ENDIF.
@@ -292,12 +292,12 @@ MODULE user_command_0300 INPUT.
       SET SCREEN 0300.
       LEAVE SCREEN.
     WHEN 'ONLI'.
-      MESSAGE 'Execute (F8) chỉ dùng ở màn Write.' TYPE 'S' DISPLAY LIKE 'W'.
+      MESSAGE 'Execute (F8) is only available on the Write screen' TYPE 'S' DISPLAY LIKE 'W'.
 
     WHEN 'BT_EDIT' OR 'EDIT_BTN'.
       IF gv_variant IS NOT INITIAL.
         IF gv_tabname IS INITIAL.
-          MESSAGE 'Chọn bảng archive trước khi chỉnh Variant' TYPE 'S' DISPLAY LIKE 'E'.
+          MESSAGE 'Select an archive table before editing the variant' TYPE 'S' DISPLAY LIKE 'E'.
         ELSE.
           IF gv_prog_write IS INITIAL.
             PERFORM get_archive_programs.
@@ -306,7 +306,7 @@ MODULE user_command_0300 INPUT.
             USING gv_tabname gv_variant
             CHANGING lv_vtech_300 lv_vok_300.
           IF lv_vok_300 = abap_false.
-            MESSAGE 'Tên Variant (ID) không hợp lệ hoặc quá dài.' TYPE 'S' DISPLAY LIKE 'E'.
+            MESSAGE 'Invalid Variant name (ID) or exceeds length limit' TYPE 'S' DISPLAY LIKE 'E'.
           ELSE.
             CALL FUNCTION 'RS_VARIANT_EXISTS'
               EXPORTING
@@ -318,13 +318,13 @@ MODULE user_command_0300 INPUT.
             IF lv_rc_300 = 0.
               PERFORM arch_submit_wvar_ss USING lv_vtech_300.
             ELSE.
-              lv_q_300 = |Variant chưa tồn tại. Ô Variant giữ "{ gv_variant }". Tên trong SAP: { lv_vtech_300 } (chỉ tham khảo). Tạo mới?|.
+              lv_q_300 = |Variant does not exist. Variant field holds "{ gv_variant }". SAP name: { lv_vtech_300 } (for reference). Create it?|.
               CALL FUNCTION 'POPUP_TO_CONFIRM'
                 EXPORTING
-                  titlebar              = 'Thông báo'
+                  titlebar              = 'Notice'
                   text_question         = lv_q_300
-                  text_button_1         = 'Có'
-                  text_button_2         = 'Không'
+                  text_button_1         = 'Yes'
+                  text_button_2         = 'No'
                   display_cancel_button = ' '
                 IMPORTING
                   answer                = lv_ans_300
@@ -335,7 +335,7 @@ MODULE user_command_0300 INPUT.
                   USING gv_prog_write lv_vtech_300 gv_tabname
                   CHANGING lv_ok_300.
                 IF lv_ok_300 = abap_false.
-                  MESSAGE |Không tạo được variant SAP "{ lv_vtech_300 }". Kiểm tra quyền variant.|
+                  MESSAGE |Failed to create SAP variant "{ lv_vtech_300 }". Check variant authorization.|
                     TYPE 'S' DISPLAY LIKE 'E'.
                   RETURN.
                 ENDIF.
@@ -347,7 +347,7 @@ MODULE user_command_0300 INPUT.
           ENDIF.
         ENDIF.
       ELSE.
-        MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
+        MESSAGE 'Please enter a Variant name' TYPE 'I'.
       ENDIF.
 
     WHEN 'BT_START' OR 'START_BTN'.
@@ -360,10 +360,10 @@ MODULE user_command_0300 INPUT.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
-*& Module F4_GV_VARIANT INPUT — F4 variant theo report write (AOBJ)
+*& Module F4_GV_VARIANT INPUT — F4 variant by write report (AOBJ)
 *&---------------------------------------------------------------------*
 MODULE f4_gv_variant INPUT.
-  TYPES: ty_varid_name TYPE c LENGTH 14, " VARID-VARIANT / RVARI độ dài chuẩn
+  TYPES: ty_varid_name TYPE c LENGTH 14, " VARID-VARIANT / RVARI standard length
          BEGIN OF ty_vf4,
            variant TYPE variant,
          END OF ty_vf4.
@@ -392,7 +392,7 @@ MODULE f4_gv_variant INPUT.
   CHECK lv_rep IS NOT INITIAL.
 
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Chọn bảng archive trước (F4 Variant theo từng bảng)' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'Please select a table first (F4 Variant is table-specific)' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -431,7 +431,7 @@ MODULE f4_gv_variant INPUT.
   DELETE ADJACENT DUPLICATES FROM lt_vf4 COMPARING variant.
 
   IF lt_vf4 IS INITIAL.
-    MESSAGE 'Chưa có variant cho bảng này (PREFIX_ID trên VARID) hoặc chưa có cho report' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'No variant found for this table (PREFIX_ID on VARID) or for the report' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -441,7 +441,7 @@ MODULE f4_gv_variant INPUT.
       dynpprog     = sy-repid
       dynpnr       = sy-dynnr
       dynprofield  = 'GV_VARIANT'
-      window_title = 'Variants (theo bảng hiện tại)'
+      window_title = 'Variants (for current table)'
       value_org    = 'S'
     TABLES
       value_tab    = lt_vf4
@@ -472,22 +472,22 @@ MODULE user_command_0500 INPUT.
 
     WHEN 'BT_PREVIEW'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Vui lòng nhập Table Name ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Please enter a Table Name on the previous screen' TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_start_date <> 'X'.
-        MESSAGE 'Chưa maintain Start Date. Vào Start Date để khai báo trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Start Date not defined. Please set it before executing.' TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_spool_set <> 'X'.
-        MESSAGE 'Chưa maintain Spool Parameters. Vào Spool Parameters trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Spool Parameters not defined. Please set them before executing.' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM do_archive_write.
       ENDIF.
 
     WHEN 'ONLI'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Vui lòng nhập Table Name ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Please enter a Table Name on the previous screen' TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_start_date <> 'X'.
-        MESSAGE 'Chưa maintain Start Date. Vào Start Date để khai báo trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Start Date not defined. Please set it before executing.' TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_spool_set <> 'X'.
-        MESSAGE 'Chưa maintain Spool Parameters. Vào Spool Parameters trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Spool Parameters not defined. Please set them before executing.' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM do_archive_write_bg_job.
         SET SCREEN 0100.
@@ -517,7 +517,7 @@ MODULE user_command_0600 INPUT.
     WHEN 'BT_EDIT' OR 'EDIT_BTN'.
       IF gv_variant IS NOT INITIAL.
         IF gv_tabname IS INITIAL.
-          MESSAGE 'Chọn bảng archive trước khi chỉnh Variant' TYPE 'S' DISPLAY LIKE 'E'.
+          MESSAGE 'Select an archive table before editing the variant' TYPE 'S' DISPLAY LIKE 'E'.
           RETURN.
         ENDIF.
         IF gv_prog_del IS INITIAL.
@@ -534,7 +534,7 @@ MODULE user_command_0600 INPUT.
           USING gv_tabname gv_variant
           CHANGING lv_vtech_600 lv_vok_600.
         IF lv_vok_600 = abap_false.
-          MESSAGE 'Tên Variant (ID) không hợp lệ hoặc quá dài.' TYPE 'S' DISPLAY LIKE 'E'.
+          MESSAGE 'Invalid Variant name (ID) or exceeds length limit' TYPE 'S' DISPLAY LIKE 'E'.
           RETURN.
         ENDIF.
 
@@ -556,13 +556,13 @@ MODULE user_command_0600 INPUT.
         ELSE.
           DATA: lv_ans_600 TYPE char1,
                 lv_msg_600 TYPE string.
-          lv_msg_600 = |Variant { lv_vtech_600 } chưa tồn tại cho Delete program. Tạo mới?|.
+          lv_msg_600 = |Variant { lv_vtech_600 } does not exist for the Delete program. Create it?|.
           CALL FUNCTION 'POPUP_TO_CONFIRM'
             EXPORTING
               titlebar              = 'Create Delete Variant'
               text_question         = lv_msg_600
-              text_button_1         = 'Tạo'
-              text_button_2         = 'Hủy'
+              text_button_1         = 'Create'
+              text_button_2         = 'Cancel'
               display_cancel_button = ' '
             IMPORTING
               answer                = lv_ans_600
@@ -581,17 +581,17 @@ MODULE user_command_0600 INPUT.
                 AND RETURN.
               FREE MEMORY ID 'Z_GSP18_WR_SS'.
             ELSE.
-              MESSAGE |Không tạo được variant { lv_vtech_600 }.| TYPE 'S' DISPLAY LIKE 'E'.
+              MESSAGE |Failed to create variant { lv_vtech_600 }.| TYPE 'S' DISPLAY LIKE 'E'.
             ENDIF.
           ENDIF.
         ENDIF.
       ELSE.
-        MESSAGE 'Vui lòng nhập tên Variant' TYPE 'I'.
+        MESSAGE 'Please enter a Variant name' TYPE 'I'.
       ENDIF.
 
     WHEN 'BT_ARCH_SEL'.
       IF gv_purge_mode = 'X'.
-        MESSAGE 'Purge-only mode không cần chọn Archive Selection.' TYPE 'S'.
+        MESSAGE 'Purge-only mode does not require Archive Selection.' TYPE 'S'.
       ELSE.
         PERFORM arch_del_pick_session_popup USING 'D'.
       ENDIF.
@@ -606,18 +606,18 @@ MODULE user_command_0600 INPUT.
 
     WHEN 'ONLI'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Vui lòng nhập Table Name ở màn trước' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Please enter a Table Name on the previous screen' TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_start_date <> 'X'.
-        MESSAGE 'Chưa maintain Start Date. Vào Start Date để khai báo trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Start Date not defined. Please set it before executing.' TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_spool_set <> 'X'.
-        MESSAGE 'Chưa maintain Spool Parameters. Vào Spool Parameters trước khi Execute.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Spool Parameters not defined. Please set them before executing.' TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_purge_mode = 'X'.
         PERFORM do_purge_only_direct.
       ELSEIF gv_del_sess_def IS INITIAL AND gv_variant IS INITIAL.
-        MESSAGE 'Chưa chọn Archive Selection (session) hoặc Variant cho delete.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE 'Please select an Archive Session or Variant for delete' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         IF gv_test_mode = 'X'.
-          MESSAGE 'Đang ở Test Mode: job Delete chỉ mô phỏng, không xóa dữ liệu DB.' TYPE 'S' DISPLAY LIKE 'W'.
+          MESSAGE 'Test mode active: delete job will only simulate, no DB data will be removed.' TYPE 'S' DISPLAY LIKE 'W'.
         ENDIF.
         PERFORM do_archive_delete_bg_job.
         SET SCREEN 0100.
@@ -676,7 +676,7 @@ MODULE user_command_0800 INPUT.
     WHEN 'BT_REG_SAVE'.
       PERFORM do_reg_validate_and_save.
 
-    " CANC = nút Cancel dynpro (FCODE CANC) → xử lý như Exit: không kiểm tra chuyển đổi field
+    " CANC = dynpro Cancel button (FCODE CANC) → handle like Exit: skip field conversion checks
     WHEN 'BT_REG_CANCEL' OR 'BACK' OR 'EXIT' OR 'CANC'.
       CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_ret, gv_reg_desc, gv_reg_active.
       LEAVE TO SCREEN 0.
