@@ -24,8 +24,8 @@ SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE text-001.
 PARAMETERS:
   p_ready   TYPE i DEFAULT 40,
   p_new     TYPE i DEFAULT 12,
-  p_f_loekz TYPE i DEFAULT 6,
-  p_f_bstyp TYPE i DEFAULT 6.
+  p_loekzf TYPE i DEFAULT 6,
+  p_bstypf TYPE i DEFAULT 6.
 SELECTION-SCREEN END OF BLOCK b1.
 
 SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE text-002.
@@ -37,10 +37,10 @@ SELECTION-SCREEN END OF BLOCK b2.
 *----------------------------------------------------------------------*
 START-OF-SELECTION.
 *----------------------------------------------------------------------*
-  IF p_ready < 0 OR p_new < 0 OR p_f_loekz < 0 OR p_f_bstyp < 0.
+  IF p_ready < 0 OR p_new < 0 OR p_loekzf < 0 OR p_bstypf < 0.
     MESSAGE 'Counts must be zero or positive.' TYPE 'E'.
   ENDIF.
-  IF p_ready + p_new + p_f_loekz + p_f_bstyp > 900.
+  IF p_ready + p_new + p_loekzf + p_bstypf > 900.
     MESSAGE 'Total demo rows exceed reserved EBELN range (900).' TYPE 'E'.
   ENDIF.
 
@@ -69,12 +69,12 @@ START-OF-SELECTION.
 
   " 3) RULE FAIL: deletion indicator (archive rules typically exclude)
   PERFORM append_ekko_block_fail_loekz
-    USING p_f_loekz p_ready + p_new + 1
+    USING p_loekzf p_ready + p_new + 1
     CHANGING lt_ekko lt_ekpo.
 
   " 4) RULE FAIL: document category not F
   PERFORM append_ekko_block_fail_bstyp
-    USING p_f_bstyp p_ready + p_new + p_f_loekz + 1
+    USING p_bstypf p_ready + p_new + p_loekzf + 1
     CHANGING lt_ekko lt_ekpo.
 
   IF lt_ekko IS INITIAL.

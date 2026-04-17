@@ -53,13 +53,13 @@
     </item>
     <item>
      <ID>I</ID>
-     <KEY>P_F_LOEKZ</KEY>
+     <KEY>P_LOEKZF</KEY>
      <ENTRY>RULE FAIL: LOEKZ = L</ENTRY>
      <LENGTH>25</LENGTH>
     </item>
     <item>
      <ID>I</ID>
-     <KEY>P_F_BSTYP</KEY>
+     <KEY>P_BSTYPF</KEY>
      <ENTRY>RULE FAIL: BSTYP not F</ENTRY>
      <LENGTH>25</LENGTH>
     </item>
