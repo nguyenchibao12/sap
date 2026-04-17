@@ -8,6 +8,8 @@
 *&---------------------------------------------------------------------*
 REPORT zsp26_demo_full_flow_data.
 
+TYPES ty_demo_mode TYPE c LENGTH 5.
+
 CONSTANTS:
   gc_demo_lo TYPE ebeln VALUE '9980000001',
   gc_demo_hi TYPE ebeln VALUE '9980000999'.
@@ -57,24 +59,32 @@ START-OF-SELECTION.
 
   CLEAR: lt_ekko, lt_ekpo.
 
+  DATA lv_start TYPE i.
+  DATA lv_mode TYPE ty_demo_mode.
+
   " 1) READY: AEDAT old enough vs retention 365 + rules LOEKZ space, BSTYP F
+  lv_mode = 'READY'.
   PERFORM append_ekko_block
-    USING p_ready 1 'READY'
+    USING p_ready 1 lv_mode
     CHANGING lt_ekko lt_ekpo.
 
   " 2) TOO NEW: AEDAT recent (hub should show TOO NEW)
+  lv_start = p_ready + 1.
+  lv_mode = 'NEW'.
   PERFORM append_ekko_block
-    USING p_new p_ready + 1 'NEW'
+    USING p_new lv_start lv_mode
     CHANGING lt_ekko lt_ekpo.
 
   " 3) RULE FAIL: deletion indicator (archive rules typically exclude)
+  lv_start = p_ready + p_new + 1.
   PERFORM append_ekko_block_fail_loekz
-    USING p_loekzf p_ready + p_new + 1
+    USING p_loekzf lv_start
     CHANGING lt_ekko lt_ekpo.
 
   " 4) RULE FAIL: document category not F
+  lv_start = p_ready + p_new + p_loekzf + 1.
   PERFORM append_ekko_block_fail_bstyp
-    USING p_bstypf p_ready + p_new + p_loekzf + 1
+    USING p_bstypf lv_start
     CHANGING lt_ekko lt_ekpo.
 
   IF lt_ekko IS INITIAL.
@@ -101,7 +111,7 @@ START-OF-SELECTION.
 FORM append_ekko_block
   USING    iv_count TYPE i
            iv_start TYPE i
-           iv_mode  TYPE c LENGTH 5 " READY / NEW
+           iv_mode  TYPE ty_demo_mode
   CHANGING ct_ekko TYPE TABLE OF zsp26_ekko
            ct_ekpo TYPE TABLE OF zsp26_ekpo.
 
