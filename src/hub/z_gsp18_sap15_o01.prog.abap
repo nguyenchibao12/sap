@@ -164,7 +164,9 @@ MODULE init_fields_0500 OUTPUT.
   PERFORM refresh_var_tech_display.
 
   LOOP AT SCREEN.
-    IF screen-name = 'GV_VAR_TECH'.
+    IF screen-name = 'GV_VAR_TECH'
+       OR screen-name = 'GV_DISP_UNAME'
+       OR screen-name = 'GV_DISP_MANDT'.
       screen-input = 0.
       MODIFY SCREEN.
     ENDIF.
@@ -190,10 +192,8 @@ MODULE init_fields_0600 OUTPUT.
     gv_det_log = 'X'.
   ENDIF.
 
-  gv_disp_mandt = sy-mandt.
-  IF gv_disp_uname IS INITIAL.
-    gv_disp_uname = sy-uname.
-  ENDIF.
+  gv_disp_mandt  = sy-mandt.
+  gv_disp_uname  = sy-uname.
 
   gv_scr600_head = |Archive for { gv_object }|.
 
@@ -216,7 +216,9 @@ MODULE init_fields_0600 OUTPUT.
   PERFORM refresh_var_tech_display.
 
   LOOP AT SCREEN.
-    IF screen-name = 'GV_VAR_TECH'.
+    IF screen-name = 'GV_VAR_TECH'
+       OR screen-name = 'GV_DISP_UNAME'
+       OR screen-name = 'GV_DISP_MANDT'.
       screen-input = 0.
       MODIFY SCREEN.
     ENDIF.

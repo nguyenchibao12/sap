@@ -75,8 +75,8 @@ INITIALIZATION.
     FREE MEMORY ID 'Z_GSP18_ARCH_TAB'.
   ENDIF.
 
-  g_scr_h0 = 'Table: F4 = ZSP26_ARCH_CFG. Uncheck P_TEST for ADK PUT_TABLE (Z_ARCH_EKK).'.
-  g_scr_h1 = 'WHERE: DATA_FIELD/RETENTION (+ EQ rules w/o OR). ABAP rules: apply_arch_rules.'.
+  g_scr_h0 = 'Table: press F4 to pick from configuration. Turn off Test Mode to write the archive file.'.
+  g_scr_h1 = 'Dates/retention use configuration; extra rules may still filter rows.'.
   bt_tbls = 'Show All Tables'.
   bt_data = 'Show Eligible Data'.
 
@@ -178,7 +178,7 @@ AT SELECTION-SCREEN.
       PERFORM validate_table_against_cfg
         USING p_table CHANGING gs_cfg lv_cfg_ok.
       IF lv_cfg_ok = abap_false.
-        MESSAGE |No active ZSP26_ARCH_CFG / invalid DDIC for '{ p_table }'| TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE |Table '{ p_table }' is not active in archive configuration or is unknown to the dictionary.| TYPE 'S' DISPLAY LIKE 'E'.
         RETURN.
       ENDIF.
 
@@ -206,7 +206,7 @@ AT SELECTION-SCREEN.
 
       IF <lt_src> IS INITIAL.
         IF lv_sql_elig_cnt > 0.
-          lv_m = |{ lv_sql_elig_cnt } row(s) matched date/SQL but 0 after ZSP26_ARCH_RULE. Restored data must still pass rules — check rule values vs field types (dates now compared as D).|.
+          lv_m = |{ lv_sql_elig_cnt } row(s) passed the date window but none passed the extra archive rules. Review rules for this table in configuration.|.
           MESSAGE lv_m TYPE 'S' DISPLAY LIKE 'W'.
         ELSE.
           CLEAR lv_tbl_tot.
@@ -215,13 +215,13 @@ AT SELECTION-SCREEN.
             CLEAR lv_c0.
             SELECT COUNT(*) FROM (p_table) INTO @lv_c0 WHERE (lv_w0).
             IF lv_c0 > 0.
-              lv_m = |{ lv_tbl_tot } row(s) on { p_table } mandt { sy-mandt }: { lv_c0 } match date window but 0 with EQ rules merged into Open SQL. Check ZSP26_ARCH_RULE for this CONFIG_ID.|.
+              lv_m = |{ lv_tbl_tot } row(s) exist but none qualify after rules are applied. Widen the date range or review archive rules for this table.|.
             ELSE.
-              lv_m = |{ lv_tbl_tot } row(s) on { p_table } mandt { sy-mandt } no SQL match field { lv_df } cutoff { lv_co }. Widen S_DATE or set CFG DATA_FIELD to BEDAT if AEDAT empty.|.
+              lv_m = |{ lv_tbl_tot } row(s) exist but none match the configured date field ({ lv_df }) up to { lv_co }. Widen the date range or change the date field in configuration (e.g. posting vs document date).|.
             ENDIF.
             MESSAGE lv_m TYPE 'S' DISPLAY LIKE 'W'.
           ELSE.
-            lv_m = |0 rows in { p_table } for this client — RESTORE did not persist here or wrong table/MANDT. If log says Restored N rows, check SE16 same client + keys.|.
+            lv_m = |No rows found for { p_table } in this client. If you expected data, check the table, client, and keys in the data browser.|.
             MESSAGE lv_m TYPE 'S' DISPLAY LIKE 'W'.
           ENDIF.
         ENDIF.
@@ -250,7 +250,7 @@ START-OF-SELECTION.
   PERFORM validate_table_against_cfg
     USING p_table CHANGING gs_cfg lv_cfg_ok.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Invalid archive target '{ p_table }': no active ZSP26_ARCH_CFG or DATA_FIELD not in DDIC.| TYPE 'A'.
+    MESSAGE |Table '{ p_table }' cannot be archived: missing active configuration or date field not in the dictionary.| TYPE 'A'.
   ENDIF.
 
   lv_tpl_df = gs_cfg-data_field.
@@ -261,10 +261,10 @@ START-OF-SELECTION.
                       ELSE sy-datum - gs_cfg-retention ).
 
   WRITE: /.
-  WRITE: / |=== ADK Write (PUT_TABLE): { p_table } - Object Z_ARCH_EKK ===|.
-  WRITE: / |CONFIG_ID  : { lv_tpl_cid }|.
-  WRITE: / |Date Field : { lv_tpl_df }|.
-  WRITE: / |Retention  : { lv_tpl_ret } days|.
+  WRITE: / |=== Archive write: { p_table } ===|.
+  WRITE: / |Configuration ID: { lv_tpl_cid }|.
+  WRITE: / |Date field      : { lv_tpl_df }|.
+  WRITE: / |Retention (days): { lv_tpl_ret }|.
   IF s_date-low IS NOT INITIAL.
     WRITE: / |Date From  : { s_date-low }|.
   ELSE.
@@ -300,7 +300,7 @@ START-OF-SELECTION.
 
   lv_sql_elig_cnt = lines( <lt_src> ).
   IF lv_sql_elig_cnt >= lc_max_rows.
-    WRITE: / |WARNING: Row limit { lc_max_rows } reached — not all eligible rows may be included.|.
+    WRITE: / |Warning: only the first { lc_max_rows } rows were read; more rows may exist.|.
   ENDIF.
   PERFORM apply_rules_to_src.
 
@@ -308,7 +308,7 @@ START-OF-SELECTION.
 
   IF <lt_src> IS INITIAL.
     IF lv_sql_elig_cnt > 0.
-      WRITE: / |{ lv_sql_elig_cnt } row(s) matched SQL but none after ZSP26_ARCH_RULE (row-level).|.
+      WRITE: / |{ lv_sql_elig_cnt } row(s) matched the date window but none passed row-level archive rules.|.
     ELSE.
       CLEAR lv_tbl_tot.
       SELECT COUNT(*) FROM (p_table) INTO @lv_tbl_tot.
@@ -316,15 +316,15 @@ START-OF-SELECTION.
         CLEAR lv_c0.
         SELECT COUNT(*) FROM (p_table) INTO @lv_c0 WHERE (lv_where0).
         IF lv_c0 > 0.
-          WRITE: / |{ lv_tbl_tot } row(s) on { p_table } mandt { sy-mandt }: { lv_c0 } match date window but 0 with EQ rules in Open SQL — check ZSP26_ARCH_RULE.|.
+          WRITE: / |{ lv_tbl_tot } row(s) exist; { lv_c0 } in the date window but none after rules — review archive rules.|.
         ELSE.
-          WRITE: / |{ lv_tbl_tot } row(s) on { p_table } mandt { sy-mandt } no SQL match field { lv_tpl_df } cutoff { lv_cutoff }.|.
+          WRITE: / |{ lv_tbl_tot } row(s) exist but none match date field { lv_tpl_df } up to { lv_cutoff } — widen dates or change date field.|.
         ENDIF.
       ELSE.
-        WRITE: / |No rows from SQL cutoff { lv_cutoff } field { lv_tpl_df }. Table empty this client - check RESTORE/MANDT.|.
+        WRITE: / |No rows for cutoff { lv_cutoff } on field { lv_tpl_df }; table may be empty in this client.|.
       ENDIF.
     ENDIF.
-    WRITE: / 'No eligible rows — nothing to archive.'.
+    WRITE: / 'No rows qualify for archiving.'.
     RETURN.
   ENDIF.
 
@@ -341,7 +341,7 @@ START-OF-SELECTION.
     EXCEPTIONS
       OTHERS    = 1.
   IF sy-subrc <> 0 OR lt_dd IS INITIAL.
-    MESSAGE |DDIF_FIELDINFO_GET failed for { p_table } — cannot build key info for archive.| TYPE 'A'.
+    MESSAGE |Could not read field list for table { p_table }; archiving cannot continue.| TYPE 'A'.
   ENDIF.
 
   LOOP AT <lt_src> ASSIGNING <row>.
@@ -419,7 +419,7 @@ START-OF-SELECTION.
         archiving_standard_violation  = 5
         OTHERS                        = 6.
     IF sy-subrc <> 0.
-      MESSAGE 'ARCHIVE_OPEN_FOR_WRITE failed. Check AOBJ Z_ARCH_EKK / authorizations.' TYPE 'A'.
+      MESSAGE 'Could not open archive for writing. Check archive object setup and your authorizations.' TYPE 'A'.
     ENDIF.
 
     " Register generic DDIC record structure
@@ -440,10 +440,10 @@ START-OF-SELECTION.
         OTHERS                      = 3.
     IF sy-subrc <> 0.
       lv_err = lv_err + 1.
-      WRITE: / |ERROR: ARCHIVE_REGISTER_STRUCTURES RC={ sy-subrc } (check ADK / DDIC)|.
+      WRITE: / |Error: archive structure registration failed (return code { sy-subrc }).|.
       CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
         EXPORTING archive_handle = lv_arch_h EXCEPTIONS OTHERS = 1.
-      MESSAGE 'ARCHIVE_REGISTER_STRUCTURES failed — cannot continue.' TYPE 'A'.
+      MESSAGE 'Archive structure registration failed; run cannot continue.' TYPE 'A'.
     ENDIF.
 
     CALL FUNCTION 'ARCHIVE_NEW_OBJECT'
@@ -456,7 +456,7 @@ START-OF-SELECTION.
     IF sy-subrc <> 0.
       CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
         EXPORTING archive_handle = lv_arch_h EXCEPTIONS OTHERS = 1.
-      MESSAGE 'ARCHIVE_NEW_OBJECT failed.' TYPE 'A'.
+      MESSAGE 'Could not create a new archive object in the file.' TYPE 'A'.
     ENDIF.
 
     CALL FUNCTION 'ARCHIVE_PUT_TABLE'
@@ -472,13 +472,13 @@ START-OF-SELECTION.
         OTHERS                    = 4.
     IF sy-subrc <> 0.
       lv_err = lv_err + 1.
-      WRITE: / |ERROR: ARCHIVE_PUT_TABLE RC={ sy-subrc }|.
+      WRITE: / |Error: writing data to the archive file failed (return code { sy-subrc }).|.
       CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
         EXPORTING
           archive_handle = lv_arch_h
         EXCEPTIONS
           OTHERS         = 1.
-      MESSAGE 'Archive write failed (PUT_TABLE).' TYPE 'A'.
+      MESSAGE 'Writing rows to the archive file failed.' TYPE 'A'.
     ENDIF.
 
     lv_cnt = lines( <lt_arch> ).
@@ -499,7 +499,7 @@ START-OF-SELECTION.
           archive_handle = lv_arch_h
         EXCEPTIONS
           OTHERS         = 1.
-      MESSAGE 'ARCHIVE_SAVE_OBJECT failed.' TYPE 'A'.
+      MESSAGE 'Saving the archive object failed.' TYPE 'A'.
     ENDIF.
 
     CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
@@ -524,10 +524,10 @@ START-OF-SELECTION.
     ls_log-end_time    = lv_ts_e.
     ls_log-exec_user   = sy-uname.
     ls_log-exec_date   = sy-datum.
-    ls_log-message     = |ADK PUT_TABLE generic { lv_cnt } rows. Tab { p_table }. Cutoff { lv_cutoff }. HANDLE={ lv_arch_h }|.
+    ls_log-message     = |Archived { lv_cnt } row(s) for { p_table } (cutoff { lv_cutoff }, session handle { lv_arch_h }).|.
     INSERT zsp26_arch_log FROM ls_log.
     IF sy-subrc <> 0.
-      WRITE: / |WARNING: INSERT zsp26_arch_log failed (RC={ sy-subrc }). Archive was written but log entry missing.|.
+      WRITE: / |Warning: archive completed but application log could not be saved (return code { sy-subrc }).|.
     ENDIF.
     COMMIT WORK.
   ENDIF.
@@ -536,12 +536,12 @@ START-OF-SELECTION.
   WRITE: / '=== Summary ==='.
   WRITE: / |Rows in selection: { lines( <lt_src> ) }|.
   IF p_test = ' '.
-    WRITE: / |Archived (PUT_TABLE): { lv_cnt }|.
-    WRITE: / 'Lifecycle: WRITE completed only. DB source rows are NOT deleted yet.'.
-    WRITE: / 'Next mandatory step: run DELETE program to remove source DB records.'.
-    WRITE: / 'Next: run Z_ARCH_EKK_DELETE (hub/SUBMIT; select archive session/file). Uncheck P_JSON if using this PUT_TABLE format.'.
+    WRITE: / |Rows written to archive file: { lv_cnt }|.
+    WRITE: / 'Write step finished: data is in the archive file; database rows are not removed yet.'.
+    WRITE: / 'Next step: run the Delete program from the hub to remove the same rows from the database.'.
+    WRITE: / 'Use the hub Delete flow and pick the archive session that matches this run.'.
   ELSE.
-    WRITE: / 'Uncheck Test Mode to run OPEN → REGISTER_STRUCTURES → NEW_OBJECT → PUT_TABLE → SAVE_OBJECT → CLOSE_FILE.'.
+    WRITE: / 'Test mode: turn off Test Mode to perform a real archive write to disk.'.
   ENDIF.
 
 *&---------------------------------------------------------------------*

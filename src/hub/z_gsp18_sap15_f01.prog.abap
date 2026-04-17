@@ -915,8 +915,8 @@ FORM do_archive_delete_bg_job.
     IF lv_prev_cnt > 0.
       CALL FUNCTION 'POPUP_TO_CONFIRM'
         EXPORTING
-          titlebar              = 'Duplicate Delete Warning'
-          text_question         = |Session { lv_sel_doc } already has { lv_prev_cnt } successful DELETE runs. Re-running will not delete additional DB data. Continue?|
+          titlebar              = 'Duplicate delete'
+          text_question         = |Session { lv_sel_doc } was already deleted ({ lv_prev_cnt } run(s)). No extra rows will be removed. Continue anyway?|
           text_button_1         = 'Continue'
           text_button_2         = 'Cancel'
           default_button        = '2'
@@ -1281,11 +1281,11 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
   ENDLOOP.
 
   IF pv_mode = 'R'.
-    lv_title = 'Archive Administration: Select Sessions for Restore (DELETE done)'.
+    lv_title = 'Pick session (after delete)'.
   ELSEIF pv_mode = 'B'.
-    lv_title = 'Archive Administration: Select Session to Browse'.
+    lv_title = 'Pick session to browse'.
   ELSE.
-    lv_title = 'Archive Administration: Select Files for Delete Program'.
+    lv_title = 'Pick session for delete'.
   ENDIF.
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
@@ -1384,10 +1384,10 @@ FORM do_restore_menu.
 
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
-      titlebar              = 'Archive Read / Restore'
-      text_question         = 'Select an action:'
-      text_button_1         = 'Browse archived data'
-      text_button_2         = 'Restore to database'
+      titlebar              = 'Archives'
+      text_question         = 'Browse files or restore rows to the database?'
+      text_button_1         = 'Browse'
+      text_button_2         = 'Restore'
       display_cancel_button = 'X'
     IMPORTING
       answer                = lv_ans
@@ -1448,16 +1448,16 @@ FORM do_restore_from_hub.
   DATA: lv_ans TYPE c LENGTH 1,
         lv_q   TYPE string.
   IF lv_rst_adm = abap_true.
-    lv_q = |Session { gs_del_admi-document } → restore FULL SESSION (all tables)?|.
+    lv_q = |Restore all tables for archive session { gs_del_admi-document }?|.
   ELSE.
-    lv_q = |Session { gs_del_admi-document } → restore data into table { gv_tabname }?|.
+    lv_q = |Restore session { gs_del_admi-document } into table { gv_tabname }?|.
   ENDIF.
 
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
-      titlebar              = 'Restore from archive'
+      titlebar              = 'Restore'
       text_question         = lv_q
-      text_button_1         = 'Yes, restore'
+      text_button_1         = 'Yes'
       text_button_2         = 'No'
       default_button        = '2'
       display_cancel_button = ' '
@@ -1715,8 +1715,8 @@ FORM do_monitor_menu.
     EXPORTING
       titlebar              = 'Monitor'
       text_question         = 'Select report type:'
-      text_button_1         = 'Dashboard (traffic light)'
-      text_button_2         = 'Archive Inventory'
+      text_button_1         = 'Dashboard'
+      text_button_2         = 'Inventory'
       display_cancel_button = 'X'
     IMPORTING
       answer                = lv_ans
@@ -2081,8 +2081,8 @@ FORM show_hub_run_diagnostics.
       EXPORTING
         titlebar              = 'Run Log'
         text_question         = 'Select an action:'
-        text_button_1         = 'View job log'
-        text_button_2         = 'Delete old logs'
+        text_button_1         = 'Job log'
+        text_button_2         = 'Clean logs'
         display_cancel_button = 'X'
       IMPORTING
         answer                = lv_rd_ans
@@ -3264,10 +3264,10 @@ FORM do_delete_old_logs.
 
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
-      titlebar              = 'Confirm Delete Logs'
+      titlebar              = 'Delete old logs'
       text_question         = lv_q
-        text_button_1         = 'Delete'
-        text_button_2         = 'Cancel'
+      text_button_1         = 'Delete'
+      text_button_2         = 'Cancel'
       default_button        = '2'
       display_cancel_button = ' '
     IMPORTING
@@ -3971,7 +3971,7 @@ FORM check_dependencies
     EXPORTING
       titlebar              = 'Dependency Check Warning'
       text_question         = |{ gv_tabname } has dependent child records ({ lv_total } total). Archive anyway?|
-      text_button_1         = 'Yes, Archive'
+      text_button_1         = 'Archive'
       text_button_2         = 'No'
       default_button        = '2'
       display_cancel_button = ' '
@@ -4163,7 +4163,7 @@ FORM zsp26_hub_edit_wvar_0500.
       EXPORTING
         titlebar              = 'Create Variant'
         text_question         = lv_msg
-        text_button_1         = 'Create Variant'
+        text_button_1         = 'Create'
         text_button_2         = 'Cancel'
         display_cancel_button = ' '
       IMPORTING

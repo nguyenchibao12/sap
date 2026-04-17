@@ -120,8 +120,7 @@ START-OF-SELECTION.
         OTHERS                        = 9.
   ENDIF.
   IF sy-subrc <> 0.
-    MESSAGE 'Cannot open archive Z_ARCH_EKK for read (check session / .ARC file selection).'
-            TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE 'Cannot open the archive for reading. Check the session ID or pick the correct archive file.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -193,7 +192,7 @@ START-OF-SELECTION.
       OTHERS         = 1.
 
   IF lt_disp IS INITIAL.
-    MESSAGE |No data for { p_table } (generic). Check archive session/file = WRITE run; ZSP26_ARCH_LOG. Try P_JSON for legacy ty_arch_rec.| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No data found for { p_table }. Check the archive session matches your write run, or use legacy mode if your file uses the old format.| TYPE 'S' DISPLAY LIKE 'W'.
   ELSEIF p_rest = 'X'.
     " INSERT + log + MESSAGE already done in read_process_zstr_object — do not open ALV again.
   ELSE.
@@ -304,16 +303,16 @@ FORM read_process_zstr_object
       APPEND ls_fill TO lt_arch.
     ENDDO.
     IF lines( lt_arch ) > 0.
-      WRITE: / |NOTE: empty GET_TABLE → GET_NEXT_RECORD, { lines( lt_arch ) } row(s).|.
+      WRITE: / |Note: primary read returned no rows; reading next records ({ lines( lt_arch ) } row(s)).|.
     ENDIF.
   ENDIF.
 
   IF lt_arch IS INITIAL.
-    WRITE: / |SKIP OBJECT: GET_TABLE ZSTR_ARCH_REC RC={ lv_gt_rc } rows=0 (GET_NEXT_RECORD also empty).|.
+    WRITE: / |Skipped object: no rows read (code { lv_gt_rc }).|.
     RETURN.
   ENDIF.
   IF lv_gt_rc <> 0 AND lv_gt_rc <> 1.
-    WRITE: / |WARN GET_TABLE ZSTR_ARCH_REC RC={ lv_gt_rc } rows={ lines( lt_arch ) } — still processing.|.
+    WRITE: / |Warning: unexpected read status { lv_gt_rc } with { lines( lt_arch ) } row(s); continuing.|.
   ENDIF.
 
   " Merge REC_TYPE D (first JSON chunk) + 2 (continuations); old archives = single D only.
@@ -384,7 +383,7 @@ FORM read_process_zstr_object
           CREATE DATA gr_dyn TYPE (lv_tn_row).
         CATCH cx_sy_create_data_error.
           ADD 1 TO lv_ief.
-          WRITE: / |  SKIP restore: table { lv_tn_row } not found in DDIC.|.
+          WRITE: / |  Skipped restore: table { lv_tn_row } is not defined in the dictionary.|.
           CONTINUE.
       ENDTRY.
       ASSIGN gr_dyn->* TO FIELD-SYMBOL(<rec_dyn>).
@@ -479,7 +478,7 @@ FORM read_process_zstr_object
     IF lv_ins > 0.
       MESSAGE |Restored { lv_ins } rows| TYPE 'S'.
     ELSEIF lv_ief > 0.
-      MESSAGE |Restore: 0 rows OK, { lv_ief } failed (invalid JSON — file archived with old 255-char limit? re-archive after upgrade; or MODIFY error).|
+      MESSAGE |Restore finished with 0 rows inserted; { lv_ief } failed. Check data format or table keys.|
               TYPE 'S' DISPLAY LIKE 'W'.
     ENDIF.
   ENDIF.
