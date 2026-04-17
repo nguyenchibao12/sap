@@ -15,8 +15,8 @@ CONSTANTS:
   gc_demo_hi TYPE ebeln VALUE '9980000999'.
 
 DATA:
-  lt_ekko TYPE TABLE OF zsp26_ekko,
-  lt_ekpo TYPE TABLE OF zsp26_ekpo,
+  lt_ekko TYPE STANDARD TABLE OF zsp26_ekko WITH DEFAULT KEY,
+  lt_ekpo TYPE STANDARD TABLE OF zsp26_ekpo WITH DEFAULT KEY,
   ls_ekko TYPE zsp26_ekko,
   ls_ekpo TYPE zsp26_ekpo.
 
@@ -112,8 +112,8 @@ FORM append_ekko_block
   USING    iv_count TYPE i
            iv_start TYPE i
            iv_mode  TYPE ty_demo_mode
-  CHANGING ct_ekko TYPE TABLE OF zsp26_ekko
-           ct_ekpo TYPE TABLE OF zsp26_ekpo.
+  CHANGING ct_ekko TYPE STANDARD TABLE OF zsp26_ekko WITH DEFAULT KEY
+           ct_ekpo TYPE STANDARD TABLE OF zsp26_ekpo WITH DEFAULT KEY.
 
   DATA: lv_ix   TYPE i,
         lv_off  TYPE i,
@@ -176,8 +176,8 @@ ENDFORM.
 FORM append_ekko_block_fail_loekz
   USING    iv_count TYPE i
            iv_start TYPE i
-  CHANGING ct_ekko TYPE TABLE OF zsp26_ekko
-           ct_ekpo TYPE TABLE OF zsp26_ekpo.
+  CHANGING ct_ekko TYPE STANDARD TABLE OF zsp26_ekko WITH DEFAULT KEY
+           ct_ekpo TYPE STANDARD TABLE OF zsp26_ekpo WITH DEFAULT KEY.
 
   DATA: lv_ix   TYPE i,
         lv_off  TYPE i,
@@ -232,8 +232,8 @@ ENDFORM.
 FORM append_ekko_block_fail_bstyp
   USING    iv_count TYPE i
            iv_start TYPE i
-  CHANGING ct_ekko TYPE TABLE OF zsp26_ekko
-           ct_ekpo TYPE TABLE OF zsp26_ekpo.
+  CHANGING ct_ekko TYPE STANDARD TABLE OF zsp26_ekko WITH DEFAULT KEY
+           ct_ekpo TYPE STANDARD TABLE OF zsp26_ekpo WITH DEFAULT KEY.
 
   DATA: lv_ix   TYPE i,
         lv_off  TYPE i,
