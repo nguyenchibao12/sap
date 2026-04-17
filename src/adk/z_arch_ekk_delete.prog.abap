@@ -383,7 +383,7 @@ START-OF-SELECTION.
       EXCEPTIONS OTHERS         = 0.
     RETURN.
   ENDIF.
-  WRITE: / |Archive: { lv_arch_name } | Session: { lv_doc } | Object: { lv_obj }|.
+  WRITE: / |Archive: { lv_arch_name }; Session: { lv_doc }; Object: { lv_obj }|.
   IF gv_del_doc_log IS INITIAL AND lv_doc IS NOT INITIAL.
     gv_del_doc_log = lv_doc.
   ENDIF.
