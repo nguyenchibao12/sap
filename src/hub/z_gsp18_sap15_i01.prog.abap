@@ -91,6 +91,7 @@ MODULE user_command_0100 INPUT.
         MESSAGE 'Please enter a Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM reset_flow_globals.
+        gv_test_mode = ' '.
         SET SCREEN 0500.
         LEAVE SCREEN.
       ENDIF.
