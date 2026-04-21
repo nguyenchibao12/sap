@@ -54,7 +54,6 @@ SELECTION-SCREEN END OF BLOCK b0.
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME.
 SELECTION-SCREEN COMMENT /1(79) g_scr_h1.
 SELECT-OPTIONS: s_date FOR sy-datum.
-PARAMETERS:     p_test TYPE c AS CHECKBOX DEFAULT ' '.
 SELECTION-SCREEN END OF BLOCK b1.
 
 SELECTION-SCREEN: BEGIN OF LINE,
@@ -271,7 +270,6 @@ START-OF-SELECTION.
     WRITE: / 'Date From  : (no lower bound)'.
   ENDIF.
   WRITE: / |Date To    : { lv_cutoff }|.
-  IF p_test = 'X'. WRITE: / '*** TEST MODE — no archive I/O ***'. ENDIF.
   WRITE: /.
 
   DATA: lv_where    TYPE string,
@@ -402,8 +400,7 @@ START-OF-SELECTION.
     ENDIF.
   ENDLOOP.
 
-  IF p_test = ' '.
-    GET TIME STAMP FIELD lv_ts_s.
+  GET TIME STAMP FIELD lv_ts_s.
 
     CALL FUNCTION 'ARCHIVE_OPEN_FOR_WRITE'
       EXPORTING
@@ -530,19 +527,14 @@ START-OF-SELECTION.
       WRITE: / |Warning: archive completed but application log could not be saved (return code { sy-subrc }).|.
     ENDIF.
     COMMIT WORK.
-  ENDIF.
 
   WRITE: /.
   WRITE: / '=== Summary ==='.
   WRITE: / |Rows in selection: { lines( <lt_src> ) }|.
-  IF p_test = ' '.
-    WRITE: / |Rows written to archive file: { lv_cnt }|.
-    WRITE: / 'Write step finished: data is in the archive file; database rows are not removed yet.'.
-    WRITE: / 'Next step: run the Delete program from the hub to remove the same rows from the database.'.
-    WRITE: / 'Use the hub Delete flow and pick the archive session that matches this run.'.
-  ELSE.
-    WRITE: / 'Test mode: turn off Test Mode to perform a real archive write to disk.'.
-  ENDIF.
+  WRITE: / |Rows written to archive file: { lv_cnt }|.
+  WRITE: / 'Write step finished: data is in the archive file; database rows are not removed yet.'.
+  WRITE: / 'Next step: run the Delete program from the hub to remove the same rows from the database.'.
+  WRITE: / 'Use the hub Delete flow and pick the archive session that matches this run.'.
 
 *&---------------------------------------------------------------------*
 FORM apply_rules_to_src.
