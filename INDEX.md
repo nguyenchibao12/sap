@@ -1,93 +1,126 @@
-# Codebase Index
+# Codebase index — ZSP26GSP18_SAP15
 
-## Overview
+Quick map of this abapGit repository (`/src/`, see `.abapgit.xml`). For behavior and architecture, see `CLAUDE.md`. For documentation handoff facts, see `DOCUMENTATION_SOURCE.md`.
 
-This repository is an SAP ABAP project for data archiving and restore, built around ADK and a custom archive object.
+## Root
 
-- Main archive object: `Z_ARCH_EKK`
-- Main report/hub: `Z_GSP18_SAP15_MAIN`
-- Main process: preview eligible records → ADK write (`.ARC`) → delete from DB via `Z_ARCH_EKK_DELETE` (SUBMIT/job from the hub) → read/restore
+| Path | Role |
+|------|------|
+| `.abapgit.xml` | abapGit: `STARTING_FOLDER` `/src/`, `PREFIX` folder logic |
+| `CLAUDE.md` | Agent/developer guide (layers, patterns, tables) |
+| `DOCUMENTATION_SOURCE.md` | Structured facts for user/tech docs |
+| `Technical_Specification.xlsx` | External spec (not parsed by tooling) |
 
-**Operational note (aligned with `PLAN_FINAL.md` §1.4):** End users are meant to stay in the custom report/transaction; **screen 0400** sets `GV_TABNAME`, and hub actions on **0100** must use that table. Standard transaction **SARA** is optional admin/setup tooling, not a required daily step in the documented user flow.
+## `src/` — Packages
 
-## Root Files
+| Object | Path | Notes |
+|--------|------|-------|
+| Package (root) | `src/package.devc.xml` | Top-level devclass |
+| Package **HUB** | `src/hub/package.devc.xml` | Module pool UI |
+| Package **ADK** | `src/adk/package.devc.xml` | Archive write/read/delete |
+| Package **UTIL** | `src/util/package.devc.xml` | Setup, demo, registration |
 
-- `PLAN_FINAL.md` - full technical/project plan and test checklist
-- `SCREEN_AND_UI_PLAN.md` - dynpro/UI flow reference
-- `.abapgit.xml` - abapGit metadata
-- `src/` - ABAP sources and DDIC object definitions
+## Hub — module pool `Z_GSP18_SAP15_MAIN`
 
-## Main Program Structure
+Entry: `src/hub/z_gsp18_sap15_main.prog.abap` (+ `.prog.xml`).
 
-- `src/z_gsp18_sap15_main.prog.abap` - entry point (`CALL SCREEN 0400`)
-- `src/z_gsp18_sap15_top.prog.abap` - global data/types/class definition
-- `src/z_gsp18_sap15_f01.prog.abap` - core FORM logic (preview, monitor, config, background jobs)
-- `src/z_gsp18_sap15_o01.prog.abap` - PBO modules
-- `src/z_gsp18_sap15_i01.prog.abap` - PAI modules (commands, F4, navigation)
-- `src/z_gsp18_arch_dyn.prog.abap` - dynamic helper include used by F01
+| Include / artifact | File(s) | Role |
+|---------------------|---------|------|
+| TOP (types, globals, local classes) | `z_gsp18_sap15_top.prog.abap` | Global definitions |
+| F01 (implementations, FORMs) | `z_gsp18_sap15_f01.prog.abap` | Class methods, subroutines |
+| O01 (PBO) | `z_gsp18_sap15_o01.prog.abap` | Screen output modules |
+| I01 (PAI) | `z_gsp18_sap15_i01.prog.abap` | Screen input modules |
+| Dynpros | `z_gsp18_sap15_main.prog.screen_*.abap` | Screens **0100, 0200, 0300, 0400, 0500, 0600, 0700, 0800, 0810** |
 
-## Dynpro Screens
+## ADK programs (`src/adk/`)
 
-- `src/z_gsp18_sap15_main.prog.screen_0400.abap` - initial table select screen
-- `src/z_gsp18_sap15_main.prog.screen_0100.abap` - operation hub screen
-- `src/z_gsp18_sap15_main.prog.screen_0200.abap` - ALV screen (legacy/optional)
-- `src/z_gsp18_sap15_main.prog.screen_0300.abap` - variant/scheduler support screen
-- `src/z_gsp18_sap15_main.prog.screen_0500.abap` - status/support screen
-- `src/z_gsp18_sap15_main.prog.screen_0600.abap` - status/support screen
-- `src/z_gsp18_sap15_main.prog.xml` - dynpro/CUA metadata
+| Program | Files | Role |
+|---------|-------|------|
+| `Z_ARCH_EKK_WRITE` | `z_arch_ekk_write.prog.abap`, `.prog.xml` | Archive to ADK |
+| `Z_ARCH_EKK_READ` | `z_arch_ekk_read.prog.abap`, `.prog.xml` | Restore from ADK |
+| `Z_ARCH_EKK_DELETE` | `z_arch_ekk_delete.prog.abap`, `.prog.xml` | Physical delete |
+| `Z_ARCH_EKK_CREATE_VARIANTS` | `z_arch_ekk_create_variants.prog.abap` | Variants for ADK jobs |
 
-## ADK Programs
+## Utilities (`src/util/`)
 
-- `src/z_arch_ekk_write.prog.abap` - write eligible records to ADK archive
-- `src/z_arch_ekk_delete.prog.abap` - ADK delete program (remove DB rows after archive; invoked from hub/SUBMIT/job)
-- `src/z_arch_ekk_read.prog.abap` - read archive and optionally restore records
-- `src/z_arch_ekk_create_variants.prog.abap` - utility to create write variants
+| Program | Files | Role |
+|---------|-------|------|
+| `ZSP26_ARCH_ADMIN_SETUP` | `zsp26_arch_admin_setup.prog.abap`, `.prog.xml` | Admin setup |
+| `ZSP26_ARCH_REGISTER` | `zsp26_arch_register.prog.abap`, `.prog.xml` | Table registration |
+| `ZSP26_LOAD_SAMPLE_DATA` | `zsp26_load_sample_data.prog.abap`, `.prog.xml` | Sample data |
+| `ZSP26_DEMO_FULL_FLOW_DATA` | `zsp26_demo_full_flow_data.prog.abap`, `.prog.xml` | End-to-end demo data |
+| `ZARCH_HUB_DEMO_DATA` | `zarch_hub_demo_data.prog.abap`, `.prog.xml` | Hub demo |
 
-## Transaction and Package
+## Shared include
 
-- `src/z_gsp18_sara.tran.xml` - custom transaction object
-- `src/package.devc.xml` - package definition
+| Object | File(s) | Role |
+|--------|---------|------|
+| `Z_GSP18_ARCH_DYN` | `z_gsp18_arch_dyn.prog.abap`, `.prog.xml` | Dynamic SQL, validation, F4 helpers |
 
-## Custom DDIC Objects
+## Transaction
 
-### Core configuration and log tables
+| Object | File |
+|--------|------|
+| `Z_GSP18_SARA` | `z_gsp18_sara.tran.xml` |
 
-- `src/zsp26_arch_cfg.tabl.xml`
-- `src/zsp26_arch_rule.tabl.xml`
-- `src/zsp26_arch_dep.tabl.xml`
-- `src/zsp26_arch_log.tabl.xml`
-- `src/zsp26_arch_stat.tabl.xml`
-- `src/zsp26_arch_data.tabl.xml`
-- `src/zsp26_arch_fmap.tabl.xml`
-- `src/zsp26_arch_idx.tabl.xml`
-- `src/zstr_arch_rec.tabl.xml` (DDIC structure, generic ADK payload)
+## DDIC — configuration & control (`src/*.tabl.xml`)
 
-### Business/source tables
+| Table | File |
+|-------|------|
+| `ZSP26_ARCH_CFG` | `zsp26_arch_cfg.tabl.xml` |
+| `ZSP26_ARCH_RULE` | `zsp26_arch_rule.tabl.xml` |
+| `ZSP26_ARCH_LOG` | `zsp26_arch_log.tabl.xml` |
+| `ZSP26_ARCH_ADMIN` | `zsp26_arch_admin.tabl.xml` |
+| `ZSP26_ARCH_STAT` | `zsp26_arch_stat.tabl.xml` |
+| `ZSP26_ARCH_DEP` | `zsp26_arch_dep.tabl.xml` |
+| `ZSP26_ARCH_FMAP` | `zsp26_arch_fmap.tabl.xml` |
+| `ZSP26_ARCH_IDX` | `zsp26_arch_idx.tabl.xml` |
+| `ZSP26_ARCH_DATA` | `zsp26_arch_data.tabl.xml` |
+| `ZSP26GSP18_SAP15` | `zsp26gsp18_sap15.tabl.xml` |
+| `ZARCH_HUB_DEMO` | `zarch_hub_demo.tabl.xml` |
 
-- `src/zsp26_ekko.tabl.xml`, `src/zsp26_ekpo.tabl.xml`
-- `src/zsp26_vbak.tabl.xml`, `src/zsp26_vbap.tabl.xml`
-- `src/zsp26_bkpf.tabl.xml`, `src/zsp26_bseg.tabl.xml`
-- `src/zsp26_mkpf.tabl.xml`, `src/zsp26_mseg.tabl.xml`
-- `src/zsp26_mara.tabl.xml`, `src/zsp26_kna1.tabl.xml`
+## DDIC — business (Z-copies) (`src/*.tabl.xml`)
 
-### Domains, data elements, and search helps
+| Table | File |
+|-------|------|
+| `ZSP26_EKKO` / `ZSP26_EKPO` | `zsp26_ekko.tabl.xml`, `zsp26_ekpo.tabl.xml` |
+| `ZSP26_VBAK` / `ZSP26_VBAP` | `zsp26_vbak.tabl.xml`, `zsp26_vbap.tabl.xml` |
+| `ZSP26_BKPF` / `ZSP26_BSEG` | `zsp26_bkpf.tabl.xml`, `zsp26_bseg.tabl.xml` |
+| `ZSP26_MKPF` / `ZSP26_MSEG` | `zsp26_mkpf.tabl.xml`, `zsp26_mseg.tabl.xml` |
+| `ZSP26_MARA` | `zsp26_mara.tabl.xml` |
+| `ZSP26_KNA1` | `zsp26_kna1.tabl.xml` |
 
-- Domains: `src/zsp26_dom_*.doma.xml`
-- Data elements: `src/zsp26_de_*.dtel.xml`
-- Search helps: `src/zsp26_sh_*.shlp.xml`
+## DDIC — structures / legacy
 
-## Utility Programs
+| Object | File |
+|--------|------|
+| `ZSTR_ARCH_REC` | `zstr_arch_rec.tabl.xml` |
 
-- `src/zsp26_load_sample_data.prog.abap` - loads sample config/rules/dependencies/data
+## Domains (`src/zsp26_dom_*.doma.xml`, `zsp26_dom_*.xml`)
 
-## High-Level Runtime Flow
+`ZSP26_DOM_ARCHID`, `ZSP26_DOM_ARCHJSON`, `ZSP26_DOM_COUNTER`, `ZSP26_DOM_CRITERIA`, `ZSP26_DOM_DEPTYPE`, `ZSP26_DOM_FIELDNM`, `ZSP26_DOM_RETDAYS`, `ZSP26_DOM_TABNAM`, `ZSP26_DOM_TABNAME`, `ZSP26_DOM_XFLAG`
 
-1. Run `Z_GSP18_SAP15_MAIN`
-2. Select table on screen `0400`
-3. Use hub actions on screen `0100`:
-   - Write preview/archive
-   - Restore/read
-   - Monitor
-   - Config view
-4. ADK write/read/delete programs handle archive file operations
-5. Logs and stats persist to `ZSP26_ARCH_LOG` and `ZSP26_ARCH_STAT`
+## Data elements (`src/zsp26_de_*.dtel.xml`)
+
+`ZSP26_DE_ARCHID`, `ZSP26_DE_ARCHJSON`, `ZSP26_DE_COUNTER`, `ZSP26_DE_CRITERIA`, `ZSP26_DE_DEPTYPE`, `ZSP26_DE_FIELDNM`, `ZSP26_DE_RETDAYS`, `ZSP26_DE_STATUS`, `ZSP26_DE_TABNAME`, `ZSP26_DE_XFLAG`
+
+## Search helps (`src/zsp26_sh_*.shlp.xml`)
+
+`ZSP26_SH_ARCHID`, `ZSP26_SH_STATUS`, `ZSP26_SH_TABLES`
+
+## File type legend
+
+| Suffix | Meaning |
+|--------|---------|
+| `*.prog.abap` | ABAP source |
+| `*.prog.xml` | abapGit program metadata |
+| `*.tabl.xml` | Table / structure |
+| `*.doma.xml` | Domain |
+| `*.dtel.xml` | Data element |
+| `*.shlp.xml` | Search help |
+| `*.tran.xml` | Transaction |
+| `*.devc.xml` | Package |
+
+---
+
+*Generated for repository navigation; keep in sync when adding objects.*

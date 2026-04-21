@@ -25,13 +25,22 @@ MODULE user_command_0400 INPUT.
       IF gv_tabname IS INITIAL.
         MESSAGE 'Please enter a Table Name' TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
-        gv_hub_allowed = abap_true.
-        IF lv_adm_0400_i = abap_true.
-          CLEAR gv_admin_pick_table.
+        DATA: ls_cfg_400 TYPE zsp26_arch_cfg,
+              lv_ok_400  TYPE abap_bool.
+        PERFORM validate_table_against_cfg
+          USING gv_tabname
+          CHANGING ls_cfg_400 lv_ok_400.
+        IF lv_ok_400 = abap_false.
+          MESSAGE |Table '{ gv_tabname }' is not configured for archiving. Please use F4 to select a valid table.| TYPE 'S' DISPLAY LIKE 'E'.
+        ELSE.
+          gv_hub_allowed = abap_true.
+          IF lv_adm_0400_i = abap_true.
+            CLEAR gv_admin_pick_table.
+          ENDIF.
+          EXPORT arch_tabname = gv_tabname TO MEMORY ID 'Z_GSP18_ARCH_TAB'.
+          SET SCREEN 0100.
+          LEAVE SCREEN.
         ENDIF.
-        EXPORT arch_tabname = gv_tabname TO MEMORY ID 'Z_GSP18_ARCH_TAB'.
-        SET SCREEN 0100.
-        LEAVE SCREEN.
       ENDIF.
   ENDCASE.
 ENDMODULE.

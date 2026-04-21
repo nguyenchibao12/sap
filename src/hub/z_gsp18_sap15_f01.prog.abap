@@ -727,14 +727,14 @@ FORM do_archive_write_bg_job.
   IF lt_sdate IS NOT INITIAL.
     SUBMIT (gv_prog_write)
       WITH p_table = gv_tabname
-      WITH p_test  = ' '
+      WITH p_test  = gv_test_mode
       WITH s_date  IN lt_sdate
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   ELSE.
     SUBMIT (gv_prog_write)
       WITH p_table = gv_tabname
-      WITH p_test  = ' '
+      WITH p_test  = gv_test_mode
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   ENDIF.
@@ -1257,17 +1257,19 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
     LOOP AT lt_run INTO ls_run.
       lv_like_doc = |%DOC={ ls_run-document }%|.
       SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_hit
-        WHERE action = 'DELETE'
+        WHERE action  = 'DELETE'
+          AND status  = 'S'
           AND message LIKE @lv_like_doc.
       IF lv_del_hit > 0.
         APPEND ls_run TO lt_run_rst.
       ENDIF.
     ENDLOOP.
     IF lt_run_rst IS INITIAL.
-      " Legacy logs (no DOC=... marker) still allow session selection; verified at restore confirmation step.
-      MESSAGE 'No DOC marker in DELETE log (legacy). Sessions displayed; will verify before restore.' TYPE 'S'.
-    ELSEIF lines( lt_run_rst ) < lines( lt_run ).
-      MESSAGE |{ lines( lt_run ) - lines( lt_run_rst ) } sessions have no DELETE marker; still displayed for review.| TYPE 'S'.
+      " Legacy fallback: no DOC= markers found in log at all — show all sessions, Step 2c will gate restore.
+      MESSAGE 'No DELETE log found (legacy mode). Sessions displayed; will verify before restore.' TYPE 'S'.
+    ELSE.
+      " Only show sessions that have a successful DELETE log entry.
+      lt_run = lt_run_rst.
     ENDIF.
   ENDIF.
 
@@ -1431,16 +1433,18 @@ FORM do_restore_from_hub.
   lv_like_doc = |%DOC={ gs_del_admi-document }%|.
   IF lv_rst_adm = abap_true.
     SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_hit
-      WHERE action = 'DELETE'
+      WHERE action  = 'DELETE'
+        AND status  = 'S'
         AND message LIKE @lv_like_doc.
   ELSE.
     SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_hit
-      WHERE action = 'DELETE'
+      WHERE action     = 'DELETE'
+        AND status     = 'S'
         AND table_name = @gv_tabname
-        AND message LIKE @lv_like_doc.
+        AND message    LIKE @lv_like_doc.
   ENDIF.
   IF lv_del_hit = 0.
-    MESSAGE |Session { gs_del_admi-document } has no DELETE marker (DOC=...) and cannot be restored.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Session { gs_del_admi-document } has no successful DELETE log (DOC=...) and cannot be restored.| TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -2256,7 +2260,8 @@ FORM show_hub_admi_session_groups.
        OR lv_stat_t CS 'SUCCESS'.
       lv_like_chk = |%DOC={ ls_run_src-document }%|.
       SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_chk
-        WHERE action = 'DELETE'
+        WHERE action  = 'DELETE'
+          AND status  = 'S'
           AND message LIKE @lv_like_chk.
       IF lv_del_chk > 0.
         ls_det-grp_ord  = 3.
@@ -2598,12 +2603,13 @@ FORM run_pick_document_in_range
     ELSE.
       lv_like_doc = |%DOC={ ls_src-document }%|.
       SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_cnt
-        WHERE action = 'ARCHIVE'
+        WHERE action  = 'DELETE'
+          AND status  = 'S'
           AND message LIKE @lv_like_doc.
       IF lv_del_cnt > 0.
-        ls_pick-status = 'Write done'.
+        ls_pick-status = 'Write+Delete done'.
       ELSE.
-        ls_pick-status = 'Pending'.
+        ls_pick-status = 'Write only'.
       ENDIF.
     ENDIF.
     APPEND ls_pick TO lt_pick.
