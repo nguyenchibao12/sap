@@ -727,14 +727,14 @@ FORM do_archive_write_bg_job.
   IF lt_sdate IS NOT INITIAL.
     SUBMIT (gv_prog_write)
       WITH p_table = gv_tabname
-      WITH p_test  = gv_test_mode
+      WITH p_test  = ' '
       WITH s_date  IN lt_sdate
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   ELSE.
     SUBMIT (gv_prog_write)
       WITH p_table = gv_tabname
-      WITH p_test  = gv_test_mode
+      WITH p_test  = ' '
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   ENDIF.
