@@ -1025,7 +1025,9 @@ FORM do_show_eligible_data.
         lo_alv       TYPE REF TO cl_salv_table,
         lo_cols      TYPE REF TO cl_salv_columns_table,
         lo_col       TYPE REF TO cl_salv_column_table,
-        lo_disp      TYPE REF TO cl_salv_display_settings.
+        lo_disp      TYPE REF TO cl_salv_display_settings,
+        lv_pop_ln    TYPE i,
+        lv_pop_lc    TYPE i.
 
   FIELD-SYMBOLS: <lt_src> TYPE ANY TABLE,
                  <row>    TYPE any,
@@ -1163,23 +1165,48 @@ FORM do_show_eligible_data.
       TRY.
           lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
           lo_col->set_long_text( 'Key values' ).
+          lo_col->set_output_length( 42 ).
           lo_col ?= lo_cols->get_column( 'DATE_VAL' ).
           lo_col->set_long_text( |Date ({ ls_cfg-data_field })| ).
+          lo_col->set_output_length( 12 ).
           lo_col ?= lo_cols->get_column( 'AGE_DAYS' ).
           lo_col->set_long_text( 'Age (days)' ).
+          lo_col->set_output_length( 8 ).
           lo_col ?= lo_cols->get_column( 'DETAIL' ).
           lo_col->set_long_text( 'Rule/Retention detail' ).
+          lo_col->set_output_length( 48 ).
         CATCH cx_salv_not_found.
       ENDTRY.
 
       lo_disp = lo_alv->get_display_settings( ).
-      lv_hdr  = lv_msg.
+      IF strlen( lv_msg ) > 70.
+        lv_hdr = substring( val = lv_msg len = 70 ).
+      ELSE.
+        lv_hdr = lv_msg.
+      ENDIF.
       lo_disp->set_list_header( lv_hdr ).
+      lo_disp->set_striped_pattern( if_salv_c_bool_sap=>true ).
+
+      lv_pop_ln = 5 + lines( lt_elig ).
+      IF lv_pop_ln < 10.
+        lv_pop_ln = 10.
+      ENDIF.
+      IF lv_pop_ln > 22.
+        lv_pop_ln = 22.
+      ENDIF.
+      lv_pop_lc = 12 + 12 + 8 + 48 + 10.
+      IF lv_pop_lc < 90.
+        lv_pop_lc = 90.
+      ENDIF.
+      IF lv_pop_lc > 130.
+        lv_pop_lc = 130.
+      ENDIF.
+
       lo_alv->set_screen_popup(
-        start_column = 5
-        end_column   = 155
+        start_column = 10
+        end_column   = lv_pop_lc
         start_line   = 2
-        end_line     = 24 ).
+        end_line     = lv_pop_ln ).
       lo_alv->display( ).
     CATCH cx_salv_msg INTO DATA(lx_salv).
       MESSAGE lx_salv->get_text( ) TYPE 'S' DISPLAY LIKE 'E'.
