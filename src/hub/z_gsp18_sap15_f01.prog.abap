@@ -2154,7 +2154,8 @@ FORM do_monitor.
   DATA: lo_cols  TYPE REF TO cl_salv_columns_table,
         lo_col   TYPE REF TO cl_salv_column_table,
         lo_disp  TYPE REF TO cl_salv_display_settings,
-        lo_funcs TYPE REF TO cl_salv_functions.
+        lo_funcs TYPE REF TO cl_salv_functions,
+        lo_sorts TYPE REF TO cl_salv_sorts.
 
   TRY.
     cl_salv_table=>factory(
@@ -2196,28 +2197,54 @@ FORM do_monitor.
       lo_col ?= lo_cols->get_column( 'LIVE_RECS' ).   lo_col->set_long_text( 'Current Rows' ).
       lo_col ?= lo_cols->get_column( 'ARCH_RECS' ).   lo_col->set_long_text( 'Archived' ).
       lo_col ?= lo_cols->get_column( 'DEL_RECS' ).    lo_col->set_long_text( 'Deleted' ).
-      lo_col ?= lo_cols->get_column( 'PCT_SAVED' ).   lo_col->set_long_text( '% Archived' ).
-      lo_col ?= lo_cols->get_column( 'ARCH_RUNS' ).   lo_col->set_long_text( 'Archive Runs' ).
-      lo_col ?= lo_cols->get_column( 'REST_RUNS' ).   lo_col->set_long_text( 'Restore Runs' ).
-      lo_col ?= lo_cols->get_column( 'DEL_RUNS' ).    lo_col->set_long_text( 'Delete Runs' ).
-      lo_col ?= lo_cols->get_column( 'LAST_ACTION' ). lo_col->set_long_text( 'Last Action' ).
-      lo_col ?= lo_cols->get_column( 'LAST_DATE' ).   lo_col->set_long_text( 'Last Date' ).
+      lo_col ?= lo_cols->get_column( 'PCT_SAVED' ).
+      lo_col->set_long_text( '% Archived' ).
+      lo_col->set_visible( if_salv_c_bool_sap=>false ).
+      lo_col ?= lo_cols->get_column( 'ARCH_RUNS' ).
+      lo_col->set_long_text( 'Archive Cnt' ).
+      lo_col->set_visible( if_salv_c_bool_sap=>false ).
+      lo_col ?= lo_cols->get_column( 'REST_RUNS' ).
+      lo_col->set_long_text( 'Restore Cnt' ).
+      lo_col->set_visible( if_salv_c_bool_sap=>false ).
+      lo_col ?= lo_cols->get_column( 'DEL_RUNS' ).
+      lo_col->set_long_text( 'Delete Cnt' ).
+      lo_col->set_visible( if_salv_c_bool_sap=>false ).
+      lo_col ?= lo_cols->get_column( 'LAST_ACTION' ).
+      lo_col->set_long_text( 'Last Action' ).
+      lo_col->set_visible( if_salv_c_bool_sap=>false ).
+      lo_col ?= lo_cols->get_column( 'LAST_DATE' ).   lo_col->set_long_text( 'Last Run Date' ).
       lo_col ?= lo_cols->get_column( 'LAST_ARCH_D' ). lo_col->set_long_text( 'Last Archive Date' ).
       lo_col ?= lo_cols->get_column( 'LAST_DEL_D' ).  lo_col->set_long_text( 'Last Delete Date' ).
-      lo_col ?= lo_cols->get_column( 'LAST_USER' ).   lo_col->set_long_text( 'Last User' ).
-      lo_col ?= lo_cols->get_column( 'RETENTION' ).   lo_col->set_long_text( 'Retention (days)' ).
+      lo_col ?= lo_cols->get_column( 'LAST_USER' ).
+      lo_col->set_long_text( 'Last User' ).
+      lo_col->set_visible( if_salv_c_bool_sap=>false ).
+      lo_col ?= lo_cols->get_column( 'RETENTION' ).   lo_col->set_long_text( 'Retention' ).
       lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).   lo_col->set_long_text( 'Active' ).
       lo_col ?= lo_cols->get_column( 'ELIG_RECS' ).
-      lo_col->set_long_text( 'Eligible to Archive (est.)' ).
+      lo_col->set_long_text( 'Candidates' ).
       lo_col ?= lo_cols->get_column( 'EST_ROW_B' ).
       lo_col->set_long_text( 'Row Size (B)' ).
+      lo_col->set_visible( if_salv_c_bool_sap=>false ).
       lo_col ?= lo_cols->get_column( 'EST_ELIG_MB' ).
-      lo_col->set_long_text( '~MB Saved (est.)' ).
+      lo_col->set_long_text( 'Est. Space Saved (MB)' ).
     CATCH cx_salv_not_found. ENDTRY.
+
+    TRY.
+      lo_sorts = go_mon_alv->get_sorts( ).
+      lo_sorts->clear( ).
+      lo_sorts->add_sort(
+        columnname = 'ELIG_RECS'
+        sequence   = if_salv_c_sort=>sort_down ).
+      lo_sorts->add_sort(
+        columnname = 'TABLE_NAME'
+        sequence   = if_salv_c_sort=>sort_up ).
+    CATCH cx_salv_not_found cx_salv_data_error cx_salv_existing.
+    ENDTRY.
 
     lo_disp = go_mon_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |CAPACITY ANALYSIS & MONITORING — { lines( gt_mon_disp ) } tables — { sy-datum }| ).
+      |ARCHIVE MONITORING — Business Overview — { lines( gt_mon_disp ) } tables — { sy-datum }| ).
+    lo_disp->set_striped_pattern( if_salv_c_bool_sap=>true ).
     go_mon_alv->display( ).
 
   CATCH cx_salv_msg INTO DATA(lx).
@@ -2231,11 +2258,11 @@ ENDFORM.
 FORM show_mon_help.
   CALL FUNCTION 'POPUP_TO_DISPLAY_TEXT'
     EXPORTING
-      titel     = 'Monitor Screen Guide'
-      textline1 = '1) Eligible to archive = estimated rows based on retention + EQ rule.'
-      textline2 = '2) Row size (B) is from DDIC and is only an estimate.'
-      textline3 = '3) ~MB saved = Eligible to archive x Row size / 1MB.'
-      textline4 = '4) Complex OR rules: actual counts may differ (system filters further).'.
+      titel     = 'How to read this screen'
+      textline1 = '1) Candidates = rows old enough by retention and matching active rules.'
+      textline2 = '2) Archived/Deleted = totals from run logs (history).'
+      textline3 = '3) Est. Space Saved (MB) = estimate only, not exact DB reclaimed size.'
+      textline4 = '4) Start with rows having highest Candidates, then run Archive/Delete.'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
