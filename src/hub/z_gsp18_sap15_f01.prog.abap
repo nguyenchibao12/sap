@@ -995,6 +995,13 @@ ENDFORM.
 *& window + ZSP26_ARCH_RULE via apply_archive_rules + readable keys)
 *&---------------------------------------------------------------------*
 FORM do_show_eligible_data.
+  TYPES: BEGIN OF ty_elig_view,
+           key_vals TYPE char255,
+           date_val TYPE d,
+           age_days TYPE i,
+           detail   TYPE string,
+         END OF ty_elig_view.
+
   DATA: ls_cfg       TYPE zsp26_arch_cfg,
         lv_cfg_ok    TYPE abap_bool,
         lv_where     TYPE string,
@@ -1011,11 +1018,18 @@ FORM do_show_eligible_data.
         lv_no_key    TYPE i,
         lv_d_ini     TYPE d,
         lv_cut       TYPE d,
-        lv_msg       TYPE string.
+        lv_msg       TYPE string,
+        lt_elig      TYPE TABLE OF ty_elig_view,
+        ls_elig      TYPE ty_elig_view,
+        lo_alv       TYPE REF TO cl_salv_table,
+        lo_cols      TYPE REF TO cl_salv_columns_table,
+        lo_col       TYPE REF TO cl_salv_column_table,
+        lo_disp      TYPE REF TO cl_salv_display_settings.
 
   FIELD-SYMBOLS: <lt_src> TYPE ANY TABLE,
                  <row>    TYPE any,
-                 <fv>     TYPE any.
+                 <fv>     TYPE any,
+                 <dt>     TYPE any.
 
   IF gv_tabname IS INITIAL.
     MESSAGE 'Please select a table on the previous screen.' TYPE 'S' DISPLAY LIKE 'E'.
@@ -1072,6 +1086,7 @@ FORM do_show_eligible_data.
     RETURN.
   ENDIF.
 
+  lv_cut = sy-datum - ls_cfg-retention.
   LOOP AT <lt_src> ASSIGNING <row>.
     PERFORM apply_archive_rules
       USING <row> ls_cfg-config_id gv_tabname
@@ -1093,8 +1108,34 @@ FORM do_show_eligible_data.
       CONTINUE.
     ENDIF.
 
+    CLEAR ls_elig.
+    LOOP AT lt_kfs INTO lv_kf.
+      ASSIGN COMPONENT lv_kf OF STRUCTURE <row> TO <fv>.
+      IF <fv> IS NOT ASSIGNED.
+        CONTINUE.
+      ENDIF.
+      IF ls_elig-key_vals IS NOT INITIAL.
+        ls_elig-key_vals &&= ' | '.
+      ENDIF.
+      ls_elig-key_vals &&= lv_kf && '=' && CONV string( <fv> ).
+    ENDLOOP.
+
+    ASSIGN COMPONENT ls_cfg-data_field OF STRUCTURE <row> TO <dt>.
+    IF <dt> IS ASSIGNED.
+      ls_elig-date_val = <dt>.
+      IF ls_elig-date_val IS NOT INITIAL.
+        ls_elig-age_days = sy-datum - ls_elig-date_val.
+      ENDIF.
+    ENDIF.
+    ls_elig-detail = |Eligible: { ls_cfg-data_field } <= { lv_cut }|.
+    APPEND ls_elig TO lt_elig.
     ADD 1 TO lv_eligible.
   ENDLOOP.
+
+  IF lv_eligible = 0.
+    MESSAGE |No archive-eligible rows for { gv_tabname } (cutoff { lv_cut }, rule-skip { lv_rule_skip }).| TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
 
   LOOP AT lt_df INTO ls_df.
     IF ls_df-intlen > 0.
@@ -1104,13 +1145,43 @@ FORM do_show_eligible_data.
     ENDIF.
   ENDLOOP.
 
-  lv_cut = sy-datum - ls_cfg-retention.
-  lv_msg = |Archive-eligible (table { gv_tabname }, retention { ls_cfg-retention }d, date field { ls_cfg-data_field }, cutoff { lv_cut }): { lv_eligible } row(s); rule-skip { lv_rule_skip }|.
+  lv_msg = |Archive-eligible rows: { lv_eligible } (table { gv_tabname }, retention { ls_cfg-retention }d, field { ls_cfg-data_field }, cutoff { lv_cut }, rule-skip { lv_rule_skip })|.
   IF lv_row_b > 0.
     lv_est_mb = CONV decfloat34( lv_eligible ) * CONV decfloat34( lv_row_b ) / 1048576.
-    lv_msg &&= | ~{ lv_est_mb } MB est.|.
+    lv_msg &&= | ~{ lv_est_mb DECIMALS = 1 } MB est.|.
   ENDIF.
-  MESSAGE lv_msg TYPE 'S'.
+
+  TRY.
+      cl_salv_table=>factory(
+        IMPORTING r_salv_table = lo_alv
+        CHANGING  t_table      = lt_elig ).
+
+      lo_alv->get_functions( )->set_all( abap_true ).
+      lo_cols = lo_alv->get_columns( ).
+      lo_cols->set_optimize( abap_true ).
+      TRY.
+          lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
+          lo_col->set_long_text( 'Key values' ).
+          lo_col ?= lo_cols->get_column( 'DATE_VAL' ).
+          lo_col->set_long_text( |Date ({ ls_cfg-data_field })| ).
+          lo_col ?= lo_cols->get_column( 'AGE_DAYS' ).
+          lo_col->set_long_text( 'Age (days)' ).
+          lo_col ?= lo_cols->get_column( 'DETAIL' ).
+          lo_col->set_long_text( 'Rule/Retention detail' ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      lo_disp = lo_alv->get_display_settings( ).
+      lo_disp->set_list_header( lv_msg ).
+      lo_alv->set_screen_popup(
+        start_column = 5
+        end_column   = 155
+        start_line   = 2
+        end_line     = 24 ).
+      lo_alv->display( ).
+    CATCH cx_salv_msg INTO DATA(lx_salv).
+      MESSAGE lx_salv->get_text( ) TYPE 'S' DISPLAY LIKE 'E'.
+  ENDTRY.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
