@@ -4814,8 +4814,7 @@ FORM arch_admin_do_remove.
   DATA: lt_rows TYPE lvc_t_row,
         ls_row  TYPE lvc_s_row,
         ls_adm  TYPE zsp26_arch_admin,
-        lv_cnt  TYPE i,
-        lv_ans  TYPE char1.
+        lv_cnt  TYPE i.
 
   IF go_alv_700 IS NOT BOUND.
     RETURN.
@@ -4843,20 +4842,8 @@ FORM arch_admin_do_remove.
   ENDIF.
 
   IF ls_adm-uname = sy-uname.
-    CALL FUNCTION 'POPUP_TO_CONFIRM'
-      EXPORTING
-        titlebar              = 'Confirm'
-        text_question         = 'You are removing yourself from the admin list. Continue?'
-        text_button_1         = 'Yes'
-        text_button_2         = 'No'
-        display_cancel_button = ' '
-      IMPORTING
-        answer                = lv_ans
-      EXCEPTIONS
-        OTHERS                = 1.
-    IF lv_ans <> '1'.
-      RETURN.
-    ENDIF.
+    MESSAGE 'Cannot remove the currently logged-in admin user.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
   ENDIF.
 
   DELETE FROM zsp26_arch_admin WHERE uname = @ls_adm-uname.
