@@ -239,6 +239,15 @@ MODULE init_fields_0600 OUTPUT.
         screen-active    = 0.
       ENDIF.
       MODIFY SCREEN.
+    ELSEIF screen-name = 'GV_STAT_ARCH_TX'.
+      IF gv_purge_mode = 'X'.
+        screen-invisible = 1.
+        screen-active    = 0.
+      ELSE.
+        screen-invisible = 0.
+        screen-active    = 1.
+      ENDIF.
+      MODIFY SCREEN.
     ENDIF.
   ENDLOOP.
 ENDMODULE.
