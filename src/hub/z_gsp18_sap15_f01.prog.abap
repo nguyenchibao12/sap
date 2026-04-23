@@ -991,6 +991,72 @@ FORM do_archive_delete_bg_job.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& FORM DO_SHOW_ELIGIBLE_DATA — quick preview for Purge-only mode
+*&---------------------------------------------------------------------*
+FORM do_show_eligible_data.
+  DATA: ls_cfg       TYPE zsp26_arch_cfg,
+        lv_cfg_ok    TYPE abap_bool,
+        lv_where     TYPE string,
+        lv_where_all TYPE string,
+        lv_eligible  TYPE i,
+        lt_df        TYPE TABLE OF dfies,
+        ls_df        TYPE dfies,
+        lv_row_b     TYPE i,
+        lv_est_mb    TYPE decfloat34.
+
+  IF gv_tabname IS INITIAL.
+    MESSAGE 'Please select a table on the previous screen.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  PERFORM validate_table_against_cfg
+    USING gv_tabname CHANGING ls_cfg lv_cfg_ok.
+  IF lv_cfg_ok = abap_false.
+    MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  PERFORM build_where_from_arch_cfg
+    USING ls_cfg '00000000' '00000000'
+    CHANGING lv_where.
+  lv_where_all = lv_where.
+  PERFORM append_rules_eq_to_where
+    USING ls_cfg-config_id gv_tabname
+    CHANGING lv_where_all.
+
+  TRY.
+      SELECT COUNT(*) FROM (gv_tabname) WHERE (lv_where_all) INTO @lv_eligible.
+    CATCH cx_sy_dynamic_osql_error INTO DATA(lx_sql).
+      MESSAGE lx_sql->get_text( ) TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+  ENDTRY.
+
+  CALL FUNCTION 'DDIF_FIELDINFO_GET'
+    EXPORTING
+      tabname   = gv_tabname
+    TABLES
+      dfies_tab = lt_df
+    EXCEPTIONS
+      OTHERS    = 1.
+  IF sy-subrc = 0.
+    LOOP AT lt_df INTO ls_df.
+      IF ls_df-intlen > 0.
+        lv_row_b = lv_row_b + ls_df-intlen.
+      ELSEIF ls_df-leng > 0.
+        lv_row_b = lv_row_b + ls_df-leng.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+  IF lv_row_b > 0.
+    lv_est_mb = CONV decfloat34( lv_eligible ) * CONV decfloat34( lv_row_b ) / 1048576.
+    MESSAGE |Eligible rows for purge: { lv_eligible } (~{ lv_est_mb DECIMALS = 1 } MB estimated).| TYPE 'S'.
+  ELSE.
+    MESSAGE |Eligible rows for purge: { lv_eligible }.| TYPE 'S'.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& FORM DO_PURGE_ONLY_DIRECT — direct DB delete (no ADK file/session)
 *&---------------------------------------------------------------------*
 FORM do_purge_only_direct.

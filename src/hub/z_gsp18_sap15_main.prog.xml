@@ -886,6 +886,21 @@
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>PUSH</TYPE>
+       <NAME>ELIGIBLE_BTN_C6</NAME>
+       <TEXT>Show_Eligible_Data__</TEXT>
+       <LINE>007</LINE>
+       <COLUMN>002</COLUMN>
+       <LENGTH>024</LENGTH>
+       <VISLENGTH>024</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <PUSH_FCODE>BT_ELIGIBLE</PUSH_FCODE>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GV_STAT_ARCH_TX</NAME>
        <TEXT>________________________________________</TEXT>
@@ -1508,6 +1523,13 @@
       <TEXT_TYPE>S</TEXT_TYPE>
       <FUN_TEXT>Archive Selection</FUN_TEXT>
       <INFO_TEXT>Delete program selection screen</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_ELIGIBLE</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>Show Eligible Data</FUN_TEXT>
+      <INFO_TEXT>Show estimated purge candidates for selected table</INFO_TEXT>
      </RSMPE_FUNT>
      <RSMPE_FUNT>
       <CODE>BT_RUN_DELETE</CODE>

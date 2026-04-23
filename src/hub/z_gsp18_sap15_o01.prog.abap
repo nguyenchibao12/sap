@@ -221,6 +221,24 @@ MODULE init_fields_0600 OUTPUT.
        OR screen-name = 'GV_DISP_MANDT'.
       screen-input = 0.
       MODIFY SCREEN.
+    ELSEIF screen-name = 'ARCH_SEL_BTN_C6'.
+      IF gv_purge_mode = 'X'.
+        screen-invisible = 1.
+        screen-active    = 0.
+      ELSE.
+        screen-invisible = 0.
+        screen-active    = 1.
+      ENDIF.
+      MODIFY SCREEN.
+    ELSEIF screen-name = 'ELIGIBLE_BTN_C6'.
+      IF gv_purge_mode = 'X'.
+        screen-invisible = 0.
+        screen-active    = 1.
+      ELSE.
+        screen-invisible = 1.
+        screen-active    = 0.
+      ENDIF.
+      MODIFY SCREEN.
     ENDIF.
   ENDLOOP.
 ENDMODULE.
