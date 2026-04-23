@@ -1019,6 +1019,7 @@ FORM do_show_eligible_data.
         lv_d_ini     TYPE d,
         lv_cut       TYPE d,
         lv_msg       TYPE string,
+        lv_hdr       TYPE lvc_title,
         lt_elig      TYPE TABLE OF ty_elig_view,
         ls_elig      TYPE ty_elig_view,
         lo_alv       TYPE REF TO cl_salv_table,
@@ -1172,7 +1173,8 @@ FORM do_show_eligible_data.
       ENDTRY.
 
       lo_disp = lo_alv->get_display_settings( ).
-      lo_disp->set_list_header( lv_msg ).
+      lv_hdr  = lv_msg.
+      lo_disp->set_list_header( lv_hdr ).
       lo_alv->set_screen_popup(
         start_column = 5
         end_column   = 155
