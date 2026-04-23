@@ -991,7 +991,8 @@ FORM do_archive_delete_bg_job.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& FORM DO_SHOW_ELIGIBLE_DATA — quick preview for Purge-only mode
+*& FORM DO_SHOW_ELIGIBLE_DATA — same row filter as purge (retention date
+*& window + ZSP26_ARCH_RULE via apply_archive_rules + readable keys)
 *&---------------------------------------------------------------------*
 FORM do_show_eligible_data.
   DATA: ls_cfg       TYPE zsp26_arch_cfg,
@@ -999,10 +1000,22 @@ FORM do_show_eligible_data.
         lv_where     TYPE string,
         lv_where_all TYPE string,
         lv_eligible  TYPE i,
+        lv_rule_skip TYPE i,
         lt_df        TYPE TABLE OF dfies,
         ls_df        TYPE dfies,
+        lt_kfs       TYPE TABLE OF string,
+        lv_kf        TYPE string,
         lv_row_b     TYPE i,
-        lv_est_mb    TYPE decfloat34.
+        lv_est_mb    TYPE decfloat34,
+        lv_pass      TYPE abap_bool,
+        lv_no_key    TYPE i,
+        lv_d_ini     TYPE d,
+        lv_cut       TYPE d,
+        lv_msg       TYPE string.
+
+  FIELD-SYMBOLS: <lt_src> TYPE ANY TABLE,
+                 <row>    TYPE any,
+                 <fv>     TYPE any.
 
   IF gv_tabname IS INITIAL.
     MESSAGE 'Please select a table on the previous screen.' TYPE 'S' DISPLAY LIKE 'E'.
@@ -1016,20 +1029,28 @@ FORM do_show_eligible_data.
     RETURN.
   ENDIF.
 
+  CLEAR lv_d_ini.
   PERFORM build_where_from_arch_cfg
-    USING ls_cfg '00000000' '00000000'
+    USING ls_cfg lv_d_ini lv_d_ini
     CHANGING lv_where.
   lv_where_all = lv_where.
   PERFORM append_rules_eq_to_where
     USING ls_cfg-config_id gv_tabname
     CHANGING lv_where_all.
 
+  CREATE DATA gr_all TYPE TABLE OF (gv_tabname).
+  ASSIGN gr_all->* TO <lt_src>.
   TRY.
-      SELECT COUNT(*) FROM (gv_tabname) WHERE (lv_where_all) INTO @lv_eligible.
+      SELECT * FROM (gv_tabname) INTO TABLE <lt_src> WHERE (lv_where_all).
     CATCH cx_sy_dynamic_osql_error INTO DATA(lx_sql).
       MESSAGE lx_sql->get_text( ) TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
   ENDTRY.
+
+  IF <lt_src> IS INITIAL.
+    MESSAGE |No rows in retention window for { gv_tabname } (field { ls_cfg-data_field }, { ls_cfg-retention } days).| TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
 
   CALL FUNCTION 'DDIF_FIELDINFO_GET'
     EXPORTING
@@ -1038,22 +1059,58 @@ FORM do_show_eligible_data.
       dfies_tab = lt_df
     EXCEPTIONS
       OTHERS    = 1.
-  IF sy-subrc = 0.
-    LOOP AT lt_df INTO ls_df.
-      IF ls_df-intlen > 0.
-        lv_row_b = lv_row_b + ls_df-intlen.
-      ELSEIF ls_df-leng > 0.
-        lv_row_b = lv_row_b + ls_df-leng.
-      ENDIF.
-    ENDLOOP.
+  IF sy-subrc <> 0 OR lt_df IS INITIAL.
+    MESSAGE |Could not read DDIC for { gv_tabname }.| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
   ENDIF.
 
+  LOOP AT lt_df INTO ls_df WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
+    APPEND ls_df-fieldname TO lt_kfs.
+  ENDLOOP.
+  IF lt_kfs IS INITIAL.
+    MESSAGE 'Purge preview requires table keys beyond MANDT.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  LOOP AT <lt_src> ASSIGNING <row>.
+    PERFORM apply_archive_rules
+      USING <row> ls_cfg-config_id gv_tabname
+      CHANGING lv_pass.
+    IF lv_pass = abap_false.
+      ADD 1 TO lv_rule_skip.
+      CONTINUE.
+    ENDIF.
+
+    CLEAR lv_no_key.
+    LOOP AT lt_kfs INTO lv_kf.
+      ASSIGN COMPONENT lv_kf OF STRUCTURE <row> TO <fv>.
+      IF <fv> IS NOT ASSIGNED.
+        lv_no_key = 1.
+        EXIT.
+      ENDIF.
+    ENDLOOP.
+    IF lv_no_key = 1.
+      CONTINUE.
+    ENDIF.
+
+    ADD 1 TO lv_eligible.
+  ENDLOOP.
+
+  LOOP AT lt_df INTO ls_df.
+    IF ls_df-intlen > 0.
+      lv_row_b = lv_row_b + ls_df-intlen.
+    ELSEIF ls_df-leng > 0.
+      lv_row_b = lv_row_b + ls_df-leng.
+    ENDIF.
+  ENDLOOP.
+
+  lv_cut = sy-datum - ls_cfg-retention.
+  lv_msg = |Archive-eligible (table { gv_tabname }, retention { ls_cfg-retention }d, date field { ls_cfg-data_field }, cutoff { lv_cut }): { lv_eligible } row(s); rule-skip { lv_rule_skip }|.
   IF lv_row_b > 0.
     lv_est_mb = CONV decfloat34( lv_eligible ) * CONV decfloat34( lv_row_b ) / 1048576.
-    MESSAGE |Eligible rows for purge: { lv_eligible } (~{ lv_est_mb DECIMALS = 1 } MB estimated).| TYPE 'S'.
-  ELSE.
-    MESSAGE |Eligible rows for purge: { lv_eligible }.| TYPE 'S'.
+    lv_msg &&= | ~{ lv_est_mb } MB est.|.
   ENDIF.
+  MESSAGE lv_msg TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -1083,7 +1140,8 @@ FORM do_purge_only_direct.
         lv_msg       TYPE string,
         lv_kv        TYPE char255,
         lv_json      TYPE string,
-        ls_adata     TYPE zsp26_arch_data.
+        ls_adata     TYPE zsp26_arch_data,
+        lv_d_purge   TYPE d.
 
   FIELD-SYMBOLS: <lt_src> TYPE ANY TABLE,
                  <row>    TYPE any,
@@ -1103,8 +1161,9 @@ FORM do_purge_only_direct.
     RETURN.
   ENDIF.
 
+  CLEAR lv_d_purge.
   PERFORM build_where_from_arch_cfg
-    USING ls_cfg '00000000' '00000000'
+    USING ls_cfg lv_d_purge lv_d_purge
     CHANGING lv_where.
   lv_where_all = lv_where.
   PERFORM append_rules_eq_to_where

@@ -610,7 +610,7 @@ MODULE user_command_0600 INPUT.
       IF gv_purge_mode = 'X'.
         PERFORM do_show_eligible_data.
       ELSE.
-        MESSAGE 'Show Eligible Data is available only in Purge-only mode.' TYPE 'S' DISPLAY LIKE 'W'.
+        MESSAGE 'Show eligible is available only in Purge-only mode.' TYPE 'S' DISPLAY LIKE 'W'.
       ENDIF.
 
     WHEN 'BT_START' OR 'START_BTN'.
