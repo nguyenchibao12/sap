@@ -874,8 +874,8 @@
        <TYPE>PUSH</TYPE>
        <NAME>ELIGIBLE_BTN_C6</NAME>
        <TEXT>Show_Eligible_Data__</TEXT>
-       <LINE>007</LINE>
-       <COLUMN>002</COLUMN>
+       <LINE>006</LINE>
+       <COLUMN>034</COLUMN>
        <LENGTH>024</LENGTH>
        <VISLENGTH>024</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -889,8 +889,8 @@
        <TYPE>PUSH</TYPE>
        <NAME>ARCH_SEL_BTN_C6</NAME>
        <TEXT>Archive_Selection___</TEXT>
-       <LINE>006</LINE>
-       <COLUMN>034</COLUMN>
+       <LINE>007</LINE>
+       <COLUMN>002</COLUMN>
        <LENGTH>024</LENGTH>
        <VISLENGTH>024</VISLENGTH>
        <HEIGHT>001</HEIGHT>
