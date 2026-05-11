@@ -387,50 +387,92 @@ START-OF-SELECTION.
 
 *----------------------------------------------------------------------*
 * 5. Load Sample Purchase Orders (ZSP26_EKKO + ZSP26_EKPO)
+*     250 PO headers, dates from Dec 2024 back to ~2018
+*     2 line items per PO = 500 EKPO records
 *----------------------------------------------------------------------*
   WRITE: /.
-  WRITE: / '>>> Loading ZSP26_EKKO / ZSP26_EKPO sample data...'.
+  WRITE: / '>>> Loading ZSP26_EKKO / ZSP26_EKPO sample data (250 records)...'.
 
-  DO 20 TIMES.
+  DATA lv_po_idx TYPE i.
+
+  DO 250 TIMES.
+    lv_po_idx = sy-index.
+
     CLEAR ls_ekko.
     ls_ekko-mandt = sy-mandt.
-    ls_ekko-ebeln = |45000{ sy-index WIDTH = 5 ALIGN = RIGHT PAD = '0' }|.
-    ls_ekko-bukrs = COND #( WHEN sy-index <= 10 THEN '1000'
-                             ELSE '2000' ).
+    " EBELN: 4500000001 .. 4500000250 (10 chars)
+    ls_ekko-ebeln = |45000{ lv_po_idx WIDTH = 5 ALIGN = RIGHT PAD = '0' }|.
+
+    " Rotate 3 company codes: 1000 / 2000 / 3000
+    ls_ekko-bukrs = SWITCH #( lv_po_idx MOD 3
+                               WHEN 1 THEN '1000'
+                               WHEN 2 THEN '2000'
+                               ELSE       '3000' ).
     ls_ekko-bstyp = 'F'.
-    ls_ekko-bsart = COND #( WHEN sy-index <= 7 THEN 'NB'
-                             WHEN sy-index <= 14 THEN 'FO'
-                             ELSE 'UB' ).
-    ls_ekko-loekz = COND #( WHEN sy-index = 5 OR sy-index = 15 THEN 'L'
-                             ELSE ' ' ).
-    " Dates: spread over last 2 years
-    ls_ekko-aedat = sy-datum - ( sy-index * 35 ).
-    ls_ekko-ernam = COND #( WHEN sy-index <= 10 THEN 'USER01'
-                             ELSE 'USER02' ).
-    ls_ekko-lifnr = |{ 100000 + sy-index }|.
-    ls_ekko-ekorg = '1000'.
-    ls_ekko-ekgrp = COND #( WHEN sy-index <= 10 THEN '001'
-                             ELSE '002' ).
-    ls_ekko-waers = 'USD'.
-    ls_ekko-bedat = ls_ekko-aedat.
+
+    " Rotate doc types: NB (standard PO) / FO (framework) / UB (stock transfer)
+    ls_ekko-bsart = SWITCH #( lv_po_idx MOD 3
+                               WHEN 1 THEN 'NB'
+                               WHEN 2 THEN 'FO'
+                               ELSE       'UB' ).
+
+    " ~10% of records flagged for deletion
+    ls_ekko-loekz = COND #( WHEN lv_po_idx MOD 10 = 0 THEN 'L' ELSE ' ' ).
+
+    " Dates: index 1 = ~Dec 23 2024, each step 8 days older → index 250 ≈ Jan 2019
+    " sy-datum (May 6 2026) - 492 = Dec 31 2024 → all records are 2024 or older
+    ls_ekko-aedat = sy-datum - ( 492 + lv_po_idx * 8 ).
+    ls_ekko-bedat = ls_ekko-aedat + 5.
+
+    " Rotate 5 users
+    ls_ekko-ernam = SWITCH #( lv_po_idx MOD 5
+                               WHEN 1 THEN 'USER01'
+                               WHEN 2 THEN 'USER02'
+                               WHEN 3 THEN 'USER03'
+                               WHEN 4 THEN 'USER04'
+                               ELSE       'USER05' ).
+
+    " 50 rotating vendors: 100001 .. 100050
+    ls_ekko-lifnr = |{ 100001 + ( lv_po_idx MOD 50 ) }|.
+
+    ls_ekko-ekorg = COND #( WHEN lv_po_idx MOD 2 = 0 THEN '2000' ELSE '1000' ).
+
+    " Rotate 3 purchasing groups
+    ls_ekko-ekgrp = SWITCH #( lv_po_idx MOD 3
+                               WHEN 1 THEN '001'
+                               WHEN 2 THEN '002'
+                               ELSE       '003' ).
+
+    " Rotate currencies: USD / EUR / VND
+    ls_ekko-waers = SWITCH #( lv_po_idx MOD 3
+                               WHEN 1 THEN 'USD'
+                               WHEN 2 THEN 'EUR'
+                               ELSE       'VND' ).
+
     APPEND ls_ekko TO lt_ekko.
 
-    " 2-3 items per PO
-    DO 3 TIMES.
-      IF sy-index > 2 AND sy-tabix > 15. EXIT. ENDIF.
+    " 2 line items per PO
+    DO 2 TIMES.
       CLEAR ls_ekpo.
       ls_ekpo-mandt = sy-mandt.
       ls_ekpo-ebeln = ls_ekko-ebeln.
       ls_ekpo-ebelp = sy-index * 10.
-      ls_ekpo-matnr = |MAT-{ sy-tabix WIDTH = 4 ALIGN = RIGHT PAD = '0' }-{ sy-index }|.
-      ls_ekpo-txz01 = |Material Item { sy-index }|.
-      ls_ekpo-menge = sy-index * 100.
-      ls_ekpo-meins = 'EA'.
-      ls_ekpo-netpr = sy-index * 50.
+      ls_ekpo-matnr = |MAT-{ lv_po_idx WIDTH = 4 ALIGN = RIGHT PAD = '0' }-{ sy-index }|.
+      ls_ekpo-txz01 = |Purchase Item { lv_po_idx }-{ sy-index }|.
+      ls_ekpo-menge = ( lv_po_idx MOD 10 + 1 ) * 100.
+      ls_ekpo-meins = SWITCH #( lv_po_idx MOD 3
+                                 WHEN 1 THEN 'EA'
+                                 WHEN 2 THEN 'KG'
+                                 ELSE       'L' ).
+      ls_ekpo-netpr = ( lv_po_idx MOD 20 + 1 ) * 100 + sy-index * 50.
       ls_ekpo-peinh = 1.
-      ls_ekpo-werks = '1000'.
+      ls_ekpo-werks = COND #( WHEN lv_po_idx MOD 2 = 0 THEN '2000' ELSE '1000' ).
       ls_ekpo-lgort = '0001'.
-      ls_ekpo-matkl = '001'.
+      ls_ekpo-matkl = SWITCH #( lv_po_idx MOD 4
+                                 WHEN 1 THEN '001'
+                                 WHEN 2 THEN '002'
+                                 WHEN 3 THEN '003'
+                                 ELSE       '004' ).
       ls_ekpo-aedat = ls_ekko-aedat.
       APPEND ls_ekpo TO lt_ekpo.
     ENDDO.
@@ -666,7 +708,8 @@ START-OF-SELECTION.
   WRITE: / 'Sample Data Load Complete!'.
   WRITE: / '============================================'.
   WRITE: / 'Config:  7 entries (EKKO/VBAK/BKPF/MKPF/MARA/KNA1 + deps)'.
-  WRITE: / 'Tables:  20 rows each x 10 source tables'.
+  WRITE: / 'EKKO:    250 rows (dates Dec 2024 back to ~2018) + 500 EKPO items'.
+  WRITE: / 'Others:  20 rows each (VBAK/VBAP/BKPF/BSEG/MKPF/MSEG/MARA/KNA1)'.
   WRITE: / '============================================'.
 
   COMMIT WORK.

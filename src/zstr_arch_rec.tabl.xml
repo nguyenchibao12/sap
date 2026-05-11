@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <abapGit version="v1.0.0" serializer="LCL_OBJECT_TABL" serializer_version="v1.0.0">
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
@@ -6,8 +6,6 @@
     <TABNAME>ZSTR_ARCH_REC</TABNAME>
     <DDLANGUAGE>E</DDLANGUAGE>
     <TABCLASS>INTTAB</TABCLASS>
-    <CLIDEP></CLIDEP>
-    <LANGDEP></LANGDEP>
     <DDTEXT>Generic ADK archive record payload</DDTEXT>
     <MASTERLANG>E</MASTERLANG>
     <CONTFLAG>A</CONTFLAG>
@@ -27,7 +25,6 @@
      <ROLLNAME>TABNAME</ROLLNAME>
      <ADMINFIELD>0</ADMINFIELD>
      <NOTNULL>X</NOTNULL>
-     <SHLPORIGIN>D</SHLPORIGIN>
      <COMPTYPE>E</COMPTYPE>
     </DD03P>
     <DD03P>

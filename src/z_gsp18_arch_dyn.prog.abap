@@ -236,7 +236,7 @@ FORM apply_archive_rules
     CALL FUNCTION 'DDIF_FIELDINFO_GET'
       EXPORTING  tabname   = iv_tab
       TABLES     dfies_tab = lt_df
-      EXCEPTIONS OTHERS    = 7.
+      EXCEPTIONS OTHERS    = 0.
   ENDIF.
 
   SELECT * FROM zsp26_arch_rule INTO TABLE @lt_rules
@@ -502,7 +502,7 @@ FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.
     TABLES
       dynpfields = lt_df
     EXCEPTIONS
-      OTHERS     = 1.
+      OTHERS     = 0.
   READ TABLE lt_df INTO ls_df INDEX 1.
   IF sy-subrc = 0 AND ls_df-fieldvalue IS NOT INITIAL.
     cv_tabname = CONV tabname( ls_df-fieldvalue ).

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <abapGit version="v1.0.0" serializer="LCL_OBJECT_PROG" serializer_version="v1.0.0">
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
@@ -31,13 +31,13 @@
      <ID>I</ID>
      <KEY>P_CLEAR</KEY>
      <ENTRY>Remove previous demo EBELN 998… rows first</ENTRY>
-     <LENGTH>40</LENGTH>
+     <LENGTH>42</LENGTH>
     </item>
     <item>
      <ID>I</ID>
      <KEY>P_CFG</KEY>
      <ENTRY>Insert minimal EKKO archive cfg if missing</ENTRY>
-     <LENGTH>40</LENGTH>
+     <LENGTH>42</LENGTH>
     </item>
     <item>
      <ID>I</ID>

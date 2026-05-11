@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <abapGit version="v1.0.0" serializer="LCL_OBJECT_PROG" serializer_version="v1.0.0">
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
@@ -14,106 +14,13 @@
     <item>
      <HEADER>
       <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
-      <SCREEN>0400</SCREEN>
-      <LANGUAGE>E</LANGUAGE>
-      <DESCRIPT>Select archive table</DESCRIPT>
-      <TYPE>N</TYPE>
-      <NEXTSCREEN>0400</NEXTSCREEN>
-      <LINES>027</LINES>
-      <COLUMNS>122</COLUMNS>
-     </HEADER>
-     <CONTAINERS>
-      <RPY_DYCATT>
-       <TYPE>SCREEN</TYPE>
-       <NAME>SCREEN</NAME>
-      </RPY_DYCATT>
-     </CONTAINERS>
-     <FIELDS>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>TEXT</TYPE>
-       <NAME>LBL_STEP1</NAME>
-       <TEXT>Step_1:_Enter_table_(F4=list)</TEXT>
-       <LINE>003</LINE>
-       <COLUMN>013</COLUMN>
-       <LENGTH>035</LENGTH>
-       <VISLENGTH>035</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <FORMAT>CHAR</FORMAT>
-       <REQU_ENTRY>N</REQU_ENTRY>
-       <LABELLEFT>X</LABELLEFT>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>TEXT</TYPE>
-       <NAME>LBL_TABNAME</NAME>
-       <TEXT>Table_name_(F4)___________</TEXT>
-       <LINE>005</LINE>
-       <COLUMN>013</COLUMN>
-       <LENGTH>026</LENGTH>
-       <VISLENGTH>026</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <FORMAT>CHAR</FORMAT>
-       <REQU_ENTRY>N</REQU_ENTRY>
-       <LABELLEFT>X</LABELLEFT>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>TEMPLATE</TYPE>
-       <NAME>GV_TABNAME</NAME>
-       <TEXT>______________________________</TEXT>
-       <LINE>005</LINE>
-       <COLUMN>040</COLUMN>
-       <LENGTH>030</LENGTH>
-       <VISLENGTH>030</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <FORMAT>CHAR</FORMAT>
-       <INPUT_FLD>X</INPUT_FLD>
-       <OUTPUT_FLD>X</OUTPUT_FLD>
-       <ROLLNAME>ZSP26_DE_TABNAME</ROLLNAME>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>PUSH</TYPE>
-       <NAME>CONTINUE_BTN</NAME>
-       <TEXT>Continue___________________________</TEXT>
-       <LINE>008</LINE>
-       <COLUMN>013</COLUMN>
-       <LENGTH>035</LENGTH>
-       <VISLENGTH>035</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <PUSH_FCODE>BT_CONTINUE</PUSH_FCODE>
-       <FORMAT>CHAR</FORMAT>
-       <REQU_ENTRY>N</REQU_ENTRY>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>OKCODE</TYPE>
-       <NAME>OK_CODE</NAME>
-       <TEXT>____________________</TEXT>
-       <LENGTH>020</LENGTH>
-       <VISLENGTH>020</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <FORMAT>CHAR</FORMAT>
-       <INPUT_FLD>X</INPUT_FLD>
-      </RPY_DYFATC>
-     </FIELDS>
-    </item>
-    <item>
-     <HEADER>
-      <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
       <SCREEN>0100</SCREEN>
       <LANGUAGE>E</LANGUAGE>
       <DESCRIPT>Archive Hub - Main Dashboard</DESCRIPT>
       <TYPE>N</TYPE>
       <NEXTSCREEN>0100</NEXTSCREEN>
       <LINES>027</LINES>
-      <COLUMNS>122</COLUMNS>
+      <COLUMNS>124</COLUMNS>
      </HEADER>
      <CONTAINERS>
       <RPY_DYCATT>
@@ -127,41 +34,40 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_CURTAB</NAME>
-       <TEXT>Current_Table__________________</TEXT>
-       <LINE>004</LINE>
+       <TEXT>Current_Table</TEXT>
+       <LINE>003</LINE>
        <COLUMN>013</COLUMN>
-       <LENGTH>030</LENGTH>
-       <VISLENGTH>030</VISLENGTH>
+       <LENGTH>013</LENGTH>
+       <VISLENGTH>013</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
-       <LABELLEFT>X</LABELLEFT>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GV_TABNAME</NAME>
-       <TEXT>______________________________</TEXT>
-       <LINE>004</LINE>
-       <COLUMN>044</COLUMN>
-       <LENGTH>030</LENGTH>
+       <TEXT>_____________________</TEXT>
+       <LINE>003</LINE>
+       <COLUMN>027</COLUMN>
+       <LENGTH>021</LENGTH>
        <VISLENGTH>030</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
-       <ROLLNAME>ZSP26_DE_TABNAME</ROLLNAME>
+       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>CHANGE_TAB_BTN</NAME>
-       <TEXT>Change_table_______________________</TEXT>
+       <TEXT>Change_table_____________</TEXT>
        <LINE>005</LINE>
        <COLUMN>013</COLUMN>
-       <LENGTH>035</LENGTH>
-       <VISLENGTH>035</VISLENGTH>
+       <LENGTH>025</LENGTH>
+       <VISLENGTH>025</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <PUSH_FCODE>BT_CHG_TAB</PUSH_FCODE>
        <FORMAT>CHAR</FORMAT>
@@ -172,11 +78,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>WRITE_BUTTON</NAME>
-       <TEXT>Write______________________________</TEXT>
-       <LINE>007</LINE>
+       <TEXT>Write____________________</TEXT>
+       <LINE>006</LINE>
        <COLUMN>013</COLUMN>
-       <LENGTH>035</LENGTH>
-       <VISLENGTH>035</VISLENGTH>
+       <LENGTH>025</LENGTH>
+       <VISLENGTH>025</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <PUSH_FCODE>BT_WRITE</PUSH_FCODE>
        <FORMAT>CHAR</FORMAT>
@@ -187,11 +93,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>RESTORE_BUTTON</NAME>
-       <TEXT>Restore____________________________</TEXT>
-       <LINE>008</LINE>
+       <TEXT>Restore__________________</TEXT>
+       <LINE>007</LINE>
        <COLUMN>013</COLUMN>
-       <LENGTH>035</LENGTH>
-       <VISLENGTH>035</VISLENGTH>
+       <LENGTH>025</LENGTH>
+       <VISLENGTH>025</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <PUSH_FCODE>BT_RESTORE</PUSH_FCODE>
        <FORMAT>CHAR</FORMAT>
@@ -202,11 +108,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>DELETE_BUTTON</NAME>
-       <TEXT>Delete_____________________________</TEXT>
-       <LINE>009</LINE>
+       <TEXT>Delete___________________</TEXT>
+       <LINE>008</LINE>
        <COLUMN>013</COLUMN>
-       <LENGTH>035</LENGTH>
-       <VISLENGTH>035</VISLENGTH>
+       <LENGTH>025</LENGTH>
+       <VISLENGTH>025</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <PUSH_FCODE>BT_ADK_DELETE</PUSH_FCODE>
        <FORMAT>CHAR</FORMAT>
@@ -217,11 +123,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>MANAGE_BUTTON</NAME>
-       <TEXT>Config_____________________________</TEXT>
-       <LINE>010</LINE>
+       <TEXT>Config___________________</TEXT>
+       <LINE>009</LINE>
        <COLUMN>013</COLUMN>
-       <LENGTH>035</LENGTH>
-       <VISLENGTH>035</VISLENGTH>
+       <LENGTH>025</LENGTH>
+       <VISLENGTH>025</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <PUSH_FCODE>BT_MANAGE</PUSH_FCODE>
        <FORMAT>CHAR</FORMAT>
@@ -231,27 +137,12 @@
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
-       <NAME>ADMIN_BTN</NAME>
-       <TEXT>Admin______________________________</TEXT>
-       <LINE>010</LINE>
-       <COLUMN>050</COLUMN>
-       <LENGTH>035</LENGTH>
-       <VISLENGTH>035</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <PUSH_FCODE>BT_ADMIN</PUSH_FCODE>
-       <FORMAT>CHAR</FORMAT>
-       <REQU_ENTRY>N</REQU_ENTRY>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>PUSH</TYPE>
        <NAME>MONITOR_BUTTON</NAME>
-       <TEXT>Monitor____________________________</TEXT>
-       <LINE>011</LINE>
+       <TEXT>Monitor__________________</TEXT>
+       <LINE>010</LINE>
        <COLUMN>013</COLUMN>
-       <LENGTH>035</LENGTH>
-       <VISLENGTH>035</VISLENGTH>
+       <LENGTH>025</LENGTH>
+       <VISLENGTH>025</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <PUSH_FCODE>BT_MONITOR</PUSH_FCODE>
        <FORMAT>CHAR</FORMAT>
@@ -262,28 +153,13 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>RUN_LOG_BUTTON</NAME>
-       <TEXT>Run_log_jobs_______________________</TEXT>
-       <LINE>012</LINE>
+       <TEXT>Run_log_jobs_____________</TEXT>
+       <LINE>011</LINE>
        <COLUMN>013</COLUMN>
-       <LENGTH>035</LENGTH>
-       <VISLENGTH>035</VISLENGTH>
+       <LENGTH>025</LENGTH>
+       <VISLENGTH>025</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <PUSH_FCODE>BT_RUN_LOG</PUSH_FCODE>
-       <FORMAT>CHAR</FORMAT>
-       <REQU_ENTRY>N</REQU_ENTRY>
-      </RPY_DYFATC>
-      <RPY_DYFATC>
-       <CONT_TYPE>SCREEN</CONT_TYPE>
-       <CONT_NAME>SCREEN</CONT_NAME>
-       <TYPE>PUSH</TYPE>
-       <NAME>ARCH_SESS_BUTTON</NAME>
-       <TEXT>Archive_sessions___________________</TEXT>
-       <LINE>014</LINE>
-       <COLUMN>013</COLUMN>
-       <LENGTH>035</LENGTH>
-       <VISLENGTH>035</VISLENGTH>
-       <HEIGHT>001</HEIGHT>
-       <PUSH_FCODE>BT_RUN_SESS</PUSH_FCODE>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
@@ -293,8 +169,8 @@
        <TYPE>TEXT</TYPE>
        <NAME>LBL_FULL_RESTORE</NAME>
        <TEXT>Full_session_restore_(admin)</TEXT>
-       <LINE>013</LINE>
-       <COLUMN>015</COLUMN>
+       <LINE>012</LINE>
+       <COLUMN>011</COLUMN>
        <LENGTH>028</LENGTH>
        <VISLENGTH>028</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -307,16 +183,45 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GV_FULL_RESTORE</NAME>
-       <TEXT>_</TEXT>
-       <LINE>013</LINE>
-       <COLUMN>044</COLUMN>
-       <LENGTH>001</LENGTH>
-       <VISLENGTH>001</VISLENGTH>
+       <TEXT>__</TEXT>
+       <LINE>012</LINE>
+       <COLUMN>040</COLUMN>
+       <LENGTH>002</LENGTH>
+       <VISLENGTH>002</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <INPUT_FLD>X</INPUT_FLD>
        <OUTPUT_FLD>X</OUTPUT_FLD>
-       <ROLLNAME>XFELD</ROLLNAME>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>PUSH</TYPE>
+       <NAME>ARCH_SESS_BUTTON</NAME>
+       <TEXT>Archive_sessions_________</TEXT>
+       <LINE>013</LINE>
+       <COLUMN>013</COLUMN>
+       <LENGTH>025</LENGTH>
+       <VISLENGTH>025</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <PUSH_FCODE>BT_RUN_SESS</PUSH_FCODE>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>PUSH</TYPE>
+       <NAME>ADMIN_BTN</NAME>
+       <TEXT>Admin____________________</TEXT>
+       <LINE>014</LINE>
+       <COLUMN>013</COLUMN>
+       <LENGTH>025</LENGTH>
+       <VISLENGTH>025</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <PUSH_FCODE>BT_ADMIN</PUSH_FCODE>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
@@ -483,6 +388,98 @@
     <item>
      <HEADER>
       <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
+      <SCREEN>0400</SCREEN>
+      <LANGUAGE>E</LANGUAGE>
+      <DESCRIPT>Select archive table</DESCRIPT>
+      <TYPE>N</TYPE>
+      <NEXTSCREEN>0400</NEXTSCREEN>
+      <LINES>027</LINES>
+      <COLUMNS>123</COLUMNS>
+     </HEADER>
+     <CONTAINERS>
+      <RPY_DYCATT>
+       <TYPE>SCREEN</TYPE>
+       <NAME>SCREEN</NAME>
+      </RPY_DYCATT>
+     </CONTAINERS>
+     <FIELDS>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>TEXT</TYPE>
+       <NAME>LBL_STEP1</NAME>
+       <TEXT>Step_1:_Enter_table_(F4=list)______</TEXT>
+       <LINE>003</LINE>
+       <COLUMN>013</COLUMN>
+       <LENGTH>035</LENGTH>
+       <VISLENGTH>035</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+       <LABELLEFT>X</LABELLEFT>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>TEXT</TYPE>
+       <NAME>LBL_TABNAME</NAME>
+       <TEXT>Table_name_(F4)____</TEXT>
+       <LINE>005</LINE>
+       <COLUMN>013</COLUMN>
+       <LENGTH>019</LENGTH>
+       <VISLENGTH>026</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+       <LABELLEFT>X</LABELLEFT>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>TEMPLATE</TYPE>
+       <NAME>GV_TABNAME</NAME>
+       <TEXT>______________________________</TEXT>
+       <LINE>005</LINE>
+       <COLUMN>040</COLUMN>
+       <LENGTH>030</LENGTH>
+       <VISLENGTH>030</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <INPUT_FLD>X</INPUT_FLD>
+       <OUTPUT_FLD>X</OUTPUT_FLD>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>PUSH</TYPE>
+       <NAME>CONTINUE_BTN</NAME>
+       <TEXT>Continue___________</TEXT>
+       <LINE>007</LINE>
+       <COLUMN>013</COLUMN>
+       <LENGTH>019</LENGTH>
+       <VISLENGTH>019</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <PUSH_FCODE>BT_CONTINUE</PUSH_FCODE>
+       <FORMAT>CHAR</FORMAT>
+       <REQU_ENTRY>N</REQU_ENTRY>
+      </RPY_DYFATC>
+      <RPY_DYFATC>
+       <CONT_TYPE>SCREEN</CONT_TYPE>
+       <CONT_NAME>SCREEN</CONT_NAME>
+       <TYPE>OKCODE</TYPE>
+       <NAME>OK_CODE</NAME>
+       <TEXT>____________________</TEXT>
+       <LENGTH>020</LENGTH>
+       <VISLENGTH>020</VISLENGTH>
+       <HEIGHT>001</HEIGHT>
+       <FORMAT>CHAR</FORMAT>
+       <INPUT_FLD>X</INPUT_FLD>
+      </RPY_DYFATC>
+     </FIELDS>
+    </item>
+    <item>
+     <HEADER>
+      <PROGRAM>Z_GSP18_SAP15_MAIN</PROGRAM>
       <SCREEN>0500</SCREEN>
       <LANGUAGE>E</LANGUAGE>
       <DESCRIPT>Archive Write - Create Session</DESCRIPT>
@@ -503,7 +500,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_C5_CLNT</NAME>
-       <TEXT>Client</TEXT>
+       <TEXT>Client__</TEXT>
        <LINE>002</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>008</LENGTH>
@@ -526,6 +523,7 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
+       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
@@ -555,14 +553,14 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
-       <ROLLNAME>ZSP26_DE_TABNAME</ROLLNAME>
+       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_C5_VAR</NAME>
-       <TEXT>Variant</TEXT>
+       <TEXT>Variant_</TEXT>
        <LINE>004</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>008</LENGTH>
@@ -592,7 +590,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>EDIT_BTN_C5</NAME>
-       <TEXT>Edit</TEXT>
+       <TEXT>Edit__________</TEXT>
        <LINE>004</LINE>
        <COLUMN>028</COLUMN>
        <LENGTH>014</LENGTH>
@@ -607,7 +605,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_C5_USR</NAME>
-       <TEXT>User_Name</TEXT>
+       <TEXT>User_Name_</TEXT>
        <LINE>005</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>010</LENGTH>
@@ -630,13 +628,14 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
+       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>START_BTN_C5</NAME>
-       <TEXT>Start_Date__________</TEXT>
+       <TEXT>Start_Date____________</TEXT>
        <LINE>007</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>022</LENGTH>
@@ -659,13 +658,14 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
+       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>SPOOL_BTN_C5</NAME>
-       <TEXT>Spool_Parameters____</TEXT>
+       <TEXT>Spool_Parameters______</TEXT>
        <LINE>008</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>022</LENGTH>
@@ -688,13 +688,14 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
+       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>PREVIEW_BTN_C5</NAME>
-       <TEXT>Execute_____________</TEXT>
+       <TEXT>Execute_______________________________</TEXT>
        <LINE>010</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>038</LENGTH>
@@ -749,13 +750,14 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
+       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_C6_CLNT</NAME>
-       <TEXT>Client:</TEXT>
+       <TEXT>Client:_</TEXT>
        <LINE>003</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>008</LENGTH>
@@ -778,13 +780,14 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
+       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_C6_USR</NAME>
-       <TEXT>User_Name:</TEXT>
+       <TEXT>User_Name:__</TEXT>
        <LINE>004</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>012</LENGTH>
@@ -807,6 +810,7 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
+       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
@@ -821,7 +825,7 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <INPUT_FLD>X</INPUT_FLD>
-       <ROLLNAME>XFELD</ROLLNAME>
+       <OUTPUT_FLD>X</OUTPUT_FLD>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
@@ -850,7 +854,7 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <INPUT_FLD>X</INPUT_FLD>
-       <ROLLNAME>XFELD</ROLLNAME>
+       <OUTPUT_FLD>X</OUTPUT_FLD>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
@@ -871,7 +875,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>ELIGIBLE_BTN_C6</NAME>
-       <TEXT>Show_Eligible_Data__</TEXT>
+       <TEXT>Show_Eligible_Data______</TEXT>
        <LINE>006</LINE>
        <COLUMN>034</COLUMN>
        <LENGTH>024</LENGTH>
@@ -886,7 +890,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>ARCH_SEL_BTN_C6</NAME>
-       <TEXT>Archive_Selection___</TEXT>
+       <TEXT>Archive_Selection_______</TEXT>
        <LINE>007</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>024</LENGTH>
@@ -909,13 +913,14 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
+       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>START_BTN_C6</NAME>
-       <TEXT>Start_Date__________</TEXT>
+       <TEXT>Start_Date______________</TEXT>
        <LINE>008</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>024</LENGTH>
@@ -938,13 +943,14 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
+       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>SPOOL_BTN_C6</NAME>
-       <TEXT>Spool_Parameters____</TEXT>
+       <TEXT>Spool_Parameters________</TEXT>
        <LINE>009</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>024</LENGTH>
@@ -967,13 +973,14 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
+       <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>EXECUTE_BTN_C6</NAME>
-       <TEXT>Execute_____________</TEXT>
+       <TEXT>Execute_________________</TEXT>
        <LINE>010</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>024</LENGTH>
@@ -1029,7 +1036,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_ADM_HEAD</NAME>
-       <TEXT>ZSP26_ARCH_ADMIN_(active_users)</TEXT>
+       <TEXT>ZSP26_ARCH_ADMIN_(active_users)____</TEXT>
        <LINE>001</LINE>
        <COLUMN>007</COLUMN>
        <LENGTH>035</LENGTH>
@@ -1081,6 +1088,7 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
+       <LABELLEFT>X</LABELLEFT>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
@@ -1096,7 +1104,6 @@
        <FORMAT>CHAR</FORMAT>
        <INPUT_FLD>X</INPUT_FLD>
        <OUTPUT_FLD>X</OUTPUT_FLD>
-       <ROLLNAME>SYUNAME</ROLLNAME>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
@@ -1135,7 +1142,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_REG_TIT</NAME>
-       <TEXT>Register_new_table_(Z*_TRANSP)</TEXT>
+       <TEXT>Register_new_table_(Z*_TRANSP)__</TEXT>
        <LINE>001</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>032</LENGTH>
@@ -1149,7 +1156,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_REG_TAB</NAME>
-       <TEXT>Table_name_(F4)</TEXT>
+       <TEXT>Table_name_(F4)_</TEXT>
        <LINE>002</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>016</LENGTH>
@@ -1157,6 +1164,7 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
+       <LABELLEFT>X</LABELLEFT>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
@@ -1172,14 +1180,13 @@
        <FORMAT>CHAR</FORMAT>
        <INPUT_FLD>X</INPUT_FLD>
        <OUTPUT_FLD>X</OUTPUT_FLD>
-       <ROLLNAME>TABNAME</ROLLNAME>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_REG_DTF</NAME>
-       <TEXT>Date_field_(F4)</TEXT>
+       <TEXT>Date_field_(F4)_</TEXT>
        <LINE>003</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>016</LENGTH>
@@ -1187,6 +1194,7 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
+       <LABELLEFT>X</LABELLEFT>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
@@ -1202,14 +1210,13 @@
        <FORMAT>CHAR</FORMAT>
        <INPUT_FLD>X</INPUT_FLD>
        <OUTPUT_FLD>X</OUTPUT_FLD>
-       <ROLLNAME>FIELDNAME</ROLLNAME>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_REG_RET</NAME>
-       <TEXT>Retention_days</TEXT>
+       <TEXT>Retention_days__</TEXT>
        <LINE>004</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>016</LENGTH>
@@ -1217,6 +1224,7 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
+       <LABELLEFT>X</LABELLEFT>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
@@ -1238,7 +1246,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_REG_DSC</NAME>
-       <TEXT>Description</TEXT>
+       <TEXT>Description_</TEXT>
        <LINE>005</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>012</LENGTH>
@@ -1246,6 +1254,7 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
+       <LABELLEFT>X</LABELLEFT>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
@@ -1261,14 +1270,13 @@
        <FORMAT>CHAR</FORMAT>
        <INPUT_FLD>X</INPUT_FLD>
        <OUTPUT_FLD>X</OUTPUT_FLD>
-       <ROLLNAME>CHAR80</ROLLNAME>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_REG_ACT</NAME>
-       <TEXT>Active</TEXT>
+       <TEXT>Active__</TEXT>
        <LINE>006</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>008</LENGTH>
@@ -1276,6 +1284,7 @@
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <REQU_ENTRY>N</REQU_ENTRY>
+       <LABELLEFT>X</LABELLEFT>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
@@ -1291,14 +1300,13 @@
        <FORMAT>CHAR</FORMAT>
        <INPUT_FLD>X</INPUT_FLD>
        <OUTPUT_FLD>X</OUTPUT_FLD>
-       <ROLLNAME>XFELD</ROLLNAME>
       </RPY_DYFATC>
       <RPY_DYFATC>
        <CONT_TYPE>SCREEN</CONT_TYPE>
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>BT_REG_SAVE</NAME>
-       <TEXT>Save___________________</TEXT>
+       <TEXT>Save____________________</TEXT>
        <LINE>008</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>024</LENGTH>
@@ -1313,7 +1321,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>BT_REG_CANCEL</NAME>
-       <TEXT>Cancel_________________</TEXT>
+       <TEXT>Cancel__________________</TEXT>
        <LINE>008</LINE>
        <COLUMN>028</COLUMN>
        <LENGTH>024</LENGTH>
@@ -1360,7 +1368,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEXT</TYPE>
        <NAME>LBL_CFG_CH</NAME>
-       <TEXT>Archive_config:_choose_action</TEXT>
+       <TEXT>Archive_config:_choose_action___________</TEXT>
        <LINE>002</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>040</LENGTH>
@@ -1374,7 +1382,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>BT_CFG_LIST</NAME>
-       <TEXT>View_config_list_______</TEXT>
+       <TEXT>View_config_list________</TEXT>
        <LINE>004</LINE>
        <COLUMN>002</COLUMN>
        <LENGTH>024</LENGTH>
@@ -1389,7 +1397,7 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>PUSH</TYPE>
        <NAME>BT_CFG_REG</NAME>
-       <TEXT>Register_new_Z_table___</TEXT>
+       <TEXT>Register_new_Z_table____</TEXT>
        <LINE>004</LINE>
        <COLUMN>028</COLUMN>
        <LENGTH>024</LENGTH>
@@ -1445,6 +1453,121 @@
       <FUN_TEXT>Back</FUN_TEXT>
      </RSMPE_FUNT>
      <RSMPE_FUNT>
+      <CODE>BT_ADK_DELETE</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>Delete</FUN_TEXT>
+      <INFO_TEXT>ADK delete from DB after archive (Z_ARCH_EKK_DELETE)</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_ADMIN</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <TEXT_NAME>ICON_SYSTEM_USER_MENU</TEXT_NAME>
+      <ICON_ID>@08@</ICON_ID>
+      <FUN_TEXT>Admin</FUN_TEXT>
+      <INFO_TEXT>Maintain archive administrators (ZSP26_ARCH_ADMIN)</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_ARCH_SEL</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>Archive Selection</FUN_TEXT>
+      <INFO_TEXT>Delete program selection screen</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_CHG_TAB</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>Change table</FUN_TEXT>
+      <INFO_TEXT>Back to table selection (screen 0400)</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_CONTINUE</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>Continue</FUN_TEXT>
+      <INFO_TEXT>Go to main actions (screen 0100)</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_ELIGIBLE</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>Show eligible</FUN_TEXT>
+      <INFO_TEXT>Rows in retention window that pass archive rules (same as pu</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_MANAGE</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>Config</FUN_TEXT>
+      <INFO_TEXT>Archive table configuration</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_MONITOR</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <TEXT_NAME>ICON_OVERVIEW</TEXT_NAME>
+      <ICON_ID>@3J@</ICON_ID>
+      <FUN_TEXT>Monitor</FUN_TEXT>
+      <INFO_TEXT>Archive Monitor and Statistics</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_PREVIEW</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>Preview &amp; Archive</FUN_TEXT>
+      <INFO_TEXT>Open SALV preview then ADK write (after variant / start / sp</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_REFRESH</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <TEXT_NAME>ICON_REFRESH</TEXT_NAME>
+      <ICON_ID>@42@</ICON_ID>
+      <FUN_TEXT>Reload</FUN_TEXT>
+      <INFO_TEXT>Reload current screen data</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_RESTORE</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>Restore</FUN_TEXT>
+      <INFO_TEXT>ADK read / restore from archive file</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_RUN_DELETE</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>Run delete program</FUN_TEXT>
+      <INFO_TEXT>Submit ADK delete report with table and test mode</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_RUN_LOG</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <TEXT_NAME>ICON_LIST</TEXT_NAME>
+      <ICON_ID>@3E@</ICON_ID>
+      <FUN_TEXT>Run log</FUN_TEXT>
+      <INFO_TEXT>Job ZARCH* + job protocol + ZSP26_ARCH_LOG (no SM37/SARA)</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_RUN_SESS</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <TEXT_NAME>ICON_DISPLAY_MORE</TEXT_NAME>
+      <ICON_ID>@16@</ICON_ID>
+      <FUN_TEXT>Archive sessions</FUN_TEXT>
+      <INFO_TEXT>Open archive sessions and view session payload data</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>BT_WRITE</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>Write</FUN_TEXT>
+      <INFO_TEXT>ADK write: preview then archive to .ARC</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
       <CODE>CANC</CODE>
       <TEXTNO>001</TEXTNO>
       <TEXT_TYPE>S</TEXT_TYPE>
@@ -1468,6 +1591,15 @@
       <FUN_TEXT>Exit</FUN_TEXT>
      </RSMPE_FUNT>
      <RSMPE_FUNT>
+      <CODE>ONLI</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <TEXT_NAME>ICON_EXECUTE_OBJECT</TEXT_NAME>
+      <ICON_ID>@8N@</ICON_ID>
+      <FUN_TEXT>Execute</FUN_TEXT>
+      <INFO_TEXT>Execute (F8)</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
       <CODE>SPOOL_BTN</CODE>
       <TEXTNO>001</TEXTNO>
       <TEXT_TYPE>S</TEXT_TYPE>
@@ -1484,130 +1616,6 @@
       <ICON_ID>@XD@</ICON_ID>
       <FUN_TEXT>Start Date</FUN_TEXT>
       <INFO_TEXT>Maintain Start Date</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>ONLI</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <TEXT_NAME>ICON_EXECUTE_OBJECT</TEXT_NAME>
-      <ICON_ID>@8N@</ICON_ID>
-      <FUN_TEXT>Execute</FUN_TEXT>
-      <INFO_TEXT>Execute (F8)</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_WRITE</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <FUN_TEXT>Write</FUN_TEXT>
-      <INFO_TEXT>ADK write: preview then archive to .ARC</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_RESTORE</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <FUN_TEXT>Restore</FUN_TEXT>
-      <INFO_TEXT>ADK read / restore from archive file</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_ADK_DELETE</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <FUN_TEXT>Delete</FUN_TEXT>
-      <INFO_TEXT>ADK delete from DB after archive (Z_ARCH_EKK_DELETE)</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_ARCH_SEL</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <FUN_TEXT>Archive Selection</FUN_TEXT>
-      <INFO_TEXT>Delete program selection screen</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_ELIGIBLE</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <FUN_TEXT>Show eligible</FUN_TEXT>
-      <INFO_TEXT>Rows in retention window that pass archive rules (same as purge preview)</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_RUN_DELETE</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <FUN_TEXT>Run delete program</FUN_TEXT>
-      <INFO_TEXT>Submit ADK delete report with table and test mode</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_MANAGE</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <FUN_TEXT>Config</FUN_TEXT>
-      <INFO_TEXT>Archive table configuration</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_MONITOR</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <TEXT_NAME>ICON_OVERVIEW</TEXT_NAME>
-      <ICON_ID>@3J@</ICON_ID>
-      <FUN_TEXT>Monitor</FUN_TEXT>
-      <INFO_TEXT>Archive Monitor and Statistics</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_RUN_LOG</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <TEXT_NAME>ICON_LIST</TEXT_NAME>
-      <ICON_ID>@3E@</ICON_ID>
-      <FUN_TEXT>Run log</FUN_TEXT>
-      <INFO_TEXT>Job ZARCH* + job protocol + ZSP26_ARCH_LOG (no SM37/SARA)</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_RUN_SESS</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <TEXT_NAME>ICON_DISPLAY_MORE</TEXT_NAME>
-      <ICON_ID>@16@</ICON_ID>
-      <FUN_TEXT>Archive sessions</FUN_TEXT>
-      <INFO_TEXT>Open archive sessions and view session payload data</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_CONTINUE</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <FUN_TEXT>Continue</FUN_TEXT>
-      <INFO_TEXT>Go to main actions (screen 0100)</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_CHG_TAB</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <FUN_TEXT>Change table</FUN_TEXT>
-      <INFO_TEXT>Back to table selection (screen 0400)</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_ADMIN</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <TEXT_NAME>ICON_SYSTEM_USER_MENU</TEXT_NAME>
-      <ICON_ID>@08@</ICON_ID>
-      <FUN_TEXT>Admin</FUN_TEXT>
-      <INFO_TEXT>Maintain archive administrators (ZSP26_ARCH_ADMIN)</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_PREVIEW</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <FUN_TEXT>Preview &amp; Archive</FUN_TEXT>
-      <INFO_TEXT>Open SALV preview then ADK write (after variant / start / spool)</INFO_TEXT>
-     </RSMPE_FUNT>
-     <RSMPE_FUNT>
-      <CODE>BT_REFRESH</CODE>
-      <TEXTNO>001</TEXTNO>
-      <TEXT_TYPE>S</TEXT_TYPE>
-      <TEXT_NAME>ICON_REFRESH</TEXT_NAME>
-      <ICON_ID>@42@</ICON_ID>
-      <FUN_TEXT>Reload</FUN_TEXT>
-      <INFO_TEXT>Reload current screen data</INFO_TEXT>
      </RSMPE_FUNT>
     </FUN>
     <BUT>
@@ -1675,6 +1683,12 @@
      </RSMPE_PFK>
      <RSMPE_PFK>
       <CODE>000002</CODE>
+      <PFNO>08</PFNO>
+      <FUNCODE>ONLI</FUNCODE>
+      <FUNNO>001</FUNNO>
+     </RSMPE_PFK>
+     <RSMPE_PFK>
+      <CODE>000002</CODE>
       <PFNO>12</PFNO>
       <FUNCODE>CANC</FUNCODE>
       <FUNNO>001</FUNNO>
@@ -1705,12 +1719,6 @@
      </RSMPE_PFK>
      <RSMPE_PFK>
       <CODE>000002</CODE>
-      <PFNO>08</PFNO>
-      <FUNCODE>ONLI</FUNCODE>
-      <FUNNO>001</FUNNO>
-     </RSMPE_PFK>
-     <RSMPE_PFK>
-      <CODE>000002</CODE>
       <PFNO>17</PFNO>
       <FUNCODE>BT_REFRESH</FUNCODE>
       <FUNNO>001</FUNNO>
@@ -1723,15 +1731,19 @@
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STATUS_100</STATUS>
-      <FUNCTION>CANC</FUNCTION>
+      <FUNCTION>BT_CHG_TAB</FUNCTION>
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STATUS_100</STATUS>
-      <FUNCTION>EXIT</FUNCTION>
+      <FUNCTION>BT_CONTINUE</FUNCTION>
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STATUS_100</STATUS>
       <FUNCTION>BT_MONITOR</FUNCTION>
+     </RSMPE_STAF>
+     <RSMPE_STAF>
+      <STATUS>STATUS_100</STATUS>
+      <FUNCTION>BT_REFRESH</FUNCTION>
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STATUS_100</STATUS>
@@ -1743,19 +1755,23 @@
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STATUS_100</STATUS>
-      <FUNCTION>BT_CONTINUE</FUNCTION>
+      <FUNCTION>CANC</FUNCTION>
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STATUS_100</STATUS>
-      <FUNCTION>BT_CHG_TAB</FUNCTION>
-     </RSMPE_STAF>
-     <RSMPE_STAF>
-      <STATUS>STATUS_100</STATUS>
-      <FUNCTION>BT_REFRESH</FUNCTION>
+      <FUNCTION>EXIT</FUNCTION>
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STATUS_300</STATUS>
       <FUNCTION>BACK</FUNCTION>
+     </RSMPE_STAF>
+     <RSMPE_STAF>
+      <STATUS>STATUS_300</STATUS>
+      <FUNCTION>BT_PREVIEW</FUNCTION>
+     </RSMPE_STAF>
+     <RSMPE_STAF>
+      <STATUS>STATUS_300</STATUS>
+      <FUNCTION>BT_REFRESH</FUNCTION>
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STATUS_300</STATUS>
@@ -1771,23 +1787,15 @@
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STATUS_300</STATUS>
+      <FUNCTION>ONLI</FUNCTION>
+     </RSMPE_STAF>
+     <RSMPE_STAF>
+      <STATUS>STATUS_300</STATUS>
       <FUNCTION>SPOOL_BTN</FUNCTION>
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STATUS_300</STATUS>
       <FUNCTION>START_BTN</FUNCTION>
-     </RSMPE_STAF>
-     <RSMPE_STAF>
-      <STATUS>STATUS_300</STATUS>
-      <FUNCTION>BT_PREVIEW</FUNCTION>
-     </RSMPE_STAF>
-     <RSMPE_STAF>
-      <STATUS>STATUS_300</STATUS>
-      <FUNCTION>ONLI</FUNCTION>
-     </RSMPE_STAF>
-     <RSMPE_STAF>
-      <STATUS>STATUS_300</STATUS>
-      <FUNCTION>BT_REFRESH</FUNCTION>
      </RSMPE_STAF>
     </SET>
     <DOC>

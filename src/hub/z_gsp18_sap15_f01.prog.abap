@@ -238,7 +238,7 @@ FORM show_archive_preview.
   CALL FUNCTION 'DDIF_FIELDINFO_GET'
     EXPORTING  tabname   = gv_tabname
     TABLES     dfies_tab = lt_dd
-    EXCEPTIONS OTHERS    = 1.
+    EXCEPTIONS OTHERS    = 0.
 
   LOOP AT lt_dd INTO DATA(ls_dd)
     WHERE keyflag = 'X' AND fieldname <> 'MANDT'.

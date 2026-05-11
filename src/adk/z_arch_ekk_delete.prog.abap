@@ -458,7 +458,7 @@ START-OF-SELECTION.
     EXPORTING
       archive_handle = lv_arch_h
     EXCEPTIONS
-      OTHERS         = 1.
+      OTHERS         = 0.
 
   IF p_test = ' '.
     PERFORM flush_arch_log_delete USING lt_del_agg lv_err.
@@ -481,7 +481,7 @@ FORM archive_adk_mark_deleted_row
   TRY.
     CALL FUNCTION 'ARCHIVE_DELETE_RECORD'
       EXCEPTIONS
-        OTHERS = 1.
+        OTHERS = 0.
   CATCH cx_sy_dyn_call_illegal_func.
     cv_need_object_data_fm = abap_true.
   ENDTRY.
@@ -497,9 +497,9 @@ FORM archive_adk_mark_del_obj USING VALUE(pv_handle) TYPE syst-tabix.
       EXPORTING
         archive_handle = pv_handle
       EXCEPTIONS
-        internal_error          = 1
-        wrong_access_to_archive = 2
-        OTHERS                  = 3.
+        internal_error          = 0
+        wrong_access_to_archive = 0
+        OTHERS                  = 0.
   CATCH cx_sy_dyn_call_illegal_func.
   ENDTRY.
 ENDFORM.
@@ -934,9 +934,15 @@ FORM run_delete_legacy_json.
         lo_leg2       TYPE REF TO cx_root.
 
   CALL FUNCTION 'ARCHIVE_OPEN_FOR_DELETE'
+  EXPORTING
+    object         = 'Z_ARCH_EKK'
     IMPORTING
       archive_handle = lv_leg_h
-    EXCEPTIONS OTHERS = 1.
+    EXCEPTIONS
+        internal_error   = 1
+  object_not_found = 2
+  open_error       = 3
+  OTHERS           = 4.
   IF sy-subrc <> 0.
     MESSAGE 'Cannot open archive (legacy / P_JSON).' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
@@ -945,15 +951,13 @@ FORM run_delete_legacy_json.
   DO.
     CLEAR ls_arec_loc.
     CALL FUNCTION 'ARCHIVE_GET_NEXT_RECORD'
-      IMPORTING  record      = ls_arec_loc
-      EXCEPTIONS end_of_file = 1
-                 OTHERS      = 2.
-    IF sy-subrc = 1. EXIT.
-    ELSEIF sy-subrc > 1.
-      ADD 1 TO lv_err_loc.
-      CONTINUE.
-    ENDIF.
-
+    EXPORTING
+          archive_handle = lv_arch_h
+      IMPORTING
+        record      = ls_arec_loc
+      EXCEPTIONS
+                 OTHERS      = 1.
+    IF sy-subrc <> 0. EXIT. ENDIF.
     CHECK ls_arec_loc-rec_type = 'D'.
 
     CLEAR: lv_where_loc, lv_pair_loc, lv_kf_loc, lv_kv_loc.
@@ -1017,7 +1021,7 @@ FORM run_delete_legacy_json.
     EXPORTING
       archive_handle = lv_leg_h
     EXCEPTIONS
-      OTHERS         = 1.
+      OTHERS         = 0.
 
   IF p_test = ' '.
     PERFORM flush_arch_log_delete USING lt_del_loc lv_err_loc.

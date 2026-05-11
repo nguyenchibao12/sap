@@ -439,7 +439,7 @@ START-OF-SELECTION.
       lv_err = lv_err + 1.
       WRITE: / |Error: archive structure registration failed (return code { sy-subrc }).|.
       CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
-        EXPORTING archive_handle = lv_arch_h EXCEPTIONS OTHERS = 1.
+        EXPORTING archive_handle = lv_arch_h EXCEPTIONS OTHERS = 0.
       MESSAGE 'Archive structure registration failed; run cannot continue.' TYPE 'A'.
     ENDIF.
 
@@ -452,7 +452,7 @@ START-OF-SELECTION.
         OTHERS                    = 3.
     IF sy-subrc <> 0.
       CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
-        EXPORTING archive_handle = lv_arch_h EXCEPTIONS OTHERS = 1.
+        EXPORTING archive_handle = lv_arch_h EXCEPTIONS OTHERS = 0.
       MESSAGE 'Could not create a new archive object in the file.' TYPE 'A'.
     ENDIF.
 
@@ -474,7 +474,7 @@ START-OF-SELECTION.
         EXPORTING
           archive_handle = lv_arch_h
         EXCEPTIONS
-          OTHERS         = 1.
+          OTHERS         = 0.
       MESSAGE 'Writing rows to the archive file failed.' TYPE 'A'.
     ENDIF.
 
@@ -495,7 +495,7 @@ START-OF-SELECTION.
         EXPORTING
           archive_handle = lv_arch_h
         EXCEPTIONS
-          OTHERS         = 1.
+          OTHERS         = 0.
       MESSAGE 'Saving the archive object failed.' TYPE 'A'.
     ENDIF.
 
@@ -503,7 +503,7 @@ START-OF-SELECTION.
       EXPORTING
         archive_handle = lv_arch_h
       EXCEPTIONS
-        OTHERS         = 1.
+        OTHERS         = 0.
 
     GET TIME STAMP FIELD lv_ts_e.
 
