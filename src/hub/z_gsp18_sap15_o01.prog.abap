@@ -12,7 +12,7 @@ MODULE status_0400 OUTPUT.
   ENDIF.
 
   SET PF-STATUS 'STATUS_100'.
-  SET TITLEBAR 'TITLE_100'.
+  SET TITLEBAR 'TITLE_100' ##TITL_UNDEF.
 ENDMODULE.
 
 MODULE status_0100 OUTPUT.
@@ -58,13 +58,13 @@ MODULE status_0100 OUTPUT.
   SET CURSOR FIELD 'CHANGE_TAB_BTN'.
 
   SET PF-STATUS 'STATUS_100'.
-  SET TITLEBAR 'TITLE_100'.
+  SET TITLEBAR 'TITLE_100' ##TITL_UNDEF.
 ENDMODULE.
 
 MODULE status_0200 OUTPUT.
   " STATUS_200 does not exist in CUA — reuse STATUS_100
   SET PF-STATUS 'STATUS_100'.
-  SET TITLEBAR 'TITLE_100'.
+  SET TITLEBAR 'TITLE_100' ##TITL_UNDEF.
   " Load and build field catalog if no data yet
   IF gt_arch_stat IS INITIAL.
     PERFORM get_data.
@@ -93,7 +93,7 @@ MODULE status_0700 OUTPUT.
   ENDIF.
 
   SET PF-STATUS 'STATUS_300'.
-  SET TITLEBAR 'TITLE_300'.
+  SET TITLEBAR 'TITLE_300' ##TITL_UNDEF.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
@@ -136,7 +136,7 @@ MODULE status_0300 OUTPUT.
   lv_excl_300 = 'BT_PREVIEW'. APPEND lv_excl_300 TO lt_excl_300.
 
   SET PF-STATUS 'STATUS_300' EXCLUDING lt_excl_300.
-  SET TITLEBAR 'TITLE_300'.
+  SET TITLEBAR 'TITLE_300' ##TITL_UNDEF.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
@@ -177,7 +177,7 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 MODULE status_0500 OUTPUT.
   SET PF-STATUS 'STATUS_300'.
-  SET TITLEBAR 'TITLE_300'.
+  SET TITLEBAR 'TITLE_300' ##TITL_UNDEF.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
@@ -256,7 +256,7 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 MODULE status_0600 OUTPUT.
   SET PF-STATUS 'STATUS_300'.
-  SET TITLEBAR 'TITLE_300'.
+  SET TITLEBAR 'TITLE_300' ##TITL_UNDEF.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
@@ -277,7 +277,7 @@ MODULE status_0800 OUTPUT.
     gv_reg_ret = '365'.
   ENDIF.
   SET PF-STATUS 'STATUS_300'.
-  SET TITLEBAR 'TITLE_300'.
+  SET TITLEBAR 'TITLE_300' ##TITL_UNDEF.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
@@ -285,5 +285,5 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 MODULE status_0810 OUTPUT.
   SET PF-STATUS 'STATUS_300'.
-  SET TITLEBAR 'TITLE_300'.
+  SET TITLEBAR 'TITLE_300' ##TITL_UNDEF.
 ENDMODULE.

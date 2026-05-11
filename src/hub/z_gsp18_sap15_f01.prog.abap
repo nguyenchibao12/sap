@@ -4317,7 +4317,7 @@ FORM arch_popup_wvar_3ch_fb
       answer         = lv_a
     EXCEPTIONS
       OTHERS         = 0.
-  IF sy-subrc <> 0 OR lv_a = 'A' OR lv_a IS INITIAL.
+  IF lv_a = 'A' OR lv_a IS INITIAL.
     RETURN.
   ENDIF.
   IF lv_a = 'J'.
@@ -4340,7 +4340,7 @@ FORM arch_popup_wvar_3ch_fb
       answer         = lv_a
     EXCEPTIONS
       OTHERS         = 0.
-  IF sy-subrc <> 0 OR lv_a = 'A' OR lv_a IS INITIAL.
+  IF lv_a = 'A' OR lv_a IS INITIAL.
     RETURN.
   ENDIF.
   IF lv_a = 'J'.
