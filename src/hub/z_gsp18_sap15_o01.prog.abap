@@ -9,7 +9,6 @@ MODULE status_0400 OUTPUT.
     gv_hub_allowed = abap_true.
     SET SCREEN 0100.
     LEAVE SCREEN.
-    RETURN.
   ENDIF.
 
   SET PF-STATUS 'STATUS_100'.

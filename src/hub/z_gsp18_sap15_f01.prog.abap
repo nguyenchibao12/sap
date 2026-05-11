@@ -4303,51 +4303,49 @@ FORM arch_popup_wvar_3ch_fb
   USING    iv_titel TYPE char40
   CHANGING cv_answer TYPE char1.
 
-  DATA lv_a TYPE c LENGTH 4.
+  DATA lv_a TYPE c LENGTH 1.
 
   CLEAR cv_answer.
-  CALL FUNCTION 'POPUP_TO_DECIDE'
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
-      titel         = iv_titel
-      textline1     = '-'
-      text_option1  = 'Change variant'
-      text_option2  = 'Copy or delete...'
-      defaultoption = '1'
+      titlebar       = iv_titel
+      text_question  = '-'
+      text_button_1  = 'Change variant'
+      text_button_2  = 'Copy or delete...'
+      default_button = '1'
     IMPORTING
-      answer        = lv_a
+      answer         = lv_a
     EXCEPTIONS
-      OTHERS        = 0.
-  CONDENSE lv_a NO-GAPS.
+      OTHERS         = 0.
   IF sy-subrc <> 0 OR lv_a = 'A' OR lv_a IS INITIAL.
     RETURN.
   ENDIF.
-  IF lv_a = '1'.
+  IF lv_a = 'J'.
     cv_answer = '1'.
     RETURN.
   ENDIF.
-  IF lv_a <> '2'.
+  IF lv_a <> 'N'.
     MESSAGE |Invalid selection ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  CALL FUNCTION 'POPUP_TO_DECIDE'
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
-      titel         = iv_titel
-      textline1     = '-'
-      text_option1  = 'Copy variant'
-      text_option2  = 'Delete variant'
-      defaultoption = '1'
+      titlebar       = iv_titel
+      text_question  = '-'
+      text_button_1  = 'Copy variant'
+      text_button_2  = 'Delete variant'
+      default_button = '1'
     IMPORTING
-      answer        = lv_a
+      answer         = lv_a
     EXCEPTIONS
-      OTHERS        = 0.
-  CONDENSE lv_a NO-GAPS.
+      OTHERS         = 0.
   IF sy-subrc <> 0 OR lv_a = 'A' OR lv_a IS INITIAL.
     RETURN.
   ENDIF.
-  IF lv_a = '1'.
+  IF lv_a = 'J'.
     cv_answer = '2'.
-  ELSEIF lv_a = '2'.
+  ELSEIF lv_a = 'N'.
     cv_answer = '3'.
   ELSE.
     MESSAGE |Invalid selection ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W'.
