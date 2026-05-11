@@ -399,7 +399,7 @@ FORM zsp26_arch_fix_where_glued_and
     RETURN.
   ENDIF.
 
-  REFRESH lt_kflen.
+  CLEAR lt_kflen.
   LOOP AT lt_df INTO ls_df WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
     CLEAR ls_kf.
     ls_kf-kfname = ls_df-fieldname.
@@ -443,15 +443,17 @@ FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.
   SELECT table_name, description
     FROM zsp26_arch_cfg
     WHERE is_active = 'X'
-    INTO CORRESPONDING FIELDS OF TABLE @lt_cfg
+    INTO TABLE @DATA(lt_cfg_tmp)
     UP TO 999 ROWS.
+  lt_cfg = CORRESPONDING #( lt_cfg_tmp ).
 
   " Step 2: Read all Z* transparent tables from DDIC
   SELECT tabname AS table_name, ddtext AS description
     FROM dd02v
-    INTO CORRESPONDING FIELDS OF TABLE @lt_sht
+    INTO TABLE @DATA(lt_sht_tmp)
     WHERE tabname  LIKE 'Z%'
       AND tabclass = 'TRANSP'.
+  lt_sht = CORRESPONDING #( lt_sht_tmp ).
 
   " Step 3: Mark tables that have config
   LOOP AT lt_sht ASSIGNING FIELD-SYMBOL(<row>).

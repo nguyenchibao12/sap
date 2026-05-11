@@ -951,10 +951,10 @@ FORM run_delete_legacy_json.
   DO.
     CLEAR ls_arec_loc.
     CALL FUNCTION 'ARCHIVE_GET_NEXT_RECORD'
-    EXPORTING
-          archive_handle = lv_arch_h
+      EXPORTING
+        archive_handle = lv_leg_h
       IMPORTING
-        record      = ls_arec_loc
+        record         = ls_arec_loc
       EXCEPTIONS
                  OTHERS      = 1.
     IF sy-subrc <> 0. EXIT. ENDIF.

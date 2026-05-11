@@ -924,7 +924,7 @@ FORM do_archive_delete_bg_job.
         IMPORTING
           answer                = lv_prev_ans
         EXCEPTIONS
-          OTHERS                = 1.
+          OTHERS                = 0.
       IF lv_prev_ans <> '1'.
         MESSAGE |Cancelled — session { lv_sel_doc } was already deleted previously.| TYPE 'S' DISPLAY LIKE 'W'.
         RETURN.
@@ -1619,7 +1619,7 @@ FORM do_restore_menu.
     IMPORTING
       answer                = lv_ans
     EXCEPTIONS
-      OTHERS                = 1.
+      OTHERS                = 0.
 
   CASE lv_ans.
     WHEN '1'.
@@ -1693,7 +1693,7 @@ FORM do_restore_from_hub.
     IMPORTING
       answer                = lv_ans
     EXCEPTIONS
-      OTHERS                = 1.
+      OTHERS                = 0.
 
   IF lv_ans = '1'.
     PERFORM do_restore_via_adk.
@@ -1762,7 +1762,7 @@ FORM do_archive.
   CALL FUNCTION 'DDIF_FIELDINFO_GET'
     EXPORTING  tabname   = gv_tabname
     TABLES     dfies_tab = lt_dd
-    EXCEPTIONS OTHERS    = 1.
+    EXCEPTIONS OTHERS    = 0.
   LOOP AT lt_dd INTO DATA(ls_dd) WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
     APPEND ls_dd-fieldname TO lt_kfs.
   ENDLOOP.
@@ -1950,7 +1950,7 @@ FORM do_monitor_menu.
     IMPORTING
       answer                = lv_ans
     EXCEPTIONS
-      OTHERS                = 1.
+      OTHERS                = 0.
 
   CASE lv_ans.
     WHEN '1'.
@@ -2259,10 +2259,8 @@ FORM show_mon_help.
   CALL FUNCTION 'POPUP_TO_DISPLAY_TEXT'
     EXPORTING
       titel     = 'How to read this screen'
-      textline1 = '1) Candidates = rows old enough by retention and matching active rules.'
-      textline2 = '2) Archived/Deleted = totals from run logs (history).'
-      textline3 = '3) Est. Space Saved (MB) = estimate only, not exact DB reclaimed size.'
-      textline4 = '4) Start with rows having highest Candidates, then run Archive/Delete.'.
+      textline1 = '1) Candidates=rows old enough. 2) Arch/Del=run log totals.'
+      textline2 = '3) Space(MB)=estimate only. 4) Start with highest Candidates.'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -2343,7 +2341,7 @@ FORM show_hub_run_diagnostics.
       IMPORTING
         answer                = lv_rd_ans
       EXCEPTIONS
-        OTHERS                = 1.
+        OTHERS                = 0.
     CASE lv_rd_ans.
       WHEN '1'.
         PERFORM show_hub_btc_job_list.
@@ -2925,7 +2923,7 @@ FORM run_open_document USING VALUE(pv_doc) TYPE admi_run-document.
   IF lv_openrc = 0.
     CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
       EXPORTING archive_handle = lv_h
-      EXCEPTIONS OTHERS = 1.
+      EXCEPTIONS OTHERS = 0.
   ELSE.
     PERFORM run_show_document_detail USING pv_doc lv_openrc.
     RETURN.
@@ -3531,7 +3529,7 @@ FORM do_delete_old_logs.
     IMPORTING
       answer                = lv_answer
     EXCEPTIONS
-      OTHERS                = 1.
+      OTHERS                = 0.
 
   IF lv_answer <> '1'.
     MESSAGE 'Log deletion cancelled.' TYPE 'S'.
@@ -3956,7 +3954,7 @@ FORM do_reg_validate_and_save.
       IMPORTING
         answer                = lv_ans
       EXCEPTIONS
-        OTHERS                = 1.
+        OTHERS                = 0.
     IF lv_ans <> '1'.
       RETURN.
     ENDIF.
@@ -4236,7 +4234,7 @@ FORM check_dependencies
     IMPORTING
       answer                = lv_answer
     EXCEPTIONS
-      OTHERS                = 1.
+      OTHERS                = 0.
 
   IF lv_answer <> '1'.
     cv_ok = abap_false.
@@ -4318,7 +4316,7 @@ FORM arch_popup_wvar_3ch_fb
     IMPORTING
       answer        = lv_a
     EXCEPTIONS
-      OTHERS        = 1.
+      OTHERS        = 0.
   CONDENSE lv_a NO-GAPS.
   IF sy-subrc <> 0 OR lv_a = 'A' OR lv_a IS INITIAL.
     RETURN.
@@ -4342,7 +4340,7 @@ FORM arch_popup_wvar_3ch_fb
     IMPORTING
       answer        = lv_a
     EXCEPTIONS
-      OTHERS        = 1.
+      OTHERS        = 0.
   CONDENSE lv_a NO-GAPS.
   IF sy-subrc <> 0 OR lv_a = 'A' OR lv_a IS INITIAL.
     RETURN.
@@ -4427,7 +4425,7 @@ FORM zsp26_hub_edit_wvar_0500.
       IMPORTING
         answer                = lv_ans
       EXCEPTIONS
-        OTHERS                = 1.
+        OTHERS                = 0.
     IF lv_ans <> '1'.
       RETURN.
     ENDIF.

@@ -1,6 +1,6 @@
 REPORT z_arch_ekk_read.
 
-INCLUDE z_gsp18_arch_dyn.
+INCLUDE z_gsp18_arch_dyn. ##INCL_OK
 
 *&---------------------------------------------------------------------*
 *& Report  Z_ARCH_EKK_READ
@@ -24,15 +24,15 @@ TYPES: BEGIN OF ty_disp,
         data_json  TYPE string,
       END OF ty_disp.
 
-DATA: ls_arec    TYPE ty_arch_rec,
-      lt_disp    TYPE TABLE OF ty_disp,
-      ls_disp    TYPE ty_disp,
-      g_scr_r0(72) TYPE c,
-      lv_arch_h  TYPE syst-tabix,
-      lv_obj     TYPE arch_obj-object VALUE 'Z_ARCH_EKK',
-      gr_dyn     TYPE REF TO data.
+DATA: ls_arec    TYPE ty_arch_rec,      ##NEEDED
+      lt_disp    TYPE TABLE OF ty_disp, ##NEEDED
+      ls_disp    TYPE ty_disp,          ##NEEDED
+      g_scr_r0(72) TYPE c,              ##NEEDED
+      lv_arch_h  TYPE syst-tabix,       ##NEEDED
+      lv_obj     TYPE arch_obj-object VALUE 'Z_ARCH_EKK', ##NEEDED
+      gr_dyn     TYPE REF TO data.      ##NEEDED
 
-FIELD-SYMBOLS: <lt_dyn> TYPE ANY TABLE.
+FIELD-SYMBOLS: <lt_dyn> TYPE ANY TABLE. ##NEEDED
 
 PARAMETERS: p_table TYPE tabname.
 PARAMETERS: p_rest  TYPE c       AS CHECKBOX DEFAULT ' '.
@@ -82,7 +82,7 @@ START-OF-SELECTION.
 
   IF p_json = 'X'.
     PERFORM run_read_legacy_json.
-    EXIT.
+    RETURN.
   ENDIF.
 
   IF p_doc IS NOT INITIAL.
@@ -136,7 +136,7 @@ START-OF-SELECTION.
   " 1) File handle path first — avoids READ_OBJECT moving cursor before GET_NEXT (same as Z_ARCH_EKK_DELETE).
   CLEAR lv_gno_ix.
   DO.
-    ADD 1 TO lv_gno_ix.
+    lv_gno_ix = lv_gno_ix + 1.
     CALL FUNCTION 'ARCHIVE_GET_NEXT_OBJECT'
       EXPORTING
         archive_handle = lv_arch_h
@@ -158,7 +158,7 @@ START-OF-SELECTION.
   IF lines( lt_disp ) = 0.
     CLEAR lv_ro_ix.
     DO.
-      ADD 1 TO lv_ro_ix.
+      lv_ro_ix = lv_ro_ix + 1.
       CLEAR lv_obj_h.
       CALL FUNCTION 'ARCHIVE_READ_OBJECT'
         EXPORTING
@@ -189,7 +189,7 @@ START-OF-SELECTION.
     EXPORTING
       archive_handle = lv_arch_h
     EXCEPTIONS
-      OTHERS         = 1.
+      OTHERS         = 0.
 
   IF lt_disp IS INITIAL.
     MESSAGE |No data found for { p_table }. Check the archive session matches your write run, or use legacy mode if your file uses the old format.| TYPE 'S' DISPLAY LIKE 'W'.
@@ -268,7 +268,7 @@ FORM read_process_zstr_object
 
   lv_disp0 = lines( lt_disp ).
 
-  REFRESH lt_arch.
+  CLEAR lt_arch.
 
   CALL FUNCTION 'ARCHIVE_GET_TABLE'
     EXPORTING
@@ -382,7 +382,7 @@ FORM read_process_zstr_object
       TRY.
           CREATE DATA gr_dyn TYPE (lv_tn_row).
         CATCH cx_sy_create_data_error.
-          ADD 1 TO lv_ief.
+          lv_ief = lv_ief + 1.
           WRITE: / |  Skipped restore: table { lv_tn_row } is not defined in the dictionary.|.
           CONTINUE.
       ENDTRY.
@@ -402,21 +402,21 @@ FORM read_process_zstr_object
             IF sy-subrc <> 0.
               ls_tbl_stat-table_name = lv_tn_row.
             ENDIF.
-            ADD 1 TO ls_tbl_stat-cnt_ok.
+            ls_tbl_stat-cnt_ok = ls_tbl_stat-cnt_ok + 1.
             IF lv_stat_ix > 0.
               MODIFY lt_tbl_stat FROM ls_tbl_stat INDEX lv_stat_ix.
             ELSE.
               APPEND ls_tbl_stat TO lt_tbl_stat.
             ENDIF.
           ELSE.
-            ADD 1 TO lv_ief.
+            lv_ief = lv_ief + 1.
             CLEAR ls_tbl_stat.
             READ TABLE lt_tbl_stat INTO ls_tbl_stat WITH KEY table_name = lv_tn_row.
             lv_stat_ix = sy-tabix.
             IF sy-subrc <> 0.
               ls_tbl_stat-table_name = lv_tn_row.
             ENDIF.
-            ADD 1 TO ls_tbl_stat-cnt_err.
+            ls_tbl_stat-cnt_err = ls_tbl_stat-cnt_err + 1.
             IF lv_stat_ix > 0.
               MODIFY lt_tbl_stat FROM ls_tbl_stat INDEX lv_stat_ix.
             ELSE.
@@ -424,14 +424,14 @@ FORM read_process_zstr_object
             ENDIF.
           ENDIF.
         CATCH cx_root.
-          ADD 1 TO lv_ief.
+          lv_ief = lv_ief + 1.
           CLEAR ls_tbl_stat.
           READ TABLE lt_tbl_stat INTO ls_tbl_stat WITH KEY table_name = lv_tn_row.
           lv_stat_ix = sy-tabix.
           IF sy-subrc <> 0.
             ls_tbl_stat-table_name = lv_tn_row.
           ENDIF.
-          ADD 1 TO ls_tbl_stat-cnt_err.
+          ls_tbl_stat-cnt_err = ls_tbl_stat-cnt_err + 1.
           IF lv_stat_ix > 0.
             MODIFY lt_tbl_stat FROM ls_tbl_stat INDEX lv_stat_ix.
           ELSE.
@@ -446,8 +446,10 @@ FORM read_process_zstr_object
     GET TIME STAMP FIELD lv_ts_e.
     TRY. ls_log-log_id = cl_system_uuid=>create_uuid_x16_static( ).
     CATCH cx_uuid_error. ENDTRY.
-    SELECT SINGLE config_id FROM zsp26_arch_cfg INTO @ls_log-config_id
+    SELECT config_id FROM zsp26_arch_cfg
+      INTO @ls_log-config_id UP TO 1 ROWS
       WHERE table_name = @p_table AND is_active = 'X'.
+    ENDSELECT.
     ls_log-table_name = COND tabname( WHEN p_table IS INITIAL THEN '*' ELSE p_table ).
     ls_log-action     = 'RESTORE'.
     ls_log-rec_count  = lv_ins.
@@ -553,7 +555,7 @@ FORM run_read_legacy_json.
     EXPORTING
       archive_handle = lv_arch_h_loc
     EXCEPTIONS
-      OTHERS         = 1.
+      OTHERS         = 0.
 
   IF lt_disp IS INITIAL.
     MESSAGE |No legacy JSON records for '{ p_table }'| TYPE 'S' DISPLAY LIKE 'W'.
@@ -609,7 +611,7 @@ FORM run_read_legacy_json.
       TRY.
           CREATE DATA gr_rec TYPE (lv_ltab).
         CATCH cx_sy_create_data_error.
-          ADD 1 TO lv_err.
+          lv_err = lv_err + 1.
           CONTINUE.
       ENDTRY.
       ASSIGN gr_rec->* TO FIELD-SYMBOL(<rec>).
@@ -622,12 +624,12 @@ FORM run_read_legacy_json.
         PERFORM restore_assign_current_mandt USING gr_rec.
         MODIFY (lv_ltab) FROM <rec>.
         IF sy-subrc = 0.
-          ADD 1 TO lv_ok.
+          lv_ok = lv_ok + 1.
         ELSE.
-          ADD 1 TO lv_err.
+          lv_err = lv_err + 1.
         ENDIF.
       CATCH cx_root.
-        ADD 1 TO lv_err.
+        lv_err = lv_err + 1.
       ENDTRY.
     ENDLOOP.
 
@@ -644,8 +646,10 @@ FORM run_read_legacy_json.
     ENDIF.
     TRY. ls_log2-log_id = cl_system_uuid=>create_uuid_x16_static( ).
     CATCH cx_uuid_error. ENDTRY.
-    SELECT SINGLE config_id FROM zsp26_arch_cfg INTO @ls_log2-config_id
+    SELECT config_id FROM zsp26_arch_cfg
+      INTO @ls_log2-config_id UP TO 1 ROWS
       WHERE table_name = @lv_log_tab AND is_active = 'X'.
+    ENDSELECT.
     ls_log2-table_name = lv_log_tab.
     ls_log2-action     = 'RESTORE'.
     ls_log2-rec_count  = lv_ok.
@@ -708,7 +712,9 @@ FORM restore_fill_aedat_from_bedat USING pr_row TYPE REF TO data.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-FORM handle_ucomm USING r_ucomm TYPE sy-ucomm rs_selfield TYPE slis_selfield.
+FORM handle_ucomm ##CALLED
+    USING r_ucomm    TYPE sy-ucomm     ##NEEDED
+          rs_selfield TYPE slis_selfield. ##NEEDED
 ENDFORM.
 
 *&---------------------------------------------------------------------*

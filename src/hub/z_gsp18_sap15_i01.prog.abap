@@ -265,7 +265,7 @@ MODULE check_variant_0300 INPUT.
       IMPORTING
         answer                = lv_ans_chk
       EXCEPTIONS
-        OTHERS                = 1.
+        OTHERS                = 0.
     IF lv_ans_chk = '1'.
       PERFORM arch_ensure_write_variant
         USING gv_prog_write lv_vtech_c gv_tabname
@@ -339,7 +339,7 @@ MODULE user_command_0300 INPUT.
                 IMPORTING
                   answer                = lv_ans_300
                 EXCEPTIONS
-                  OTHERS                = 1.
+                  OTHERS                = 0.
               IF lv_ans_300 = '1'.
                 PERFORM arch_ensure_write_variant
                   USING gv_prog_write lv_vtech_300 gv_tabname
@@ -577,7 +577,7 @@ MODULE user_command_0600 INPUT.
             IMPORTING
               answer                = lv_ans_600
             EXCEPTIONS
-              OTHERS                = 1.
+              OTHERS                = 0.
           IF lv_ans_600 = '1'.
             PERFORM arch_ensure_write_variant
               USING gv_prog_del lv_vtech_600 gv_tabname
