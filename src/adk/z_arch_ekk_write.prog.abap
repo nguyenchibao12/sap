@@ -233,8 +233,8 @@ AT SELECTION-SCREEN.
           CHANGING  t_table      = <lt_src> ).
         lo_alv2->get_functions( )->set_all( abap_true ).
         lo_alv2->get_columns( )->set_optimize( abap_true ).
-        lo_alv2->get_display_settings( )->set_list_header(
-          |[PREVIEW] { p_table } — { lines( <lt_src> ) } rows (dynamic line type)| ##NO_TEXT ).
+        DATA(lv_prev_hdr2) = |[PREVIEW] { p_table } — { lines( <lt_src> ) } rows (dynamic line type)| ##NO_TEXT.
+        lo_alv2->get_display_settings( )->set_list_header( lv_prev_hdr2 ).
         lo_alv2->display( ).
       CATCH cx_salv_msg. ENDTRY.
 

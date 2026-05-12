@@ -3,7 +3,7 @@
 *& Fields / Types / Classes — equivalent to "Fields" + "Types" + "Classes"
 *& in the SE80 object tree
 *&---------------------------------------------------------------------*
-TYPE-POOLS btc.
+CONSTANTS gc_btc_stdt_immediate TYPE tbtcstrt-startdttyp VALUE 'I'.
 
 "----------------------------------------------------------------------
 " OK-Code (shared across all screens)

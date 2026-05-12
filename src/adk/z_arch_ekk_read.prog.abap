@@ -217,8 +217,8 @@ START-OF-SELECTION.
       TRY. lo_col ?= lo_cols->get_column( 'DATA_JSON' ).
           lo_col->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
       lo_disp_s = lo_alv->get_display_settings( ).
-      lo_disp_s->set_list_header(
-        |GENERIC ADK — { p_table } [ { lines( lt_disp ) } ]| ##NO_TEXT ).
+      DATA(lv_adk_hdr) = |GENERIC ADK — { p_table } [ { lines( lt_disp ) } ]| ##NO_TEXT.
+      lo_disp_s->set_list_header( lv_adk_hdr ).
       lo_alv->display( ).
     CATCH cx_salv_msg INTO lx_gen.
       MESSAGE lx_gen->get_text( ) TYPE 'E'.
@@ -588,8 +588,8 @@ FORM run_read_legacy_json.
         lo_col->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
 
     lo_disp_s = lo_alv->get_display_settings( ).
-    lo_disp_s->set_list_header(
-      |LEGACY JSON — { p_table } [ { lines( lt_disp ) } ]| ##NO_TEXT ).
+    DATA(lv_json_hdr) = |LEGACY JSON — { p_table } [ { lines( lt_disp ) } ]| ##NO_TEXT.
+    lo_disp_s->set_list_header( lv_json_hdr ).
 
     lo_alv->display( ).
 
