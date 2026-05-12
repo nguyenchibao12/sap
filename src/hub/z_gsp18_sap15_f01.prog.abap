@@ -268,8 +268,8 @@ FORM show_archive_preview.
       CHANGING lv_rule_pass.
 
     IF lv_rule_pass = abap_false.
-      ls_prev-status = 'RULE FAIL'.
-      ls_prev-detail = 'Does not meet archive criteria'.
+      ls_prev-status = 'RULE FAIL' ##NO_TEXT.
+      ls_prev-detail = 'Does not meet archive criteria' ##NO_TEXT.
       ADD 1 TO lv_fail_cnt.
       ADD 1 TO gv_skp_cnt.
     ELSEIF ls_prev-date_val IS INITIAL.
@@ -558,7 +558,7 @@ FORM refresh_var_tech_display.
   IF lv_ok = abap_true.
     gv_var_tech = lv_vt.
   ELSE.
-    gv_var_tech = '(name too long / invalid)'.
+    gv_var_tech = '(name too long / invalid)' ##NO_TEXT.
   ENDIF.
 ENDFORM.
 
@@ -1984,14 +1984,14 @@ FORM do_monitor.
       lo_funcs->add_function(
         name     = 'MON_DETAIL'
         icon     = '@2I@'
-        text     = 'Detail Log'
-        tooltip  = 'View detailed log for the selected table'
+        text     = 'Detail Log' ##NO_TEXT
+        tooltip  = 'View detailed log for the selected table' ##NO_TEXT
         position = if_salv_c_function_position=>right_of_salv_functions ).
       lo_funcs->add_function(
         name     = 'MON_HELP'
         icon     = '@0S@'
-        text     = 'Guide'
-        tooltip  = 'Column guide and how to read the data'
+        text     = 'Guide' ##NO_TEXT
+        tooltip  = 'Column guide and how to read the data' ##NO_TEXT
         position = if_salv_c_function_position=>right_of_salv_functions ).
     CATCH cx_salv_method_not_supported
           cx_salv_wrong_call
@@ -2308,14 +2308,14 @@ FORM show_hub_admi_session_groups.
        OR lv_stat_t CS 'CANCEL'
        OR lv_stat_t CS 'ABORT'.
       ls_det-grp_ord  = 1.
-      ls_det-grp_text = 'Archiving Sessions with Errors'.
+      ls_det-grp_text = 'Archiving Sessions with Errors' ##NO_TEXT.
       ls_det-grp_icon = icon_led_red.
     ELSEIF lv_stat_t CS 'ERR'
        OR lv_stat_t CS 'FAIL'
        OR lv_stat_t CS 'PROBLEM'
        OR lv_stat_t CS 'NOT OK'.
       ls_det-grp_ord  = 1.
-      ls_det-grp_text = 'Archiving Sessions with Errors'.
+      ls_det-grp_text = 'Archiving Sessions with Errors' ##NO_TEXT.
       ls_det-grp_icon = icon_led_red.
     ELSEIF lv_stat_k CA 'FSC'
        OR ( lv_stat_t CS 'COMPLETE' AND lv_stat_t NS 'INCOMPLETE' )
@@ -2328,11 +2328,11 @@ FORM show_hub_admi_session_groups.
           AND message LIKE @lv_like_chk.
       IF lv_del_chk > 0.
         ls_det-grp_ord  = 3.
-        ls_det-grp_text = 'Complete Archiving Sessions'.
+        ls_det-grp_text = 'Complete Archiving Sessions' ##NO_TEXT.
         ls_det-grp_icon = icon_led_green.
       ELSE.
         ls_det-grp_ord  = 2.
-        ls_det-grp_text = 'Incomplete Archiving Sessions'.
+        ls_det-grp_text = 'Incomplete Archiving Sessions' ##NO_TEXT.
         ls_det-grp_icon = icon_led_yellow.
       ENDIF.
     ELSEIF lv_stat_t CS 'INCOMPLETE'
@@ -2341,11 +2341,11 @@ FORM show_hub_admi_session_groups.
        OR lv_stat_t CS 'ACTIVE'
        OR lv_stat_t CS 'OPEN'.
       ls_det-grp_ord  = 2.
-      ls_det-grp_text = 'Incomplete Archiving Sessions'.
+      ls_det-grp_text = 'Incomplete Archiving Sessions' ##NO_TEXT.
       ls_det-grp_icon = icon_led_yellow.
     ELSE.
       ls_det-grp_ord  = 2.
-      ls_det-grp_text = 'Incomplete Archiving Sessions'.
+      ls_det-grp_text = 'Incomplete Archiving Sessions' ##NO_TEXT.
       ls_det-grp_icon = icon_led_yellow.
     ENDIF.
 
@@ -2449,13 +2449,13 @@ FORM show_hub_admi_session_groups.
     CLEAR: lv_hdr_txt, lv_hdr_icn.
     CASE sy-index.
       WHEN 1.
-        lv_hdr_txt = 'Archiving Sessions with Errors'.
+        lv_hdr_txt = 'Archiving Sessions with Errors' ##NO_TEXT.
         lv_hdr_icn = icon_led_red.
       WHEN 2.
-        lv_hdr_txt = 'Incomplete Archiving Sessions'.
+        lv_hdr_txt = 'Incomplete Archiving Sessions' ##NO_TEXT.
         lv_hdr_icn = icon_led_yellow.
       WHEN 3.
-        lv_hdr_txt = 'Complete Archiving Sessions'.
+        lv_hdr_txt = 'Complete Archiving Sessions' ##NO_TEXT.
         lv_hdr_icn = icon_led_green.
     ENDCASE.
     ls_view-grp_icon = lv_hdr_icn.
@@ -2523,8 +2523,8 @@ FORM show_hub_admi_session_groups.
           lo_funcs->add_function(
             name     = 'RUN_OPEN'
             icon     = '@2L@'
-            text     = 'Open Session'
-            tooltip  = 'Open selected session (or pick one session within a range)'
+            text     = 'Open Session' ##NO_TEXT
+            tooltip  = 'Open selected session (or pick one session within a range)' ##NO_TEXT
             position = if_salv_c_function_position=>right_of_salv_functions ).
         CATCH cx_salv_method_not_supported
               cx_salv_wrong_call
@@ -2551,11 +2551,11 @@ FORM show_hub_admi_session_groups.
           lo_col->set_long_text( ' ' ##NO_TEXT ).
           lo_col->set_icon( if_salv_c_bool_sap=>true ).
           lo_col ?= lo_cols->get_column( 'SESSION_GROUP' ).
-          lo_col->set_short_text( 'Group' ).
+          lo_col->set_short_text( 'Group' ##NO_TEXT ).
           lo_col->set_medium_text( TEXT-037 ).
           lo_col->set_long_text( TEXT-037 ).
           lo_col ?= lo_cols->get_column( 'SESSION_RANGE' ).
-          lo_col->set_short_text( 'Ranges' ).
+          lo_col->set_short_text( 'Ranges' ##NO_TEXT ).
           lo_col->set_medium_text( TEXT-038 ).
           lo_col->set_long_text( TEXT-038 ).
         CATCH cx_salv_not_found.
@@ -2660,9 +2660,9 @@ FORM run_pick_document_in_range
     ls_pick-user_name = ls_src-user_name.
     " Show business status consistent with grouping
     IF ls_src-grp_ord = 1.
-      ls_pick-status = 'Error'.
+      ls_pick-status = 'Error' ##NO_TEXT.
     ELSEIF ls_src-grp_ord = 3.
-      ls_pick-status = 'Write+Delete done'.
+      ls_pick-status = 'Write+Delete done' ##NO_TEXT.
     ELSE.
       lv_like_doc = |%DOC={ ls_src-document }%| ##NO_TEXT.
       SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_cnt
@@ -2670,9 +2670,9 @@ FORM run_pick_document_in_range
           AND status  = 'S'
           AND message LIKE @lv_like_doc.
       IF lv_del_cnt > 0.
-        ls_pick-status = 'Write+Delete done'.
+        ls_pick-status = 'Write+Delete done' ##NO_TEXT.
       ELSE.
-        ls_pick-status = 'Write only'.
+        ls_pick-status = 'Write only' ##NO_TEXT.
       ENDIF.
     ENDIF.
     APPEND ls_pick TO lt_pick.
