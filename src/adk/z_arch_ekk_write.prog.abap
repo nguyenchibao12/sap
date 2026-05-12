@@ -234,7 +234,7 @@ AT SELECTION-SCREEN.
         lo_alv2->get_functions( )->set_all( abap_true ).
         lo_alv2->get_columns( )->set_optimize( abap_true ).
         lo_alv2->get_display_settings( )->set_list_header(
-          |[PREVIEW] { p_table } — { lines( <lt_src> ) } rows (dynamic line type)| ) ##NO_TEXT.
+          |[PREVIEW] { p_table } — { lines( <lt_src> ) } rows (dynamic line type)| ##NO_TEXT ).
         lo_alv2->display( ).
       CATCH cx_salv_msg. ENDTRY.
 
