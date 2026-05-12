@@ -712,12 +712,6 @@ FORM restore_fill_aedat_from_bedat USING pr_row TYPE REF TO data.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-FORM handle_ucomm ##CALLED
-    USING r_ucomm    TYPE sy-ucomm     ##NEEDED
-          rs_selfield TYPE slis_selfield. ##NEEDED
-ENDFORM.
-
-*&---------------------------------------------------------------------*
 *& FORM F4_ARCH_DOC_USER — F4 for p_doc: admin sees all, user sees own sessions
 *&---------------------------------------------------------------------*
 FORM f4_arch_doc_user CHANGING cv_doc TYPE admi_run-document.

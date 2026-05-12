@@ -43,17 +43,6 @@ TYPES: BEGIN OF ty_arch_stat,
          last_action  TYPE char10,
        END OF ty_arch_stat.
 
-" Types — Monitor detail log
-TYPES: BEGIN OF ty_log_det,
-         table_name TYPE tabname,
-         action     TYPE char10,
-         rec_count  TYPE i,
-         status     TYPE char1,
-         exec_user  TYPE xubname,
-         exec_date  TYPE d,
-         message    TYPE char255,
-       END OF ty_log_det.
-
 "----------------------------------------------------------------------
 " Fields (Global Data) — equivalent to "Fields" tab in SE80
 "----------------------------------------------------------------------
@@ -124,11 +113,6 @@ DATA: gv_disp_mandt    TYPE mandt,
       gv_purge_mode    TYPE xfeld VALUE space,
       gv_del_sess_def  TYPE char1,
       gs_del_admi      TYPE admi_run.
-
-DATA: go_alv_grid    TYPE REF TO cl_gui_alv_grid,
-      go_custom_cont TYPE REF TO cl_gui_custom_container,
-      gt_fcat        TYPE lvc_t_fcat,
-      gs_layout      TYPE lvc_s_layo.
 
 "----------------------------------------------------------------------
 " Monitor enhanced — type + globals (Phase 2/3/4)
