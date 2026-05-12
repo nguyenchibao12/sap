@@ -1,4 +1,4 @@
-﻿*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
 *& Include Z_GSP18_SAP15_F01
 *& Subroutines + Class Implementation
 *&---------------------------------------------------------------------*
@@ -199,8 +199,7 @@ FORM do_archive_write.
   PERFORM validate_table_against_cfg
     USING gv_tabname CHANGING gs_cfg lv_cfg_ok.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Table '{ gv_tabname }' is invalid: no active ZSP26_ARCH_CFG row or DATA_FIELD not found in DDIC.| ##NO_TEXT
-            TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Table '{ gv_tabname }' is invalid: no active ZSP26_ARCH_CFG row or DATA_FIELD not found in DDIC.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -210,7 +209,7 @@ FORM do_archive_write.
   SELECT * FROM (gv_tabname) INTO TABLE <lt_all>.
 
   IF <lt_all> IS INITIAL.
-    MESSAGE |No data found in { gv_tabname }| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No data found in { gv_tabname }| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -724,7 +723,7 @@ FORM do_archive_write_bg_job.
     RETURN.
   ENDIF.
 
-  MESSAGE |Write job scheduled: { lv_jobname }/{ lv_jobcount } (SM37).| ##NO_TEXT TYPE 'S'.
+  MESSAGE |Write job scheduled: { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S' ##NO_TEXT.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -802,7 +801,7 @@ FORM do_archive_delete_job.
     DATA: lv_del_adm TYPE abap_bool.
     PERFORM is_arch_admin CHANGING lv_del_adm.
     IF lv_del_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
-      MESSAGE |You do not have permission to delete sessions owned by user { gs_del_admi-user_name }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE |You do not have permission to delete sessions owned by user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
       RETURN.
     ENDIF.
   ENDIF.
@@ -858,7 +857,7 @@ FORM do_archive_delete_bg_job.
     DATA: lv_bgdel_adm TYPE abap_bool.
     PERFORM is_arch_admin CHANGING lv_bgdel_adm.
     IF lv_bgdel_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
-      MESSAGE |You do not have permission to delete sessions owned by user { gs_del_admi-user_name }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE |You do not have permission to delete sessions owned by user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
       RETURN.
     ENDIF.
   ENDIF.
@@ -884,7 +883,7 @@ FORM do_archive_delete_bg_job.
         EXCEPTIONS
           OTHERS                = 0.
       IF lv_prev_ans <> '1'.
-        MESSAGE |Cancelled — session { lv_sel_doc } was already deleted previously.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
+        MESSAGE |Cancelled — session { lv_sel_doc } was already deleted previously.| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
         RETURN.
       ENDIF.
     ENDIF.
@@ -945,7 +944,7 @@ FORM do_archive_delete_bg_job.
     RETURN.
   ENDIF.
 
-  MESSAGE |Delete job scheduled: { lv_jobname }/{ lv_jobcount } (SM37).| ##NO_TEXT TYPE 'S'.
+  MESSAGE |Delete job scheduled: { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S' ##NO_TEXT.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -1000,7 +999,7 @@ FORM do_show_eligible_data.
   PERFORM validate_table_against_cfg
     USING gv_tabname CHANGING ls_cfg lv_cfg_ok.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -1023,7 +1022,7 @@ FORM do_show_eligible_data.
   ENDTRY.
 
   IF <lt_src> IS INITIAL.
-    MESSAGE |No rows in retention window for { gv_tabname } (field { ls_cfg-data_field }, { ls_cfg-retention } days).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No rows in retention window for { gv_tabname } (field { ls_cfg-data_field }, { ls_cfg-retention } days).| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -1035,7 +1034,7 @@ FORM do_show_eligible_data.
     EXCEPTIONS
       OTHERS    = 1.
   IF sy-subrc <> 0 OR lt_df IS INITIAL.
-    MESSAGE |Could not read DDIC for { gv_tabname }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Could not read DDIC for { gv_tabname }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -1094,7 +1093,7 @@ FORM do_show_eligible_data.
   ENDLOOP.
 
   IF lv_eligible = 0.
-    MESSAGE |No archive-eligible rows for { gv_tabname } (cutoff { lv_cut }, rule-skip { lv_rule_skip }).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No archive-eligible rows for { gv_tabname } (cutoff { lv_cut }, rule-skip { lv_rule_skip }).| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -1215,7 +1214,7 @@ FORM do_purge_only_direct.
   PERFORM validate_table_against_cfg
     USING gv_tabname CHANGING ls_cfg lv_cfg_ok.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -1232,7 +1231,7 @@ FORM do_purge_only_direct.
   ASSIGN gr_all->* TO <lt_src>.
   SELECT * FROM (gv_tabname) INTO TABLE <lt_src> WHERE (lv_where_all).
   IF <lt_src> IS INITIAL.
-    MESSAGE |Purge-only: no records match purge criteria for { gv_tabname }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |Purge-only: no records match purge criteria for { gv_tabname }.| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -1241,7 +1240,7 @@ FORM do_purge_only_direct.
     TABLES     dfies_tab = lt_df
     EXCEPTIONS OTHERS    = 1.
   IF sy-subrc <> 0 OR lt_df IS INITIAL.
-    MESSAGE |Purge-only: failed to read DDIC field list for { gv_tabname }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Purge-only: failed to read DDIC field list for { gv_tabname }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -1359,7 +1358,7 @@ FORM do_purge_only_direct.
     IF sy-subrc = 0.
       COMMIT WORK AND WAIT.
     ELSE.
-      MESSAGE |Purge-only: failed to write ZSP26_ARCH_LOG (sy-subrc={ sy-subrc }).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE |Purge-only: failed to write ZSP26_ARCH_LOG (sy-subrc={ sy-subrc }).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     ENDIF.
   ENDIF.
 
@@ -1606,7 +1605,7 @@ FORM do_restore_from_hub.
   DATA: lv_rst_adm TYPE abap_bool.
   PERFORM is_arch_admin CHANGING lv_rst_adm.
   IF lv_rst_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
-    MESSAGE |You do not have permission to restore sessions owned by user { gs_del_admi-user_name }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |You do not have permission to restore sessions owned by user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -1627,7 +1626,7 @@ FORM do_restore_from_hub.
         AND message    LIKE @lv_like_doc.
   ENDIF.
   IF lv_del_hit = 0.
-    MESSAGE |Session { gs_del_admi-document } has no successful DELETE log (DOC=...) and cannot be restored.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Session { gs_del_admi-document } has no successful DELETE log (DOC=...) and cannot be restored.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -2073,7 +2072,7 @@ FORM show_mon_detail USING iv_table TYPE tabname.
     ORDER BY exec_date DESCENDING.
 
   IF lt_log IS INITIAL.
-    MESSAGE |No logs found for table { iv_table }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No logs found for table { iv_table }.| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -2256,8 +2255,7 @@ FORM show_hub_admi_session_groups.
         AND action = 'DELETE'.
     lv_gap_n = lv_arch_n - lv_del_n.
     IF lv_gap_n > 0.
-      MESSAGE |{ gv_tabname }: ARCHIVE runs={ lv_arch_n }, DELETE runs={ lv_del_n } (pending { lv_gap_n }).| ##NO_TEXT
-              TYPE 'S' DISPLAY LIKE 'W'.
+      MESSAGE |{ gv_tabname }: ARCHIVE runs={ lv_arch_n }, DELETE runs={ lv_del_n } (pending { lv_gap_n }).| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     ENDIF.
   ENDIF.
 
@@ -3101,8 +3099,7 @@ FORM show_btc_job_protocol
       OTHERS    = 9.
 
   IF sy-subrc <> 0 OR lt_log IS INITIAL.
-    MESSAGE |Failed to read job log { pv_name }/{ pv_cnt } (deleted, no log written, or no authorization).| ##NO_TEXT
-            TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |Failed to read job log { pv_name }/{ pv_cnt } (deleted, no log written, or no authorization).| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3296,7 +3293,7 @@ FORM do_delete_old_logs.
     INTO @lv_job_cnt.
 
   IF lv_log_cnt = 0 AND lv_job_cnt = 0.
-    MESSAGE |No logs/jobs older than { lv_days } days found.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No logs/jobs older than { lv_days } days found.| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3391,7 +3388,7 @@ FORM show_purge_run_data USING VALUE(pv_arch_id) TYPE zsp26_de_archid.
     ORDER BY data_seq.
 
   IF lt_pv IS INITIAL.
-    MESSAGE |No purge snapshot found for run { pv_arch_id }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No purge snapshot found for run { pv_arch_id }.| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3593,7 +3590,7 @@ FORM f4_reg_datfld.
     EXCEPTIONS OTHERS    = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE |Failed to read table structure for { gv_reg_table } from DDIC.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Failed to read table structure for { gv_reg_table } from DDIC.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3606,7 +3603,7 @@ FORM f4_reg_datfld.
   ENDLOOP.
 
   IF lt_flds IS INITIAL.
-    MESSAGE |Table { gv_reg_table } has no DATE-type field.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Table { gv_reg_table } has no DATE-type field.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3677,11 +3674,11 @@ FORM do_reg_validate_and_save.
     WHERE tabname = @lv_tab.
 
   IF sy-subrc <> 0.
-    MESSAGE |Table { lv_tab } does not exist in DDIC or is not activated.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Table { lv_tab } does not exist in DDIC or is not activated.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
   IF ls_dd02-tabclass <> 'TRANSP'.
-    MESSAGE |Table { lv_tab } is not TRANSP (type: { ls_dd02-tabclass }).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Table { lv_tab } is not TRANSP (type: { ls_dd02-tabclass }).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3691,7 +3688,7 @@ FORM do_reg_validate_and_save.
     EXCEPTIONS OTHERS    = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE |Failed to read field list for { lv_tab }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Failed to read field list for { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3714,12 +3711,11 @@ FORM do_reg_validate_and_save.
 
   READ TABLE lt_fields INTO ls_field WITH KEY fieldname = lv_fld.
   IF sy-subrc <> 0.
-    MESSAGE |Field { lv_fld } does not exist in table { lv_tab }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Field { lv_fld } does not exist in table { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
   IF ls_field-inttype <> 'D'.
-    MESSAGE |Field { lv_fld } is not of type DATE (inttype { ls_field-inttype }).| ##NO_TEXT
-            TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Field { lv_fld } is not of type DATE (inttype { ls_field-inttype }).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3764,13 +3760,13 @@ FORM do_reg_validate_and_save.
   INSERT zsp26_arch_cfg FROM ls_cfg.
   IF sy-subrc = 0.
     COMMIT WORK.
-    MESSAGE |Registered { lv_tab }. Reopen [Config] to see the new row.| ##NO_TEXT TYPE 'S'.
+    MESSAGE |Registered { lv_tab }. Reopen [Config] to see the new row.| TYPE 'S' ##NO_TEXT.
     CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
     gv_reg_ret    = '365'.
     gv_reg_active = 'X'.
     LEAVE TO SCREEN 0.
   ELSE.
-    MESSAGE |INSERT ZSP26_ARCH_CFG failed (sy-subrc={ sy-subrc }).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |INSERT ZSP26_ARCH_CFG failed (sy-subrc={ sy-subrc }).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
   ENDIF.
 ENDFORM.
 
@@ -4022,8 +4018,7 @@ FORM check_dependencies
 
   IF lv_answer <> '1'.
     cv_ok = abap_false.
-    MESSAGE |Archive cancelled. Dependent records exist: { lv_dep_info }| ##NO_TEXT
-            TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |Archive cancelled. Dependent records exist: { lv_dep_info }| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
   ENDIF.
 ENDFORM.
 
@@ -4109,7 +4104,7 @@ FORM arch_popup_wvar_3ch_fb
     RETURN.
   ENDIF.
   IF lv_a <> '2'.
-    MESSAGE |Invalid selection ({ lv_a }).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |Invalid selection ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -4132,7 +4127,7 @@ FORM arch_popup_wvar_3ch_fb
   ELSEIF lv_a = '2'.
     cv_answer = '3'.
   ELSE.
-    MESSAGE |Invalid selection ({ lv_a }).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |Invalid selection ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
   ENDIF.
 ENDFORM.
 
@@ -4215,7 +4210,7 @@ FORM zsp26_hub_edit_wvar_0500.
       USING gv_prog_write lv_vtech gv_tabname
       CHANGING lv_ok.
     IF lv_ok = abap_false.
-      MESSAGE |Failed to create variant { lv_vtech }. Check variant authorization.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE |Failed to create variant { lv_vtech }. Check variant authorization.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
       RETURN.
     ENDIF.
     PERFORM arch_submit_wvar_ss USING lv_vtech.
@@ -4263,9 +4258,9 @@ FORM zsp26_hub_edit_wvar_0500.
       IF sy-subrc = 0.
         COMMIT WORK AND WAIT.
         CLEAR gv_variant.
-        MESSAGE |Deleted variant { lv_run }.| ##NO_TEXT TYPE 'S'.
+        MESSAGE |Deleted variant { lv_run }.| TYPE 'S' ##NO_TEXT.
       ELSE.
-        MESSAGE |Could not delete variant { lv_run }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE |Could not delete variant { lv_run }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
       ENDIF.
   ENDCASE.
 ENDFORM.
@@ -4353,14 +4348,14 @@ FORM arch_copy_write_variant_dialog
     USING iv_report iv_src lv_tgt iv_tabname
     CHANGING lv_ok.
   IF lv_ok = abap_false.
-    MESSAGE |Copy failed for { lv_tgt }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Copy failed for { lv_tgt }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
   gv_variant = CONV variant( lv_new ).
   CONDENSE gv_variant NO-GAPS.
   TRANSLATE gv_variant TO UPPER CASE.
-  MESSAGE |Copied to variant { lv_tgt }. Update screen if needed.| ##NO_TEXT TYPE 'S'.
+  MESSAGE |Copied to variant { lv_tgt }. Update screen if needed.| TYPE 'S' ##NO_TEXT.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -4582,9 +4577,9 @@ FORM arch_admin_do_add.
   IF sy-subrc = 0.
     COMMIT WORK.
     CLEAR gv_adm_pick.
-    MESSAGE |Admin added: { ls_adm-uname }| ##NO_TEXT TYPE 'S'.
+    MESSAGE |Admin added: { ls_adm-uname }| TYPE 'S' ##NO_TEXT.
   ELSEIF sy-subrc = 4.
-    MESSAGE |User { ls_adm-uname } is already an admin| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |User { ls_adm-uname } is already an admin| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
   ELSE.
     MESSAGE TEXT-100 TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
@@ -4629,7 +4624,7 @@ FORM arch_admin_do_remove.
   DELETE FROM zsp26_arch_admin WHERE uname = @ls_adm-uname.
   IF sy-subrc = 0.
     COMMIT WORK.
-    MESSAGE |Removed { ls_adm-uname } from admin list| ##NO_TEXT TYPE 'S'.
+    MESSAGE |Removed { ls_adm-uname } from admin list| TYPE 'S' ##NO_TEXT.
   ELSE.
     MESSAGE TEXT-111 TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.

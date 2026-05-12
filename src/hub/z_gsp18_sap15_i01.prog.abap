@@ -1,4 +1,4 @@
-﻿*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
 *& Include Z_GSP18_SAP15_I01  — PAI Modules
 *&---------------------------------------------------------------------*
 
@@ -31,7 +31,7 @@ MODULE user_command_0400 INPUT.
           USING gv_tabname
           CHANGING ls_cfg_400 lv_ok_400.
         IF lv_ok_400 = abap_false.
-          MESSAGE |Table '{ gv_tabname }' is not configured for archiving. Please use F4 to select a valid table.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+          MESSAGE |Table '{ gv_tabname }' is not configured for archiving. Please use F4 to select a valid table.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
         ELSE.
           gv_hub_allowed = abap_true.
           IF lv_adm_0400_i = abap_true.
@@ -244,7 +244,7 @@ MODULE check_variant_0300 INPUT.
         CONDENSE lv_vc_cur.
         TRANSLATE lv_vc_cur TO UPPER CASE.
         IF lv_vc_tab <> lv_vc_cur.
-          MESSAGE |Variant { lv_vtech_c } contains P_TABLE={ lv_vc_tab } but the current table is { lv_vc_cur }. Please verify.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+          MESSAGE |Variant { lv_vtech_c } contains P_TABLE={ lv_vc_tab } but the current table is { lv_vc_cur }. Please verify.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
           CLEAR gv_variant.
           RETURN.
         ENDIF.
@@ -270,8 +270,7 @@ MODULE check_variant_0300 INPUT.
         USING gv_prog_write lv_vtech_c gv_tabname
         CHANGING lv_ok_c.
       IF lv_ok_c = abap_false.
-        MESSAGE |Failed to create SAP variant "{ lv_vtech_c }". Check variant authorization for report { gv_prog_write }.| ##NO_TEXT
-          TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE |Failed to create SAP variant "{ lv_vtech_c }". Check variant authorization for report { gv_prog_write }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
         RETURN.
       ENDIF.
       PERFORM arch_submit_wvar_ss USING lv_vtech_c.
@@ -344,8 +343,7 @@ MODULE user_command_0300 INPUT.
                   USING gv_prog_write lv_vtech_300 gv_tabname
                   CHANGING lv_ok_300.
                 IF lv_ok_300 = abap_false.
-                  MESSAGE |Failed to create SAP variant "{ lv_vtech_300 }". Check variant authorization.| ##NO_TEXT
-                    TYPE 'S' DISPLAY LIKE 'E'.
+                  MESSAGE |Failed to create SAP variant "{ lv_vtech_300 }". Check variant authorization.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
                   RETURN.
                 ENDIF.
                 PERFORM arch_submit_wvar_ss USING lv_vtech_300.
@@ -590,7 +588,7 @@ MODULE user_command_0600 INPUT.
                 AND RETURN.
               FREE MEMORY ID 'Z_GSP18_WR_SS'.
             ELSE.
-              MESSAGE |Failed to create variant { lv_vtech_600 }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+              MESSAGE |Failed to create variant { lv_vtech_600 }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
             ENDIF.
           ENDIF.
         ENDIF.
