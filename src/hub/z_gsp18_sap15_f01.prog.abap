@@ -4104,11 +4104,11 @@ FORM arch_popup_wvar_3ch_fb
   IF lv_a = 'A' OR lv_a IS INITIAL.
     RETURN.
   ENDIF.
-  IF lv_a = 'J'.
+  IF lv_a = '1'.
     cv_answer = '1'.
     RETURN.
   ENDIF.
-  IF lv_a <> 'N'.
+  IF lv_a <> '2'.
     MESSAGE |Invalid selection ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
@@ -4127,9 +4127,9 @@ FORM arch_popup_wvar_3ch_fb
   IF lv_a = 'A' OR lv_a IS INITIAL.
     RETURN.
   ENDIF.
-  IF lv_a = 'J'.
+  IF lv_a = '1'.
     cv_answer = '2'.
-  ELSEIF lv_a = 'N'.
+  ELSEIF lv_a = '2'.
     cv_answer = '3'.
   ELSE.
     MESSAGE |Invalid selection ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W'.
