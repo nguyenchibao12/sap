@@ -1,6 +1,6 @@
 REPORT z_arch_ekk_read.
 
-INCLUDE z_gsp18_arch_dyn. ##INCL_OK
+INCLUDE z_gsp18_arch_dyn.
 
 *&---------------------------------------------------------------------*
 *& Report  Z_ARCH_EKK_READ
@@ -24,15 +24,15 @@ TYPES: BEGIN OF ty_disp,
         data_json  TYPE string,
       END OF ty_disp.
 
-DATA: ls_arec    TYPE ty_arch_rec,      ##NEEDED
-      lt_disp    TYPE TABLE OF ty_disp, ##NEEDED
-      ls_disp    TYPE ty_disp,          ##NEEDED
-      g_scr_r0(72) TYPE c,              ##NEEDED
-      lv_arch_h  TYPE syst-tabix,       ##NEEDED
-      lv_obj     TYPE arch_obj-object VALUE 'Z_ARCH_EKK', ##NEEDED
-      gr_dyn     TYPE REF TO data.      ##NEEDED
+DATA: ls_arec    TYPE ty_arch_rec,
+      lt_disp    TYPE TABLE OF ty_disp,
+      ls_disp    TYPE ty_disp,
+      g_scr_r0(72) TYPE c,
+      lv_arch_h  TYPE syst-tabix,
+      lv_obj     TYPE arch_obj-object VALUE 'Z_ARCH_EKK',
+      gr_dyn     TYPE REF TO data.
 
-FIELD-SYMBOLS: <lt_dyn> TYPE ANY TABLE. ##NEEDED
+FIELD-SYMBOLS: <lt_dyn> TYPE ANY TABLE.
 
 PARAMETERS: p_table TYPE tabname.
 PARAMETERS: p_rest  TYPE c       AS CHECKBOX DEFAULT ' '.
@@ -218,7 +218,7 @@ START-OF-SELECTION.
           lo_col->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
       lo_disp_s = lo_alv->get_display_settings( ).
       lo_disp_s->set_list_header(
-        |GENERIC ADK — { p_table } [ { lines( lt_disp ) } ]| ##NO_TEXT ).
+        |GENERIC ADK — { p_table } [ { lines( lt_disp ) } ]| ) ##NO_TEXT.
       lo_alv->display( ).
     CATCH cx_salv_msg INTO lx_gen.
       MESSAGE lx_gen->get_text( ) TYPE 'E'.
