@@ -846,7 +846,7 @@ FORM do_archive_delete_job.
   IF gs_del_admi-document IS NOT INITIAL.
     DATA: lv_del_adm TYPE abap_bool.
     PERFORM is_arch_admin CHANGING lv_del_adm.
-    IF lv_del_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
+    IF lv_del_adm = abap_false AND gs_del_admi-user_name <> sy-uname ##USER_OK.
       MESSAGE |You do not have permission to delete sessions owned by user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
       RETURN.
     ENDIF.
@@ -902,7 +902,7 @@ FORM do_archive_delete_bg_job.
   IF gs_del_admi-document IS NOT INITIAL.
     DATA: lv_bgdel_adm TYPE abap_bool.
     PERFORM is_arch_admin CHANGING lv_bgdel_adm.
-    IF lv_bgdel_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
+    IF lv_bgdel_adm = abap_false AND gs_del_admi-user_name <> sy-uname ##USER_OK.
       MESSAGE |You do not have permission to delete sessions owned by user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
       RETURN.
     ENDIF.
@@ -1639,7 +1639,7 @@ FORM do_restore_from_hub.
   " Step 2: Ownership guard (defense-in-depth)
   DATA: lv_rst_adm TYPE abap_bool.
   PERFORM is_arch_admin CHANGING lv_rst_adm.
-  IF lv_rst_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
+  IF lv_rst_adm = abap_false AND gs_del_admi-user_name <> sy-uname ##USER_OK.
     MESSAGE |You do not have permission to restore sessions owned by user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
@@ -2537,7 +2537,7 @@ FORM show_hub_admi_session_groups.
               cx_salv_existing.
       ENDTRY.
       SET HANDLER lcl_run_handler=>on_func FOR lo_alv->get_event( ).
-      lo_evt_run ?= lo_alv->get_event( ).
+      lo_evt_run = lo_alv->get_event( ).
       SET HANDLER lcl_run_handler=>on_dblclick FOR lo_evt_run.
 
       lo_cols = lo_alv->get_columns( ).
@@ -2898,7 +2898,7 @@ FORM show_hub_btc_job_list.
       WHERE jobname = @ls_btc-jobname
         AND jobcount = @ls_btc-jobcount
         AND listident <> @space
-      INTO (@ls_btc-progname, @ls_btc-listident).
+      INTO (@ls_btc-progname, @ls_btc-listident) ##WARN_OK.
     MODIFY gt_btc_rows FROM ls_btc INDEX lv_ix.
   ENDLOOP.
 
@@ -2969,7 +2969,7 @@ FORM show_hub_btc_job_list.
     CLEAR: lv_step_var, lt_vpar.
     SELECT SINGLE variant
       FROM tbtcp
-      INTO @lv_step_var
+      INTO @lv_step_var ##WARN_OK
       WHERE jobname  = @ls_btc-jobname
         AND jobcount = @ls_btc-jobcount.
     IF sy-subrc = 0 AND lv_step_var IS NOT INITIAL.
@@ -3088,7 +3088,7 @@ FORM show_hub_btc_job_list.
               cx_salv_existing. ENDTRY.
 
       SET HANDLER lcl_btc_handler=>on_func FOR go_btc_alv->get_event( ).
-      lo_evt_btc ?= go_btc_alv->get_event( ).
+      lo_evt_btc = go_btc_alv->get_event( ).
       SET HANDLER lcl_btc_handler=>on_dblclick FOR lo_evt_btc.
 
       lo_cols = go_btc_alv->get_columns( ).
@@ -3381,9 +3381,6 @@ FORM do_delete_old_logs.
   ENDIF.
 
   IF lv_job_cnt > 0.
-    DATA: lt_del_jobs TYPE TABLE OF tbtco-jobname,
-          ls_jn       TYPE tbtcjob-jobname,
-          ls_jc       TYPE tbtcjob-jobcount.
     SELECT jobname, jobcount FROM tbtco
       WHERE jobname LIKE 'ZARCH%'
         AND strtdate < @lv_cutoff
@@ -3561,7 +3558,7 @@ FORM f4_reg_table.
   DATA: lt_dd_all TYPE TABLE OF ty_dd_tab,
         lt_dd  TYPE TABLE OF ty_dd_tab,
         lt_df  TYPE TABLE OF dfies,
-        ls_df  TYPE dfies,
+        ls_df  TYPE dfies ##NEEDED,
         ls_dd  TYPE ty_dd_tab,
         lt_ret TYPE TABLE OF ddshretval,
         ls_ret TYPE ddshretval,
@@ -3725,7 +3722,7 @@ FORM do_reg_validate_and_save.
   ENDIF.
 
   SELECT SINGLE tabname, tabclass FROM dd02v
-    INTO (@ls_dd02-tabname, @ls_dd02-tabclass)
+    INTO (@ls_dd02-tabname, @ls_dd02-tabclass) ##WARN_OK
     WHERE tabname = @lv_tab.
 
   IF sy-subrc <> 0.
@@ -3774,11 +3771,12 @@ FORM do_reg_validate_and_save.
     RETURN.
   ENDIF.
 
-  SELECT SINGLE table_name FROM zsp26_arch_cfg
-    INTO @DATA(lv_dup_tab)
+  DATA lv_dup_cnt TYPE i.
+  SELECT COUNT(*) FROM zsp26_arch_cfg
+    INTO @lv_dup_cnt
     WHERE table_name = @lv_tab
       AND is_active  = 'X'.
-  IF sy-subrc = 0.
+  IF lv_dup_cnt > 0.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
         titlebar              = TEXT-143
@@ -3935,8 +3933,8 @@ ENDFORM.
 *&  Uses GET_PRINT_PARAMETERS (SAPLSPRI) — spool + archive list dialog.
 *&---------------------------------------------------------------------*
 FORM maintenance_spool_params.
-  DATA: ls_pri   TYPE pri_params,
-        ls_arc   TYPE arc_params,
+  DATA: ls_pri   TYPE pri_params ##NEEDED,
+        ls_arc   TYPE arc_params ##NEEDED,
         lv_valid TYPE char1,
         lv_rep   TYPE programm.
 
@@ -3992,7 +3990,7 @@ FORM maintenance_start_date.
     gc_btc_yes            TYPE c LENGTH 1 VALUE 'Y', " BTC_YES
     gc_btc_edit_startdate TYPE i VALUE 14.           " BTC_EDIT_STARTDATE (SE37 / type pool BTC)
 
-  DATA: lv_mod TYPE i.
+  DATA: lv_mod TYPE i ##NEEDED.
 
   " STDT_TITLE is absent on some kernel / FM releases — causes CALL_FUNCTION_PARM_UNKNOWN.
   CALL FUNCTION 'BP_START_DATE_EDITOR'
@@ -4555,11 +4553,10 @@ ENDFORM.
 *&  Regular user: can only see and operate on own sessions
 *&---------------------------------------------------------------------*
 FORM is_arch_admin CHANGING cv_admin TYPE abap_bool.
-  SELECT SINGLE uname FROM zsp26_arch_admin
-    INTO @DATA(lv_u)
+  cv_admin = abap_false.
+  SELECT SINGLE @abap_true FROM zsp26_arch_admin
+    INTO @cv_admin
     WHERE uname = @sy-uname.
-  cv_admin = COND abap_bool( WHEN sy-subrc = 0 THEN abap_true
-                              ELSE abap_false ).
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -4671,7 +4668,7 @@ FORM arch_admin_do_remove.
     RETURN.
   ENDIF.
 
-  IF ls_adm-uname = sy-uname.
+  IF ls_adm-uname = sy-uname ##USER_OK.
     MESSAGE TEXT-051 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.

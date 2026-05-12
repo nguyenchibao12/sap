@@ -66,9 +66,9 @@ FIELD-SYMBOLS: <lt_all>   TYPE ANY TABLE,
                <lt_ready> TYPE ANY TABLE.
 
 " Restore globals
-DATA: gt_arch_rows TYPE TABLE OF ty_arch_row,
-      gv_restored  TYPE i,
-      gv_errors    TYPE i.
+DATA: gt_arch_rows TYPE TABLE OF ty_arch_row ##NEEDED,
+      gv_restored  TYPE i ##NEEDED,
+      gv_errors    TYPE i ##NEEDED.
 
 " Monitor globals
 DATA: gt_arch_stat TYPE TABLE OF ty_arch_stat,
@@ -95,7 +95,7 @@ DATA: gv_reg_table  TYPE tabname,
 " gv_tabname = target DDIC table (preview/write/delete SQL) — complements the object above
 DATA: gv_object     TYPE arch_obj-object,
       gv_variant    TYPE variant,
-      gv_var_tech   TYPE char40,
+      gv_var_tech   TYPE char40 ##NEEDED,
       gv_prog_write TYPE programm,
       gv_prog_del   TYPE programm,
       gv_start_date TYPE char1,
@@ -213,7 +213,7 @@ CLASS lcl_btc_handler DEFINITION.
       IMPORTING e_salv_function.
     CLASS-METHODS on_dblclick
       FOR EVENT double_click OF cl_salv_events_table
-      IMPORTING row column.
+      IMPORTING row column ##NEEDED.
 ENDCLASS.
 
 CLASS lcl_run_handler DEFINITION.
