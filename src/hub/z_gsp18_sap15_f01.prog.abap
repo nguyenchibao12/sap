@@ -3290,7 +3290,6 @@ FORM do_delete_old_logs.
         lv_answer  TYPE char1,
         lv_days    TYPE i,
         lv_cutoff  TYPE d,
-        lv_deleted TYPE i,
         lv_q       TYPE string,
         lv_rc      TYPE char1,
         lt_fields  TYPE TABLE OF sval,

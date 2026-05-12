@@ -223,7 +223,7 @@ CLASS lcl_run_handler DEFINITION.
       IMPORTING e_salv_function.
     CLASS-METHODS on_dblclick
       FOR EVENT double_click OF cl_salv_events_table
-      IMPORTING row column.
+      IMPORTING row column ##NEEDED.
 ENDCLASS.
 
 " Config SALV — opens table registration popup
