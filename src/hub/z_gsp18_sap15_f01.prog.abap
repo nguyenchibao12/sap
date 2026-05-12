@@ -1,4 +1,4 @@
-*&---------------------------------------------------------------------*
+﻿*&---------------------------------------------------------------------*
 *& Include Z_GSP18_SAP15_F01
 *& Subroutines + Class Implementation
 *&---------------------------------------------------------------------*
@@ -54,7 +54,7 @@ CLASS lcl_mon_handler IMPLEMENTATION.
     lt_rows = lo_sels->get_selected_rows( ).
 
     IF lt_rows IS INITIAL.
-      MESSAGE 'Please select a row before viewing Detail Log.' TYPE 'S' DISPLAY LIKE 'W'.
+      MESSAGE TEXT-069 TYPE 'S' DISPLAY LIKE 'W'.
       RETURN.
     ENDIF.
 
@@ -80,7 +80,7 @@ CLASS lcl_btc_handler IMPLEMENTATION.
         lo_sel = go_btc_alv->get_selections( ).
         lt_rows = lo_sel->get_selected_rows( ).
         IF lines( lt_rows ) <> 1.
-          MESSAGE 'Select exactly 1 job, then click Job protocol (SM37 log).' TYPE 'S' DISPLAY LIKE 'W'.
+          MESSAGE TEXT-084 TYPE 'S' DISPLAY LIKE 'W'.
           RETURN.
         ENDIF.
         READ TABLE lt_rows INTO lv_idx INDEX 1.
@@ -102,13 +102,13 @@ CLASS lcl_btc_handler IMPLEMENTATION.
         lo_sel = go_btc_alv->get_selections( ).
         lt_rows = lo_sel->get_selected_rows( ).
         IF lines( lt_rows ) <> 1.
-          MESSAGE 'Select exactly 1 job.' TYPE 'S' DISPLAY LIKE 'W'.
+          MESSAGE TEXT-085 TYPE 'S' DISPLAY LIKE 'W'.
           RETURN.
         ENDIF.
         READ TABLE lt_rows INTO lv_idx INDEX 1.
         READ TABLE gt_btc_rows INTO ls_b INDEX lv_idx.
         IF sy-subrc <> 0 OR ls_b-listident IS INITIAL.
-          MESSAGE 'No spool list ID found for this job step.' TYPE 'S' DISPLAY LIKE 'W'.
+          MESSAGE TEXT-124 TYPE 'S' DISPLAY LIKE 'W'.
           RETURN.
         ENDIF.
         PERFORM show_btc_spool_popup USING ls_b-listident.
@@ -150,7 +150,7 @@ CLASS lcl_btc_handler IMPLEMENTATION.
     " Double-click by column: LISTIDENT opens spool, others open job protocol.
     IF column = 'LISTIDENT' OR column = 'SPOOL_ID' OR column = 'LIST ID'.
       IF ls_b-listident IS INITIAL.
-        MESSAGE 'This row has no spool list ID.' TYPE 'S' DISPLAY LIKE 'W'.
+        MESSAGE TEXT-095 TYPE 'S' DISPLAY LIKE 'W'.
         RETURN.
       ENDIF.
       PERFORM show_btc_spool_popup USING ls_b-listident.
@@ -173,7 +173,7 @@ CLASS lcl_run_handler IMPLEMENTATION.
     lo_sel = go_run_alv->get_selections( ).
     lt_rows = lo_sel->get_selected_rows( ).
     IF lines( lt_rows ) <> 1.
-      MESSAGE 'Select exactly 1 session/range row, then click Open Session.' TYPE 'S' DISPLAY LIKE 'W'.
+      MESSAGE TEXT-086 TYPE 'S' DISPLAY LIKE 'W'.
       RETURN.
     ENDIF.
 
@@ -199,7 +199,7 @@ FORM do_archive_write.
   PERFORM validate_table_against_cfg
     USING gv_tabname CHANGING gs_cfg lv_cfg_ok.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Table '{ gv_tabname }' is invalid: no active ZSP26_ARCH_CFG row or DATA_FIELD not found in DDIC.|
+    MESSAGE |Table '{ gv_tabname }' is invalid: no active ZSP26_ARCH_CFG row or DATA_FIELD not found in DDIC.| ##NO_TEXT
             TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
@@ -210,7 +210,7 @@ FORM do_archive_write.
   SELECT * FROM (gv_tabname) INTO TABLE <lt_all>.
 
   IF <lt_all> IS INITIAL.
-    MESSAGE |No data found in { gv_tabname }| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No data found in { gv_tabname }| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -275,17 +275,17 @@ FORM show_archive_preview.
       ADD 1 TO gv_skp_cnt.
     ELSEIF ls_prev-date_val IS INITIAL.
       ls_prev-status = 'DATE EMPTY'.
-      ls_prev-detail = |Date field { gs_cfg-data_field } is initial (00000000) - skipped|.
+      ls_prev-detail = |Date field { gs_cfg-data_field } is initial (00000000) - skipped| ##NO_TEXT.
       ADD 1 TO gv_skp_cnt.
     ELSEIF ls_prev-age_days >= gs_cfg-retention.
       ls_prev-status = 'READY'.
-      ls_prev-detail = |Eligible: { ls_prev-date_val } <= cutoff { lv_cutoff } ({ ls_prev-age_days } days ≥ { gs_cfg-retention }d)|.
+      ls_prev-detail = |Eligible: { ls_prev-date_val } <= cutoff { lv_cutoff } ({ ls_prev-age_days } days ≥ { gs_cfg-retention }d)| ##NO_TEXT.
       ADD 1 TO gv_rdy_cnt.
       INSERT <row> INTO TABLE <lt_ready>.
     ELSE.
       ls_prev-status = 'TOO NEW'.
-      ls_prev-detail = |Too new: { ls_prev-date_val } > cutoff { lv_cutoff } ({ ls_prev-age_days }| &&
-                       |/{ gs_cfg-retention } days)|.
+      ls_prev-detail = |Too new: { ls_prev-date_val } > cutoff { lv_cutoff } ({ ls_prev-age_days }| ##NO_TEXT &&
+                       |/{ gs_cfg-retention } days)| ##NO_TEXT.
       ADD 1 TO gv_skp_cnt.
     ENDIF.
 
@@ -313,7 +313,7 @@ FORM show_archive_preview.
           name     = 'ARCH_NOW'
           icon     = '@2L@'
           text     = 'Archive Now'
-          tooltip  = |ADK: archive { gv_rdy_cnt } READY rows to .ARC (Z_ARCH_EKK)|
+          tooltip  = |ADK: archive { gv_rdy_cnt } READY rows to .ARC (Z_ARCH_EKK)| ##NO_TEXT
           position = if_salv_c_function_position=>right_of_salv_functions ).
       CATCH cx_salv_method_not_supported.
       ENDTRY.
@@ -325,23 +325,23 @@ FORM show_archive_preview.
 
     TRY.
       lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
-      lo_col->set_long_text( |Key ({ lv_kfld })| ).
+      lo_col->set_long_text( |Key ({ lv_kfld })| ##NO_TEXT ).
       lo_col ?= lo_cols->get_column( 'DATE_VAL' ).
-      lo_col->set_long_text( |Date ({ gs_cfg-data_field })| ).
+      lo_col->set_long_text( |Date ({ gs_cfg-data_field })| ##NO_TEXT ).
       lo_col ?= lo_cols->get_column( 'AGE_DAYS' ).
-      lo_col->set_long_text( 'Age (days)' ).
+      lo_col->set_long_text( TEXT-004 ).
       lo_col ?= lo_cols->get_column( 'STATUS' ).
-      lo_col->set_long_text( 'Archive Status' ).
+      lo_col->set_long_text( TEXT-007 ).
       lo_col ?= lo_cols->get_column( 'DETAIL' ).
-      lo_col->set_long_text( 'Detail / Reason' ).
+      lo_col->set_long_text( TEXT-017 ).
     CATCH cx_salv_not_found.
     ENDTRY.
 
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |PREVIEW — { gv_tabname }  [ Total: { lines( lt_prev ) } | &&
-      |  READY: { gv_rdy_cnt }  TOO NEW: { gv_skp_cnt - lv_fail_cnt }  RULE FAIL: { lv_fail_cnt } | &&
-      |/ Retention: { gs_cfg-retention }d / Field: { gs_cfg-data_field } ]| ).
+      |PREVIEW — { gv_tabname }  [ Total: { lines( lt_prev ) } | ##NO_TEXT &&
+      |  READY: { gv_rdy_cnt }  TOO NEW: { gv_skp_cnt - lv_fail_cnt }  RULE FAIL: { lv_fail_cnt } | ##NO_TEXT &&
+      |/ Retention: { gs_cfg-retention }d / Field: { gs_cfg-data_field } ]| ##NO_TEXT ).
 
     lo_alv->display( ).
 
@@ -429,7 +429,7 @@ FORM arch_build_write_var_tech
     lv_pfx = lv_pfx(lv_mxp).
   ENDIF.
 
-  lv_full = |{ lv_pfx }_{ lv_log }|.
+  lv_full = |{ lv_pfx }_{ lv_log }| ##NO_TEXT.
   IF strlen( lv_full ) > 14.
     RETURN.
   ENDIF.
@@ -626,11 +626,11 @@ FORM do_archive_write_bg_job.
   lv_save = gv_tabname.
 
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Please select a table on the previous screen' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-071 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
-  lv_jobname = |ZARCH_WR_{ sy-uname }|.
+  lv_jobname = |ZARCH_WR_{ sy-uname }| ##NO_TEXT.
 
   CALL FUNCTION 'JOB_OPEN'
     EXPORTING
@@ -643,14 +643,14 @@ FORM do_archive_write_bg_job.
       jobname_missing  = 3
       OTHERS           = 4.
   IF sy-subrc <> 0.
-    MESSAGE 'Failed to open background job for Write.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-108 TYPE 'S' DISPLAY LIKE 'E'.
     gv_tabname = lv_save.
     RETURN.
   ENDIF.
 
   PERFORM arch_get_write_vrun CHANGING lv_vrun lv_err.
   IF lv_err = abap_true.
-    MESSAGE 'Invalid variant name or exceeds SAP 14-character limit.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-061 TYPE 'S' DISPLAY LIKE 'E'.
     CALL FUNCTION 'JOB_CLOSE' EXPORTING jobname = lv_jobname jobcount = lv_jobcount EXCEPTIONS OTHERS = 0.
     gv_tabname = lv_save.
     RETURN.
@@ -697,7 +697,7 @@ FORM do_archive_write_bg_job.
       AND RETURN.
   ENDIF.
   IF sy-subrc <> 0.
-    MESSAGE 'Failed to add Write step to background job.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-102 TYPE 'S' DISPLAY LIKE 'E'.
     CALL FUNCTION 'JOB_CLOSE' EXPORTING jobname = lv_jobname jobcount = lv_jobcount EXCEPTIONS OTHERS = 0.
     gv_tabname = lv_save.
     RETURN.
@@ -720,11 +720,11 @@ FORM do_archive_write_bg_job.
       lock_failed          = 7
       OTHERS               = 8.
   IF sy-subrc <> 0.
-    MESSAGE 'Job created but failed to close/start. Check SM37/SM21.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-162 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
-  MESSAGE |Write job scheduled: { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S'.
+  MESSAGE |Write job scheduled: { lv_jobname }/{ lv_jobcount } (SM37).| ##NO_TEXT TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -779,14 +779,14 @@ FORM do_archive_delete_job.
         lv_sel_doc TYPE admi_run-document.
 
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Please select a table on the previous screen' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-071 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   IF gv_prog_del IS INITIAL.
     PERFORM get_archive_programs.
   ENDIF.
   IF gv_prog_del IS INITIAL.
-    MESSAGE 'Delete program not configured (AOBJ)' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-054 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -802,14 +802,14 @@ FORM do_archive_delete_job.
     DATA: lv_del_adm TYPE abap_bool.
     PERFORM is_arch_admin CHANGING lv_del_adm.
     IF lv_del_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
-      MESSAGE |You do not have permission to delete sessions owned by user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE |You do not have permission to delete sessions owned by user { gs_del_admi-user_name }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
   ENDIF.
 
   PERFORM arch_resolve_del_variant CHANGING lv_vrun lv_verr.
   IF lv_verr = abap_true.
-    MESSAGE 'Invalid variant name or exceeds SAP 14-character limit.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-061 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -835,14 +835,14 @@ FORM do_archive_delete_bg_job.
         lv_prev_ans  TYPE char1.
 
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Please select a table on the previous screen' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-071 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   IF gv_prog_del IS INITIAL.
     PERFORM get_archive_programs.
   ENDIF.
   IF gv_prog_del IS INITIAL.
-    MESSAGE 'Delete program not configured (AOBJ)' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-054 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -858,14 +858,14 @@ FORM do_archive_delete_bg_job.
     DATA: lv_bgdel_adm TYPE abap_bool.
     PERFORM is_arch_admin CHANGING lv_bgdel_adm.
     IF lv_bgdel_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
-      MESSAGE |You do not have permission to delete sessions owned by user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE |You do not have permission to delete sessions owned by user { gs_del_admi-user_name }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
   ENDIF.
 
   " Pre-check: block duplicate delete on same session
   IF lv_sel_doc IS NOT INITIAL.
-    lv_prev_like = |%DOC={ lv_sel_doc }%|.
+    lv_prev_like = |%DOC={ lv_sel_doc }%| ##NO_TEXT.
     SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_prev_cnt
       WHERE action  = 'DELETE'
         AND status  = 'S'
@@ -873,10 +873,10 @@ FORM do_archive_delete_bg_job.
     IF lv_prev_cnt > 0.
       CALL FUNCTION 'POPUP_TO_CONFIRM'
         EXPORTING
-          titlebar              = 'Duplicate delete'
-          text_question         = |Session { lv_sel_doc } was already deleted ({ lv_prev_cnt } run(s)). No extra rows will be removed. Continue anyway?|
-          text_button_1         = 'Continue'
-          text_button_2         = 'Cancel'
+          titlebar              = TEXT-138
+          text_question         = |Session { lv_sel_doc } was already deleted ({ lv_prev_cnt } run(s)). No extra rows will be removed. Continue anyway?| ##NO_TEXT
+          text_button_1         = TEXT-129
+          text_button_2         = TEXT-130
           default_button        = '2'
           display_cancel_button = ' '
         IMPORTING
@@ -884,7 +884,7 @@ FORM do_archive_delete_bg_job.
         EXCEPTIONS
           OTHERS                = 0.
       IF lv_prev_ans <> '1'.
-        MESSAGE |Cancelled — session { lv_sel_doc } was already deleted previously.| TYPE 'S' DISPLAY LIKE 'W'.
+        MESSAGE |Cancelled — session { lv_sel_doc } was already deleted previously.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
         RETURN.
       ENDIF.
     ENDIF.
@@ -892,11 +892,11 @@ FORM do_archive_delete_bg_job.
 
   PERFORM arch_resolve_del_variant CHANGING lv_vrun lv_verr.
   IF lv_verr = abap_true.
-    MESSAGE 'Invalid variant name or exceeds SAP 14-character limit.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-061 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
-  lv_jobname = |ZARCH_DEL_{ sy-uname }|.
+  lv_jobname = |ZARCH_DEL_{ sy-uname }| ##NO_TEXT.
 
   CALL FUNCTION 'JOB_OPEN'
     EXPORTING
@@ -909,7 +909,7 @@ FORM do_archive_delete_bg_job.
       jobname_missing  = 3
       OTHERS           = 4.
   IF sy-subrc <> 0.
-    MESSAGE 'Failed to open background job for Delete.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-107 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -921,7 +921,7 @@ FORM do_archive_delete_bg_job.
       VIA JOB lv_jobname NUMBER lv_jobcount
       AND RETURN.
   IF sy-subrc <> 0.
-    MESSAGE 'Failed to add Delete step to background job.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-101 TYPE 'S' DISPLAY LIKE 'E'.
     CALL FUNCTION 'JOB_CLOSE' EXPORTING jobname = lv_jobname jobcount = lv_jobcount EXCEPTIONS OTHERS = 0.
     RETURN.
   ENDIF.
@@ -941,11 +941,11 @@ FORM do_archive_delete_bg_job.
       lock_failed          = 7
       OTHERS               = 8.
   IF sy-subrc <> 0.
-    MESSAGE 'Job created but failed to close/start. Check SM37/SM21.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-162 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
-  MESSAGE |Delete job scheduled: { lv_jobname }/{ lv_jobcount } (SM37).| TYPE 'S'.
+  MESSAGE |Delete job scheduled: { lv_jobname }/{ lv_jobcount } (SM37).| ##NO_TEXT TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -993,14 +993,14 @@ FORM do_show_eligible_data.
                  <dt>     TYPE any.
 
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Please select a table on the previous screen.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-072 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   PERFORM validate_table_against_cfg
     USING gv_tabname CHANGING ls_cfg lv_cfg_ok.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -1023,7 +1023,7 @@ FORM do_show_eligible_data.
   ENDTRY.
 
   IF <lt_src> IS INITIAL.
-    MESSAGE |No rows in retention window for { gv_tabname } (field { ls_cfg-data_field }, { ls_cfg-retention } days).| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No rows in retention window for { gv_tabname } (field { ls_cfg-data_field }, { ls_cfg-retention } days).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -1035,7 +1035,7 @@ FORM do_show_eligible_data.
     EXCEPTIONS
       OTHERS    = 1.
   IF sy-subrc <> 0 OR lt_df IS INITIAL.
-    MESSAGE |Could not read DDIC for { gv_tabname }.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Could not read DDIC for { gv_tabname }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -1043,7 +1043,7 @@ FORM do_show_eligible_data.
     APPEND ls_df-fieldname TO lt_kfs.
   ENDLOOP.
   IF lt_kfs IS INITIAL.
-    MESSAGE 'Purge preview requires table keys beyond MANDT.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-074 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -1088,13 +1088,13 @@ FORM do_show_eligible_data.
         ls_elig-age_days = sy-datum - ls_elig-date_val.
       ENDIF.
     ENDIF.
-    ls_elig-detail = |Eligible: { ls_cfg-data_field } <= { lv_cut }|.
+    ls_elig-detail = |Eligible: { ls_cfg-data_field } <= { lv_cut }| ##NO_TEXT.
     APPEND ls_elig TO lt_elig.
     ADD 1 TO lv_eligible.
   ENDLOOP.
 
   IF lv_eligible = 0.
-    MESSAGE |No archive-eligible rows for { gv_tabname } (cutoff { lv_cut }, rule-skip { lv_rule_skip }).| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No archive-eligible rows for { gv_tabname } (cutoff { lv_cut }, rule-skip { lv_rule_skip }).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -1106,10 +1106,10 @@ FORM do_show_eligible_data.
     ENDIF.
   ENDLOOP.
 
-  lv_msg = |Archive-eligible rows: { lv_eligible } (table { gv_tabname }, retention { ls_cfg-retention }d, field { ls_cfg-data_field }, cutoff { lv_cut }, rule-skip { lv_rule_skip })|.
+  lv_msg = |Archive-eligible rows: { lv_eligible } (table { gv_tabname }, retention { ls_cfg-retention }d, field { ls_cfg-data_field }, cutoff { lv_cut }, rule-skip { lv_rule_skip })| ##NO_TEXT.
   IF lv_row_b > 0.
     lv_est_mb = CONV decfloat34( lv_eligible ) * CONV decfloat34( lv_row_b ) / 1048576.
-    lv_msg &&= | ~{ lv_est_mb DECIMALS = 1 } MB est.|.
+    lv_msg &&= | ~{ lv_est_mb DECIMALS = 1 } MB est.| ##NO_TEXT.
   ENDIF.
 
   TRY.
@@ -1122,16 +1122,16 @@ FORM do_show_eligible_data.
       lo_cols->set_optimize( abap_true ).
       TRY.
           lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
-          lo_col->set_long_text( 'Key values' ).
+          lo_col->set_long_text( TEXT-020 ).
           lo_col->set_output_length( 42 ).
           lo_col ?= lo_cols->get_column( 'DATE_VAL' ).
-          lo_col->set_long_text( |Date ({ ls_cfg-data_field })| ).
+          lo_col->set_long_text( |Date ({ ls_cfg-data_field })| ##NO_TEXT ).
           lo_col->set_output_length( 12 ).
           lo_col ?= lo_cols->get_column( 'AGE_DAYS' ).
-          lo_col->set_long_text( 'Age (days)' ).
+          lo_col->set_long_text( TEXT-004 ).
           lo_col->set_output_length( 8 ).
           lo_col ?= lo_cols->get_column( 'DETAIL' ).
-          lo_col->set_long_text( 'Rule/Retention detail' ).
+          lo_col->set_long_text( TEXT-035 ).
           lo_col->set_output_length( 48 ).
         CATCH cx_salv_not_found.
       ENDTRY.
@@ -1208,14 +1208,14 @@ FORM do_purge_only_direct.
   GET TIME STAMP FIELD lv_ts_s.
 
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Please select a table on the previous screen.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-072 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   PERFORM validate_table_against_cfg
     USING gv_tabname CHANGING ls_cfg lv_cfg_ok.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -1232,7 +1232,7 @@ FORM do_purge_only_direct.
   ASSIGN gr_all->* TO <lt_src>.
   SELECT * FROM (gv_tabname) INTO TABLE <lt_src> WHERE (lv_where_all).
   IF <lt_src> IS INITIAL.
-    MESSAGE |Purge-only: no records match purge criteria for { gv_tabname }.| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |Purge-only: no records match purge criteria for { gv_tabname }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -1241,7 +1241,7 @@ FORM do_purge_only_direct.
     TABLES     dfies_tab = lt_df
     EXCEPTIONS OTHERS    = 1.
   IF sy-subrc <> 0 OR lt_df IS INITIAL.
-    MESSAGE |Purge-only: failed to read DDIC field list for { gv_tabname }.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Purge-only: failed to read DDIC field list for { gv_tabname }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -1249,12 +1249,12 @@ FORM do_purge_only_direct.
     APPEND ls_df-fieldname TO lt_kfs.
   ENDLOOP.
   IF lt_kfs IS INITIAL.
-    MESSAGE 'Purge-only requires table to have keys beyond MANDT.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-077 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   LOOP AT <lt_src> ASSIGNING <row>.
-    lv_wrow = |MANDT EQ '{ sy-mandt }'|.
+    lv_wrow = |MANDT EQ '{ sy-mandt }'| ##NO_TEXT.
     CLEAR lv_kv.
 
     PERFORM apply_archive_rules
@@ -1271,7 +1271,7 @@ FORM do_purge_only_direct.
       IF <fv> IS ASSIGNED.
         lv_val = CONV string( <fv> ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_val WITH ''''''.
-        lv_wrow = |{ lv_wrow } AND { lv_kf } EQ '{ lv_val }'|.
+        lv_wrow = |{ lv_wrow } AND { lv_kf } EQ '{ lv_val }'| ##NO_TEXT.
         IF lv_kv IS NOT INITIAL.
           lv_kv &&= '|'.
         ENDIF.
@@ -1294,7 +1294,7 @@ FORM do_purge_only_direct.
       TRY.
         lv_purge_id = cl_system_uuid=>create_uuid_c32_static( ).
       CATCH cx_uuid_error.
-        MESSAGE 'Purge-only: failed to create PURGE run ID.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-078 TYPE 'S' DISPLAY LIKE 'E'.
         RETURN.
       ENDTRY.
     ENDIF.
@@ -1351,23 +1351,23 @@ FORM do_purge_only_direct.
     ls_log-exec_user  = sy-uname.
     ls_log-exec_date  = sy-datum.
     IF gv_test_mode = 'X'.
-      ls_log-message = |Purge-only TEST: matched { lv_purge_ok } row(s); no DB delete. Rule-skip: { lv_rule_skip }.|.
+      ls_log-message = |Purge-only TEST: matched { lv_purge_ok } row(s); no DB delete. Rule-skip: { lv_rule_skip }.| ##NO_TEXT.
     ELSE.
-      ls_log-message = |Purge-only: deleted { lv_purge_ok } row(s). Snapshot errors: { lv_snap_err }. PURGEID={ lv_purge_id }|.
+      ls_log-message = |Purge-only: deleted { lv_purge_ok } row(s). Snapshot errors: { lv_snap_err }. PURGEID={ lv_purge_id }| ##NO_TEXT.
     ENDIF.
     INSERT zsp26_arch_log FROM ls_log.
     IF sy-subrc = 0.
       COMMIT WORK AND WAIT.
     ELSE.
-      MESSAGE |Purge-only: failed to write ZSP26_ARCH_LOG (sy-subrc={ sy-subrc }).| TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE |Purge-only: failed to write ZSP26_ARCH_LOG (sy-subrc={ sy-subrc }).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     ENDIF.
   ENDIF.
 
   IF gv_test_mode = 'X'.
-    lv_msg = |Purge-only TEST: { lv_purge_ok } row(s) would be deleted (no DB delete). Rule-skip: { lv_rule_skip }.|.
+    lv_msg = |Purge-only TEST: { lv_purge_ok } row(s) would be deleted (no DB delete). Rule-skip: { lv_rule_skip }.| ##NO_TEXT.
     MESSAGE lv_msg TYPE 'S' DISPLAY LIKE 'W'.
   ELSE.
-    lv_msg = |Purge-only DONE: deleted { lv_purge_ok } row(s) from { gv_tabname }. Snapshot errors: { lv_snap_err }.|.
+    lv_msg = |Purge-only DONE: deleted { lv_purge_ok } row(s) from { gv_tabname }. Snapshot errors: { lv_snap_err }.| ##NO_TEXT.
     MESSAGE lv_msg TYPE 'S'.
   ENDIF.
 ENDFORM.
@@ -1426,7 +1426,7 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
   ENDIF.
 
   IF lt_run IS INITIAL.
-    MESSAGE 'No sessions found in ADMI_RUN for this AOBJ (has archive/write been run?).' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-122 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -1438,7 +1438,7 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
           lv_del_hit  TYPE i.
     REFRESH lt_run_rst.
     LOOP AT lt_run INTO ls_run.
-      lv_like_doc = |%DOC={ ls_run-document }%|.
+      lv_like_doc = |%DOC={ ls_run-document }%| ##NO_TEXT.
       SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_hit
         WHERE action  = 'DELETE'
           AND status  = 'S'
@@ -1449,7 +1449,7 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
     ENDLOOP.
     IF lt_run_rst IS INITIAL.
       " Legacy fallback: no DOC= markers found in log at all — show all sessions, Step 2c will gate restore.
-      MESSAGE 'No DELETE log found (legacy mode). Sessions displayed; will verify before restore.' TYPE 'S'.
+      MESSAGE TEXT-114 TYPE 'S'.
     ELSE.
       " Only show sessions that have a successful DELETE log entry.
       lt_run = lt_run_rst.
@@ -1466,11 +1466,11 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
   ENDLOOP.
 
   IF pv_mode = 'R'.
-    lv_title = 'Pick session (after delete)'.
+    lv_title = 'Pick session (after delete)' ##NO_TEXT.
   ELSEIF pv_mode = 'B'.
-    lv_title = 'Pick session to browse'.
+    lv_title = 'Pick session to browse' ##NO_TEXT.
   ELSE.
-    lv_title = 'Pick session for delete'.
+    lv_title = 'Pick session for delete' ##NO_TEXT.
   ENDIF.
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
@@ -1549,13 +1549,13 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
   ENDIF.
 
   IF gs_del_admi-document IS INITIAL.
-    MESSAGE 'No session selected from list.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-121 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
   gv_f4_sess        = gs_del_admi-document.
   gv_del_sess_def   = 'X'.
-  gv_stat_arch_tx   = |Defined ({ gs_del_admi-document })|.
+  gv_stat_arch_tx   = |Defined ({ gs_del_admi-document })| ##NO_TEXT.
 
   EXPORT del_admi = gs_del_admi TO MEMORY ID 'Z_GSP18_ADMI_DEL'.
 
@@ -1569,10 +1569,10 @@ FORM do_restore_menu.
 
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
-      titlebar              = 'Archives'
-      text_question         = 'Browse files or restore rows to the database?'
-      text_button_1         = 'Browse'
-      text_button_2         = 'Restore'
+      titlebar              = TEXT-139
+      text_question         = TEXT-163
+      text_button_1         = TEXT-135
+      text_button_2         = TEXT-136
       display_cancel_button = 'X'
     IMPORTING
       answer                = lv_ans
@@ -1582,7 +1582,7 @@ FORM do_restore_menu.
   CASE lv_ans.
     WHEN '1'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Please enter a Table Name to browse archived data.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-066 TYPE 'S' DISPLAY LIKE 'E'.
         RETURN.
       ENDIF.
       PERFORM do_restore_preview.
@@ -1606,14 +1606,14 @@ FORM do_restore_from_hub.
   DATA: lv_rst_adm TYPE abap_bool.
   PERFORM is_arch_admin CHANGING lv_rst_adm.
   IF lv_rst_adm = abap_false AND gs_del_admi-user_name <> sy-uname.
-    MESSAGE |You do not have permission to restore sessions owned by user { gs_del_admi-user_name }.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |You do not have permission to restore sessions owned by user { gs_del_admi-user_name }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   " Step 2c: Only allow restore when session has a matching DELETE log
   DATA: lv_like_doc TYPE string,
         lv_del_hit  TYPE i.
-  lv_like_doc = |%DOC={ gs_del_admi-document }%|.
+  lv_like_doc = |%DOC={ gs_del_admi-document }%| ##NO_TEXT.
   IF lv_rst_adm = abap_true.
     SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_hit
       WHERE action  = 'DELETE'
@@ -1627,7 +1627,7 @@ FORM do_restore_from_hub.
         AND message    LIKE @lv_like_doc.
   ENDIF.
   IF lv_del_hit = 0.
-    MESSAGE |Session { gs_del_admi-document } has no successful DELETE log (DOC=...) and cannot be restored.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Session { gs_del_admi-document } has no successful DELETE log (DOC=...) and cannot be restored.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -1635,17 +1635,17 @@ FORM do_restore_from_hub.
   DATA: lv_ans TYPE c LENGTH 1,
         lv_q   TYPE string.
   IF lv_rst_adm = abap_true.
-    lv_q = |Restore all tables for archive session { gs_del_admi-document }?|.
+    lv_q = |Restore all tables for archive session { gs_del_admi-document }?| ##NO_TEXT.
   ELSE.
-    lv_q = |Restore session { gs_del_admi-document } into table { gv_tabname }?|.
+    lv_q = |Restore session { gs_del_admi-document } into table { gv_tabname }?| ##NO_TEXT.
   ENDIF.
 
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
-      titlebar              = 'Restore'
+      titlebar              = TEXT-136
       text_question         = lv_q
-      text_button_1         = 'Yes'
-      text_button_2         = 'No'
+      text_button_1         = TEXT-131
+      text_button_2         = TEXT-132
       default_button        = '2'
       display_cancel_button = ' '
     IMPORTING
@@ -1726,10 +1726,10 @@ FORM do_monitor_menu.
 
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
-      titlebar              = 'Monitor'
-      text_question         = 'Select report type:'
-      text_button_1         = 'Dashboard'
-      text_button_2         = 'Inventory'
+      titlebar              = TEXT-140
+      text_question         = TEXT-149
+      text_button_1         = TEXT-158
+      text_button_2         = TEXT-159
       display_cancel_button = 'X'
     IMPORTING
       answer                = lv_ans
@@ -1786,7 +1786,7 @@ FORM do_monitor.
   SORT lt_cfg_sum BY table_name.
 
   IF lt_cfg_sum IS INITIAL.
-    MESSAGE 'No configuration found. Run ZSP26_LOAD_SAMPLE_DATA.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-119 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -1972,45 +1972,45 @@ FORM do_monitor.
     lo_cols->set_optimize( abap_true ).
 
     TRY.
-      lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( 'Table' ).
+      lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( TEXT-045 ).
       lo_col ?= lo_cols->get_column( 'STATUS_ICON' ).
-      lo_col->set_long_text( 'Status' ).
+      lo_col->set_long_text( TEXT-043 ).
       lo_col->set_icon( if_salv_c_bool_sap=>true ).
       lo_col ?= lo_cols->get_column( 'STATUS_TXT' ).
       lo_col->set_visible( if_salv_c_bool_sap=>false ).
-      lo_col ?= lo_cols->get_column( 'LIVE_RECS' ).   lo_col->set_long_text( 'Current Rows' ).
-      lo_col ?= lo_cols->get_column( 'ARCH_RECS' ).   lo_col->set_long_text( 'Archived' ).
-      lo_col ?= lo_cols->get_column( 'DEL_RECS' ).    lo_col->set_long_text( 'Deleted' ).
+      lo_col ?= lo_cols->get_column( 'LIVE_RECS' ).   lo_col->set_long_text( TEXT-011 ).
+      lo_col ?= lo_cols->get_column( 'ARCH_RECS' ).   lo_col->set_long_text( TEXT-008 ).
+      lo_col ?= lo_cols->get_column( 'DEL_RECS' ).    lo_col->set_long_text( TEXT-015 ).
       lo_col ?= lo_cols->get_column( 'PCT_SAVED' ).
-      lo_col->set_long_text( '% Archived' ).
+      lo_col->set_long_text( TEXT-001 ).
       lo_col->set_visible( if_salv_c_bool_sap=>false ).
       lo_col ?= lo_cols->get_column( 'ARCH_RUNS' ).
-      lo_col->set_long_text( 'Archive Cnt' ).
+      lo_col->set_long_text( TEXT-005 ).
       lo_col->set_visible( if_salv_c_bool_sap=>false ).
       lo_col ?= lo_cols->get_column( 'REST_RUNS' ).
-      lo_col->set_long_text( 'Restore Cnt' ).
+      lo_col->set_long_text( TEXT-030 ).
       lo_col->set_visible( if_salv_c_bool_sap=>false ).
       lo_col ?= lo_cols->get_column( 'DEL_RUNS' ).
-      lo_col->set_long_text( 'Delete Cnt' ).
+      lo_col->set_long_text( TEXT-014 ).
       lo_col->set_visible( if_salv_c_bool_sap=>false ).
       lo_col ?= lo_cols->get_column( 'LAST_ACTION' ).
-      lo_col->set_long_text( 'Last Action' ).
+      lo_col->set_long_text( TEXT-021 ).
       lo_col->set_visible( if_salv_c_bool_sap=>false ).
-      lo_col ?= lo_cols->get_column( 'LAST_DATE' ).   lo_col->set_long_text( 'Last Run Date' ).
-      lo_col ?= lo_cols->get_column( 'LAST_ARCH_D' ). lo_col->set_long_text( 'Last Archive Date' ).
-      lo_col ?= lo_cols->get_column( 'LAST_DEL_D' ).  lo_col->set_long_text( 'Last Delete Date' ).
+      lo_col ?= lo_cols->get_column( 'LAST_DATE' ).   lo_col->set_long_text( TEXT-024 ).
+      lo_col ?= lo_cols->get_column( 'LAST_ARCH_D' ). lo_col->set_long_text( TEXT-022 ).
+      lo_col ?= lo_cols->get_column( 'LAST_DEL_D' ).  lo_col->set_long_text( TEXT-023 ).
       lo_col ?= lo_cols->get_column( 'LAST_USER' ).
-      lo_col->set_long_text( 'Last User' ).
+      lo_col->set_long_text( TEXT-025 ).
       lo_col->set_visible( if_salv_c_bool_sap=>false ).
-      lo_col ?= lo_cols->get_column( 'RETENTION' ).   lo_col->set_long_text( 'Retention' ).
-      lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).   lo_col->set_long_text( 'Active' ).
+      lo_col ?= lo_cols->get_column( 'RETENTION' ).   lo_col->set_long_text( TEXT-031 ).
+      lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).   lo_col->set_long_text( TEXT-003 ).
       lo_col ?= lo_cols->get_column( 'ELIG_RECS' ).
-      lo_col->set_long_text( 'Candidates' ).
+      lo_col->set_long_text( TEXT-009 ).
       lo_col ?= lo_cols->get_column( 'EST_ROW_B' ).
-      lo_col->set_long_text( 'Row Size (B)' ).
+      lo_col->set_long_text( TEXT-033 ).
       lo_col->set_visible( if_salv_c_bool_sap=>false ).
       lo_col ?= lo_cols->get_column( 'EST_ELIG_MB' ).
-      lo_col->set_long_text( 'Est. Space Saved (MB)' ).
+      lo_col->set_long_text( TEXT-018 ).
     CATCH cx_salv_not_found. ENDTRY.
 
     TRY.
@@ -2027,7 +2027,7 @@ FORM do_monitor.
 
     lo_disp = go_mon_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |ARCHIVE MONITORING — Business Overview — { lines( gt_mon_disp ) } tables — { sy-datum }| ).
+      |ARCHIVE MONITORING — Business Overview — { lines( gt_mon_disp ) } tables — { sy-datum }| ##NO_TEXT ).
     lo_disp->set_striped_pattern( if_salv_c_bool_sap=>true ).
     go_mon_alv->display( ).
 
@@ -2042,7 +2042,7 @@ ENDFORM.
 FORM show_mon_help.
   CALL FUNCTION 'POPUP_TO_DISPLAY_TEXT'
     EXPORTING
-      titel     = 'How to read this screen'
+      titel     = 'How to read this screen' ##NO_TEXT
       textline1 = '1) Candidates=rows old enough. 2) Arch/Del=run log totals.'
       textline2 = '3) Space(MB)=estimate only. 4) Start with highest Candidates.'.
 ENDFORM.
@@ -2073,7 +2073,7 @@ FORM show_mon_detail USING iv_table TYPE tabname.
     ORDER BY exec_date DESCENDING.
 
   IF lt_log IS INITIAL.
-    MESSAGE |No logs found for table { iv_table }.| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No logs found for table { iv_table }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -2087,17 +2087,17 @@ FORM show_mon_detail USING iv_table TYPE tabname.
     lo_cols->set_optimize( abap_true ).
 
     TRY.
-      lo_col ?= lo_cols->get_column( 'EXEC_DATE' ).  lo_col->set_long_text( 'Date' ).
-      lo_col ?= lo_cols->get_column( 'EXEC_USER' ).  lo_col->set_long_text( 'User' ).
-      lo_col ?= lo_cols->get_column( 'ACTION' ).     lo_col->set_long_text( 'Action' ).
-      lo_col ?= lo_cols->get_column( 'REC_COUNT' ).  lo_col->set_long_text( 'Records' ).
-      lo_col ?= lo_cols->get_column( 'STATUS' ).     lo_col->set_long_text( 'Status' ).
-      lo_col ?= lo_cols->get_column( 'MESSAGE' ).    lo_col->set_long_text( 'Message' ).
+      lo_col ?= lo_cols->get_column( 'EXEC_DATE' ).  lo_col->set_long_text( TEXT-012 ).
+      lo_col ?= lo_cols->get_column( 'EXEC_USER' ).  lo_col->set_long_text( TEXT-047 ).
+      lo_col ?= lo_cols->get_column( 'ACTION' ).     lo_col->set_long_text( TEXT-002 ).
+      lo_col ?= lo_cols->get_column( 'REC_COUNT' ).  lo_col->set_long_text( TEXT-029 ).
+      lo_col ?= lo_cols->get_column( 'STATUS' ).     lo_col->set_long_text( TEXT-043 ).
+      lo_col ?= lo_cols->get_column( 'MESSAGE' ).    lo_col->set_long_text( TEXT-026 ).
     CATCH cx_salv_not_found. ENDTRY.
 
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |DETAIL LOG: { iv_table } — { lines( lt_log ) } entries| ).
+      |DETAIL LOG: { iv_table } — { lines( lt_log ) } entries| ##NO_TEXT ).
     lo_alv->display( ).
 
   CATCH cx_salv_msg INTO DATA(lx2).
@@ -2117,10 +2117,10 @@ FORM show_hub_run_diagnostics.
   IF lv_rd_adm = abap_true.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
-        titlebar              = 'Run Log'
-        text_question         = 'Select an action:'
-        text_button_1         = 'Job log'
-        text_button_2         = 'Clean logs'
+        titlebar              = TEXT-141
+        text_question         = TEXT-150
+        text_button_1         = TEXT-160
+        text_button_2         = TEXT-161
         display_cancel_button = 'X'
       IMPORTING
         answer                = lv_rd_ans
@@ -2237,7 +2237,7 @@ FORM show_hub_admi_session_groups.
   ENDIF.
 
   IF lt_run_src IS INITIAL.
-    MESSAGE 'No archiving sessions found in ADMI_RUN for this object.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-116 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -2256,7 +2256,7 @@ FORM show_hub_admi_session_groups.
         AND action = 'DELETE'.
     lv_gap_n = lv_arch_n - lv_del_n.
     IF lv_gap_n > 0.
-      MESSAGE |{ gv_tabname }: ARCHIVE runs={ lv_arch_n }, DELETE runs={ lv_del_n } (pending { lv_gap_n }).|
+      MESSAGE |{ gv_tabname }: ARCHIVE runs={ lv_arch_n }, DELETE runs={ lv_del_n } (pending { lv_gap_n }).| ##NO_TEXT
               TYPE 'S' DISPLAY LIKE 'W'.
     ENDIF.
   ENDIF.
@@ -2292,7 +2292,7 @@ FORM show_hub_admi_session_groups.
        OR ( lv_stat_t CS 'COMPLETE' AND lv_stat_t NS 'INCOMPLETE' )
        OR lv_stat_t CS 'FINISHED'
        OR lv_stat_t CS 'SUCCESS'.
-      lv_like_chk = |%DOC={ ls_run_src-document }%|.
+      lv_like_chk = |%DOC={ ls_run_src-document }%| ##NO_TEXT.
       SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_chk
         WHERE action  = 'DELETE'
           AND status  = 'S'
@@ -2459,22 +2459,22 @@ FORM show_hub_admi_session_groups.
       ls_view-doc_from_n = ls_grp_band-doc_from_n.
       ls_view-doc_to_n   = ls_grp_band-doc_to_n.
       CLEAR: lv_dfrom, lv_dto, lv_sfrom, lv_sto.
-      lv_dfrom = |{ ls_grp_band-date_from(4) }.{ ls_grp_band-date_from+4(2) }.{ ls_grp_band-date_from+6(2) }|.
-      lv_dto   = |{ ls_grp_band-date_to(4) }.{ ls_grp_band-date_to+4(2) }.{ ls_grp_band-date_to+6(2) }|.
+      lv_dfrom = |{ ls_grp_band-date_from(4) }.{ ls_grp_band-date_from+4(2) }.{ ls_grp_band-date_from+6(2) }| ##NO_TEXT.
+      lv_dto   = |{ ls_grp_band-date_to(4) }.{ ls_grp_band-date_to+4(2) }.{ ls_grp_band-date_to+6(2) }| ##NO_TEXT.
       IF ls_grp_band-doc_from_n > 0.
-        lv_sfrom = |{ ls_grp_band-doc_from_n }|.
+        lv_sfrom = |{ ls_grp_band-doc_from_n }| ##NO_TEXT.
       ELSE.
         lv_sfrom = ls_grp_band-doc_from.
       ENDIF.
       IF ls_grp_band-doc_to_n > 0.
-        lv_sto = |{ ls_grp_band-doc_to_n }|.
+        lv_sto = |{ ls_grp_band-doc_to_n }| ##NO_TEXT.
       ELSE.
         lv_sto = ls_grp_band-doc_to.
       ENDIF.
       IF ls_grp_band-doc_from = ls_grp_band-doc_to.
-        ls_view-session_range = |{ lv_sfrom } ({ lv_dfrom })|.
+        ls_view-session_range = |{ lv_sfrom } ({ lv_dfrom })| ##NO_TEXT.
       ELSE.
-        ls_view-session_range = |{ lv_sfrom } - { lv_sto } ({ lv_dfrom } - { lv_dto })|.
+        ls_view-session_range = |{ lv_sfrom } - { lv_sto } ({ lv_dfrom } - { lv_dto })| ##NO_TEXT.
       ENDIF.
       APPEND ls_view TO lt_view.
     ENDLOOP.
@@ -2519,22 +2519,22 @@ FORM show_hub_admi_session_groups.
           lo_col ?= lo_cols->get_column( 'DOC_TO_N' ).
           lo_col->set_visible( if_salv_c_bool_sap=>false ).
           lo_col ?= lo_cols->get_column( 'GRP_ICON' ).
-          lo_col->set_long_text( ' ' ).
+          lo_col->set_long_text( ' ' ##NO_TEXT ).
           lo_col->set_icon( if_salv_c_bool_sap=>true ).
           lo_col ?= lo_cols->get_column( 'SESSION_GROUP' ).
           lo_col->set_short_text( 'Group' ).
-          lo_col->set_medium_text( 'Session Group' ).
-          lo_col->set_long_text( 'Session Group' ).
+          lo_col->set_medium_text( TEXT-037 ).
+          lo_col->set_long_text( TEXT-037 ).
           lo_col ?= lo_cols->get_column( 'SESSION_RANGE' ).
           lo_col->set_short_text( 'Ranges' ).
-          lo_col->set_medium_text( 'Session ranges' ).
-          lo_col->set_long_text( 'Session ranges' ).
+          lo_col->set_medium_text( TEXT-038 ).
+          lo_col->set_long_text( TEXT-038 ).
         CATCH cx_salv_not_found.
       ENDTRY.
 
       lo_disp = lo_alv->get_display_settings( ).
       lo_disp->set_list_header(
-        |Archiving Sessions ({ lv_obj }) — grouped ranges (Errors / Incomplete / Complete)| ).
+        |Archiving Sessions ({ lv_obj }) — grouped ranges (Errors / Incomplete / Complete)| ##NO_TEXT ).
       lo_alv->display( ).
 
     CATCH cx_salv_msg INTO DATA(lx_rs).
@@ -2554,18 +2554,18 @@ FORM run_open_selected_range USING VALUE(pv_idx) TYPE i.
   ENDIF.
 
   IF ls_view-is_header = 'X'.
-    MESSAGE 'This is a group row. Please select a range row below.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-093 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
   IF ls_view-doc_from_n IS INITIAL OR ls_view-doc_to_n IS INITIAL.
-    MESSAGE 'This row has no session to open.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-094 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
   IF ls_view-doc_from_n = ls_view-doc_to_n.
     PERFORM run_docnum_to_document USING ls_view-doc_from_n CHANGING lv_doc_str.
     IF lv_doc_str IS INITIAL.
-      MESSAGE 'Failed to resolve session document.' TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE TEXT-112 TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
     PERFORM run_open_document USING lv_doc_str.
@@ -2635,7 +2635,7 @@ FORM run_pick_document_in_range
     ELSEIF ls_src-grp_ord = 3.
       ls_pick-status = 'Write+Delete done'.
     ELSE.
-      lv_like_doc = |%DOC={ ls_src-document }%|.
+      lv_like_doc = |%DOC={ ls_src-document }%| ##NO_TEXT.
       SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_cnt
         WHERE action  = 'DELETE'
           AND status  = 'S'
@@ -2649,7 +2649,7 @@ FORM run_pick_document_in_range
     APPEND ls_pick TO lt_pick.
   ENDLOOP.
   IF lt_pick IS INITIAL.
-    MESSAGE 'No sessions found in this range.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-123 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
   SORT lt_pick BY document DESCENDING.
@@ -2657,7 +2657,7 @@ FORM run_pick_document_in_range
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
       retfield     = 'DOCUMENT'
-      window_title = 'Pick Session in selected range'
+      window_title = TEXT-151
       value_org    = 'S'
     TABLES
       value_tab    = lt_pick
@@ -2760,7 +2760,7 @@ FORM run_show_document_detail
 
   IF sy-subrc = 0.
     CLEAR ls_det.
-    ls_det-item = 'Status'.
+    ls_det-item = TEXT-043.
     WRITE ls_run-status TO ls_det-value.
     APPEND ls_det TO lt_det.
 
@@ -2770,7 +2770,7 @@ FORM run_show_document_detail
     APPEND ls_det TO lt_det.
 
     CLEAR ls_det.
-    ls_det-item = 'User'.
+    ls_det-item = TEXT-047.
     ls_det-value = ls_run-user_name.
     APPEND ls_det TO lt_det.
   ENDIF.
@@ -2783,7 +2783,7 @@ FORM run_show_document_detail
       lo_alv_det->get_functions( )->set_all( abap_true ).
       lo_alv_det->get_columns( )->set_optimize( abap_true ).
       lo_alv_det->get_display_settings( )->set_list_header(
-        |Session { pv_doc }: no readable archive payload (rc={ pv_rc })| ).
+        |Session { pv_doc }: no readable archive payload (rc={ pv_rc })| ##NO_TEXT ).
       lo_alv_det->display( ).
     CATCH cx_salv_msg.
   ENDTRY.
@@ -2990,7 +2990,7 @@ FORM show_hub_btc_job_list.
     ls_btc-jobname    = 'PURGE_ONLY'.
     ls_btc-jobcount   = '00000000'.
     ls_btc-status     = 'F'.
-    ls_btc-status_txt = |PURGE { ls_purge-rec_count }|.
+    ls_btc-status_txt = |PURGE { ls_purge-rec_count }| ##NO_TEXT.
     ls_btc-sdluname   = ls_purge-exec_user.
     ls_btc-progname   = 'PURGE_ONLY'.
     IF ls_purge-end_time IS NOT INITIAL.
@@ -3007,7 +3007,7 @@ FORM show_hub_btc_job_list.
   ENDLOOP.
 
   IF gt_btc_rows IS INITIAL.
-    MESSAGE 'No background ZARCH* jobs found for this user (or removed from TBTCO).' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-117 TYPE 'S' DISPLAY LIKE 'W'.
   ENDIF.
 
   TRY.
@@ -3053,24 +3053,24 @@ FORM show_hub_btc_job_list.
       lo_cols = go_btc_alv->get_columns( ).
       lo_cols->set_optimize( abap_true ).
       TRY.
-          lo_col ?= lo_cols->get_column( 'JOBNAME' ).    lo_col->set_long_text( 'Job name' ).
-          lo_col ?= lo_cols->get_column( 'JOBCOUNT' ). lo_col->set_long_text( 'Count' ).
-          lo_col ?= lo_cols->get_column( 'STATUS' ).   lo_col->set_long_text( 'St' ).
-          lo_col ?= lo_cols->get_column( 'STATUS_TXT' ). lo_col->set_long_text( 'Status' ).
-          lo_col ?= lo_cols->get_column( 'SDLUNAME' ).  lo_col->set_long_text( 'User' ).
-          lo_col ?= lo_cols->get_column( 'PROGNAME' ). lo_col->set_long_text( 'Step program' ).
-          lo_col ?= lo_cols->get_column( 'LISTIDENT' ). lo_col->set_long_text( 'Spool list ID' ).
-          lo_col ?= lo_cols->get_column( 'STRTDATE' ). lo_col->set_long_text( 'Start date' ).
-          lo_col ?= lo_cols->get_column( 'STRTTIME' ). lo_col->set_long_text( 'Start time' ).
-          lo_col ?= lo_cols->get_column( 'RUN_REF' ). lo_col->set_long_text( 'Archive Run Identifier' ).
-          lo_col ?= lo_cols->get_column( 'TABLE_NAME' ). lo_col->set_long_text( 'Table Name' ).
+          lo_col ?= lo_cols->get_column( 'JOBNAME' ).    lo_col->set_long_text( TEXT-019 ).
+          lo_col ?= lo_cols->get_column( 'JOBCOUNT' ). lo_col->set_long_text( TEXT-010 ).
+          lo_col ?= lo_cols->get_column( 'STATUS' ).   lo_col->set_long_text( TEXT-040 ).
+          lo_col ?= lo_cols->get_column( 'STATUS_TXT' ). lo_col->set_long_text( TEXT-043 ).
+          lo_col ?= lo_cols->get_column( 'SDLUNAME' ).  lo_col->set_long_text( TEXT-047 ).
+          lo_col ?= lo_cols->get_column( 'PROGNAME' ). lo_col->set_long_text( TEXT-044 ).
+          lo_col ?= lo_cols->get_column( 'LISTIDENT' ). lo_col->set_long_text( TEXT-039 ).
+          lo_col ?= lo_cols->get_column( 'STRTDATE' ). lo_col->set_long_text( TEXT-041 ).
+          lo_col ?= lo_cols->get_column( 'STRTTIME' ). lo_col->set_long_text( TEXT-042 ).
+          lo_col ?= lo_cols->get_column( 'RUN_REF' ). lo_col->set_long_text( TEXT-006 ).
+          lo_col ?= lo_cols->get_column( 'TABLE_NAME' ). lo_col->set_long_text( TEXT-046 ).
         CATCH cx_salv_not_found. ENDTRY.
 
       lo_disp = go_btc_alv->get_display_settings( ).
       IF lv_btc_adm = abap_true.
-        lo_disp->set_list_header( |Background jobs ZARCH* — admin view (all users) — { lines( gt_btc_rows ) } rows| ).
+        lo_disp->set_list_header( |Background jobs ZARCH* — admin view (all users) — { lines( gt_btc_rows ) } rows| ##NO_TEXT ).
       ELSE.
-        lo_disp->set_list_header( |Background jobs ZARCH* — { sy-uname } — { lines( gt_btc_rows ) } rows| ).
+        lo_disp->set_list_header( |Background jobs ZARCH* — { sy-uname } — { lines( gt_btc_rows ) } rows| ##NO_TEXT ).
       ENDIF.
       go_btc_alv->display( ).
 
@@ -3101,7 +3101,7 @@ FORM show_btc_job_protocol
       OTHERS    = 9.
 
   IF sy-subrc <> 0 OR lt_log IS INITIAL.
-    MESSAGE |Failed to read job log { pv_name }/{ pv_cnt } (deleted, no log written, or no authorization).|
+    MESSAGE |Failed to read job log { pv_name }/{ pv_cnt } (deleted, no log written, or no authorization).| ##NO_TEXT
             TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
@@ -3113,7 +3113,7 @@ FORM show_btc_job_protocol
       lo_f = lo_alv->get_functions( ).
       lo_f->set_all( abap_true ).
       lo_d = lo_alv->get_display_settings( ).
-      lo_d->set_list_header( |Job protocol: { pv_name } / { pv_cnt }| ).
+      lo_d->set_list_header( |Job protocol: { pv_name } / { pv_cnt }| ##NO_TEXT ).
       lo_alv->get_columns( )->set_optimize( abap_true ).
       lo_alv->display( ).
     CATCH cx_salv_msg INTO DATA(lx_p).
@@ -3144,7 +3144,7 @@ FORM show_btc_spool_popup USING VALUE(pv_list) TYPE clike.
     RETURN.
   ENDIF.
 
-  lv_text = |Cannot open automatically. Go to SP01 or SP02, List ID: { pv_list }|.
+  lv_text = |Cannot open automatically. Go to SP01 or SP02, List ID: { pv_list }| ##NO_TEXT.
   MESSAGE lv_text TYPE 'S' DISPLAY LIKE 'W'.
 
 ENDFORM.
@@ -3201,7 +3201,7 @@ FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
   ENDIF.
 
   IF lt_lr IS INITIAL.
-    MESSAGE 'No matching ZSP26_ARCH_LOG entries found.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-120 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -3213,19 +3213,19 @@ FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
       lo_c = lo_alv->get_columns( ).
       lo_c->set_optimize( abap_true ).
       TRY.
-          lo_col ?= lo_c->get_column( 'EXEC_DATE' ).  lo_col->set_long_text( 'Date' ).
-          lo_col ?= lo_c->get_column( 'TABLE_NAME' ). lo_col->set_long_text( 'Table' ).
-          lo_col ?= lo_c->get_column( 'EXEC_USER' ). lo_col->set_long_text( 'User' ).
-          lo_col ?= lo_c->get_column( 'ACTION' ).    lo_col->set_long_text( 'Action' ).
-          lo_col ?= lo_c->get_column( 'REC_COUNT' ). lo_col->set_long_text( 'Records' ).
-          lo_col ?= lo_c->get_column( 'STATUS' ).    lo_col->set_long_text( 'Status' ).
-          lo_col ?= lo_c->get_column( 'MESSAGE' ).   lo_col->set_long_text( 'Message' ).
+          lo_col ?= lo_c->get_column( 'EXEC_DATE' ).  lo_col->set_long_text( TEXT-012 ).
+          lo_col ?= lo_c->get_column( 'TABLE_NAME' ). lo_col->set_long_text( TEXT-045 ).
+          lo_col ?= lo_c->get_column( 'EXEC_USER' ). lo_col->set_long_text( TEXT-047 ).
+          lo_col ?= lo_c->get_column( 'ACTION' ).    lo_col->set_long_text( TEXT-002 ).
+          lo_col ?= lo_c->get_column( 'REC_COUNT' ). lo_col->set_long_text( TEXT-029 ).
+          lo_col ?= lo_c->get_column( 'STATUS' ).    lo_col->set_long_text( TEXT-043 ).
+          lo_col ?= lo_c->get_column( 'MESSAGE' ).   lo_col->set_long_text( TEXT-026 ).
         CATCH cx_salv_not_found. ENDTRY.
       lo_d = lo_alv->get_display_settings( ).
       IF lv_tn IS NOT INITIAL.
-        lo_d->set_list_header( |ZSP26_ARCH_LOG — { lv_tn } — { lines( lt_lr ) }| ).
+        lo_d->set_list_header( |ZSP26_ARCH_LOG — { lv_tn } — { lines( lt_lr ) }| ##NO_TEXT ).
       ELSE.
-        lo_d->set_list_header( |ZSP26_ARCH_LOG — user { sy-uname } — { lines( lt_lr ) }| ).
+        lo_d->set_list_header( |ZSP26_ARCH_LOG — user { sy-uname } — { lines( lt_lr ) }| ##NO_TEXT ).
       ENDIF.
       lo_alv->display( ).
     CATCH cx_salv_msg INTO DATA(lx_z).
@@ -3250,7 +3250,7 @@ FORM do_delete_old_logs.
 
   PERFORM is_arch_admin CHANGING lv_adm.
   IF lv_adm = abap_false.
-    MESSAGE 'Only admins can delete logs.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-063 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3276,7 +3276,7 @@ FORM do_delete_old_logs.
   READ TABLE lt_fields INTO ls_field INDEX 1.
   lv_days = ls_field-value.
   IF lv_days < 1.
-    MESSAGE 'Number of days must be >= 1.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-062 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3296,18 +3296,18 @@ FORM do_delete_old_logs.
     INTO @lv_job_cnt.
 
   IF lv_log_cnt = 0 AND lv_job_cnt = 0.
-    MESSAGE |No logs/jobs older than { lv_days } days found.| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No logs/jobs older than { lv_days } days found.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  lv_q = |Delete { lv_log_cnt } app logs + { lv_job_cnt } finished jobs older than { lv_cutoff+6(2) }.{ lv_cutoff+4(2) }.{ lv_cutoff(4) }?|.
+  lv_q = |Delete { lv_log_cnt } app logs + { lv_job_cnt } finished jobs older than { lv_cutoff+6(2) }.{ lv_cutoff+4(2) }.{ lv_cutoff(4) }?| ##NO_TEXT.
 
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
-      titlebar              = 'Delete old logs'
+      titlebar              = TEXT-142
       text_question         = lv_q
-      text_button_1         = 'Delete'
-      text_button_2         = 'Cancel'
+      text_button_1         = TEXT-133
+      text_button_2         = TEXT-130
       default_button        = '2'
       display_cancel_button = ' '
     IMPORTING
@@ -3316,7 +3316,7 @@ FORM do_delete_old_logs.
       OTHERS                = 0.
 
   IF lv_answer <> '1'.
-    MESSAGE 'Log deletion cancelled.' TYPE 'S'.
+    MESSAGE TEXT-113 TYPE 'S'.
     RETURN.
   ENDIF.
 
@@ -3354,7 +3354,7 @@ FORM do_delete_old_logs.
     ENDLOOP.
   ENDIF.
 
-  lv_msg = |Deleted { lv_del_log } app logs + { lv_del_job } jobs older than { lv_days } days.|.
+  lv_msg = |Deleted { lv_del_log } app logs + { lv_del_job } jobs older than { lv_days } days.| ##NO_TEXT.
   MESSAGE lv_msg TYPE 'S'.
 ENDFORM.
 
@@ -3378,7 +3378,7 @@ FORM show_purge_run_data USING VALUE(pv_arch_id) TYPE zsp26_de_archid.
         lo_d   TYPE REF TO cl_salv_display_settings.
 
   IF pv_arch_id IS INITIAL.
-    MESSAGE 'Purge run reference is empty.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-075 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -3391,7 +3391,7 @@ FORM show_purge_run_data USING VALUE(pv_arch_id) TYPE zsp26_de_archid.
     ORDER BY data_seq.
 
   IF lt_pv IS INITIAL.
-    MESSAGE |No purge snapshot found for run { pv_arch_id }.| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No purge snapshot found for run { pv_arch_id }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -3403,16 +3403,16 @@ FORM show_purge_run_data USING VALUE(pv_arch_id) TYPE zsp26_de_archid.
       lo_c = lo_alv->get_columns( ).
       lo_c->set_optimize( abap_true ).
       TRY.
-          lo_col ?= lo_c->get_column( 'DATA_SEQ' ).    lo_col->set_long_text( 'Seq' ).
-          lo_col ?= lo_c->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( 'Table' ).
-          lo_col ?= lo_c->get_column( 'KEY_VALUES' ).  lo_col->set_long_text( 'Key values' ).
-          lo_col ?= lo_c->get_column( 'ARCHIVED_ON' ). lo_col->set_long_text( 'Purge date' ).
-          lo_col ?= lo_c->get_column( 'ARCHIVED_BY' ). lo_col->set_long_text( 'Purge user' ).
-          lo_col ?= lo_c->get_column( 'DATA_JSON' ).   lo_col->set_long_text( 'Row snapshot (JSON)' ).
+          lo_col ?= lo_c->get_column( 'DATA_SEQ' ).    lo_col->set_long_text( TEXT-036 ).
+          lo_col ?= lo_c->get_column( 'TABLE_NAME' ).  lo_col->set_long_text( TEXT-045 ).
+          lo_col ?= lo_c->get_column( 'KEY_VALUES' ).  lo_col->set_long_text( TEXT-020 ).
+          lo_col ?= lo_c->get_column( 'ARCHIVED_ON' ). lo_col->set_long_text( TEXT-027 ).
+          lo_col ?= lo_c->get_column( 'ARCHIVED_BY' ). lo_col->set_long_text( TEXT-028 ).
+          lo_col ?= lo_c->get_column( 'DATA_JSON' ).   lo_col->set_long_text( TEXT-034 ).
         CATCH cx_salv_not_found.
       ENDTRY.
       lo_d = lo_alv->get_display_settings( ).
-      lo_d->set_list_header( |PURGE snapshot { pv_arch_id } — { lines( lt_pv ) } row(s)| ).
+      lo_d->set_list_header( |PURGE snapshot { pv_arch_id } — { lines( lt_pv ) } row(s)| ##NO_TEXT ).
       lo_alv->display( ).
     CATCH cx_salv_msg INTO DATA(lx_ps).
       MESSAGE lx_ps->get_text( ) TYPE 'E'.
@@ -3437,7 +3437,7 @@ FORM do_config.
   SELECT * FROM zsp26_arch_cfg INTO TABLE lt_cfg ORDER BY table_name.
 
   IF lt_cfg IS INITIAL.
-    MESSAGE 'No config rows found — use [Register New Table] on the toolbar to add one.' TYPE 'S'
+    MESSAGE TEXT-118 TYPE 'S'
             DISPLAY LIKE 'W'.
   ENDIF.
 
@@ -3476,21 +3476,21 @@ FORM do_config.
       lo_col ?= lo_cols->get_column( 'CONFIG_ID' ).   lo_col->set_visible( abap_false ).
       lo_col ?= lo_cols->get_column( 'MANDT' ).        lo_col->set_visible( abap_false ).
       lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
-      lo_col->set_long_text( 'Table Name' ).
+      lo_col->set_long_text( TEXT-046 ).
       lo_col ?= lo_cols->get_column( 'DESCRIPTION' ).
-      lo_col->set_long_text( 'Description' ).
+      lo_col->set_long_text( TEXT-016 ).
       lo_col ?= lo_cols->get_column( 'RETENTION' ).
-      lo_col->set_long_text( 'Retention (days)' ).
+      lo_col->set_long_text( TEXT-032 ).
       lo_col ?= lo_cols->get_column( 'DATA_FIELD' ).
-      lo_col->set_long_text( 'Date Field' ).
+      lo_col->set_long_text( TEXT-013 ).
       lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).
-      lo_col->set_long_text( 'Active' ).
+      lo_col->set_long_text( TEXT-003 ).
     CATCH cx_salv_not_found.
     ENDTRY.
 
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |ARCHIVE CONFIG — { lines( lt_cfg ) } rows | &&
+      |ARCHIVE CONFIG — { lines( lt_cfg ) } rows | ##NO_TEXT &&
       |/ Register: use popup or toolbar [Register] if available.| ).
 
     lo_alv->display( ).
@@ -3540,7 +3540,7 @@ FORM f4_reg_table.
   ENDLOOP.
 
   IF lt_dd IS INITIAL.
-    MESSAGE 'No Z* TRANSP tables found with a DATE field for registration.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-115 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -3583,7 +3583,7 @@ FORM f4_reg_datfld.
         lv_win(40) TYPE c.
 
   IF gv_reg_table IS INITIAL.
-    MESSAGE 'Enter Table Name before selecting Date Field.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-055 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -3593,7 +3593,7 @@ FORM f4_reg_datfld.
     EXCEPTIONS OTHERS    = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE |Failed to read table structure for { gv_reg_table } from DDIC.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Failed to read table structure for { gv_reg_table } from DDIC.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3606,7 +3606,7 @@ FORM f4_reg_datfld.
   ENDLOOP.
 
   IF lt_flds IS INITIAL.
-    MESSAGE |Table { gv_reg_table } has no DATE-type field.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Table { gv_reg_table } has no DATE-type field.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3656,19 +3656,19 @@ FORM do_reg_validate_and_save.
   TRANSLATE: lv_tab TO UPPER CASE, lv_fld TO UPPER CASE.
 
   IF lv_tab IS INITIAL OR lv_fld IS INITIAL.
-    MESSAGE 'Enter both Table Name and Date Field.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-056 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   lv_ret_raw = gv_reg_ret.
   CONDENSE lv_ret_raw NO-GAPS.
   IF lv_ret_raw IS INITIAL OR NOT lv_ret_raw CO '0123456789'.
-    MESSAGE 'Retention: enter number of days (digits only, e.g. 365).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-080 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   lv_ret_days = CONV i( lv_ret_raw ).
   IF lv_ret_days <= 0 OR lv_ret_days > 9999.
-    MESSAGE 'Retention must be between 1 and 9999.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-079 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3677,11 +3677,11 @@ FORM do_reg_validate_and_save.
     WHERE tabname = @lv_tab.
 
   IF sy-subrc <> 0.
-    MESSAGE |Table { lv_tab } does not exist in DDIC or is not activated.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Table { lv_tab } does not exist in DDIC or is not activated.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   IF ls_dd02-tabclass <> 'TRANSP'.
-    MESSAGE |Table { lv_tab } is not TRANSP (type: { ls_dd02-tabclass }).| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Table { lv_tab } is not TRANSP (type: { ls_dd02-tabclass }).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3691,7 +3691,7 @@ FORM do_reg_validate_and_save.
     EXCEPTIONS OTHERS    = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE |Failed to read field list for { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Failed to read field list for { lv_tab }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3699,7 +3699,7 @@ FORM do_reg_validate_and_save.
     lv_has_mandt = abap_true. EXIT.
   ENDLOOP.
   IF lv_has_mandt = abap_false.
-    MESSAGE 'Table does not have MANDT (client-dependent).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-090 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3708,17 +3708,17 @@ FORM do_reg_validate_and_save.
     lv_has_key = abap_true. EXIT.
   ENDLOOP.
   IF lv_has_key = abap_false.
-    MESSAGE 'At least one key field besides MANDT is required.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-050 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   READ TABLE lt_fields INTO ls_field WITH KEY fieldname = lv_fld.
   IF sy-subrc <> 0.
-    MESSAGE |Field { lv_fld } does not exist in table { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Field { lv_fld } does not exist in table { lv_tab }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   IF ls_field-inttype <> 'D'.
-    MESSAGE |Field { lv_fld } is not of type DATE (inttype { ls_field-inttype }).|
+    MESSAGE |Field { lv_fld } is not of type DATE (inttype { ls_field-inttype }).| ##NO_TEXT
             TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
@@ -3730,10 +3730,10 @@ FORM do_reg_validate_and_save.
   IF sy-subrc = 0.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
-        titlebar              = 'Duplicate Active Config'
-        text_question         = |An active config already exists for { lv_tab }. Insert anyway?|
-        text_button_1         = 'Yes'
-        text_button_2         = 'No'
+        titlebar              = TEXT-143
+        text_question         = |An active config already exists for { lv_tab }. Insert anyway?| ##NO_TEXT
+        text_button_1         = TEXT-131
+        text_button_2         = TEXT-132
         display_cancel_button = ' '
       IMPORTING
         answer                = lv_ans
@@ -3747,7 +3747,7 @@ FORM do_reg_validate_and_save.
   TRY.
     lv_uuid = cl_system_uuid=>create_uuid_x16_static( ).
   CATCH cx_uuid_error.
-    MESSAGE 'UUID generation error.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-096 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDTRY.
 
@@ -3764,13 +3764,13 @@ FORM do_reg_validate_and_save.
   INSERT zsp26_arch_cfg FROM ls_cfg.
   IF sy-subrc = 0.
     COMMIT WORK.
-    MESSAGE |Registered { lv_tab }. Reopen [Config] to see the new row.| TYPE 'S'.
+    MESSAGE |Registered { lv_tab }. Reopen [Config] to see the new row.| ##NO_TEXT TYPE 'S'.
     CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
     gv_reg_ret    = '365'.
     gv_reg_active = 'X'.
     LEAVE TO SCREEN 0.
   ELSE.
-    MESSAGE |INSERT ZSP26_ARCH_CFG failed (sy-subrc={ sy-subrc }).| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |INSERT ZSP26_ARCH_CFG failed (sy-subrc={ sy-subrc }).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
@@ -3826,13 +3826,13 @@ FORM build_fieldcat.
     APPEND ls_fc TO gt_fcat_200.
   END-OF-DEFINITION.
 
-  m_col 'TABLE_NAME'   'Table Name'         20.
+  m_col 'TABLE_NAME'   TEXT-046         20.
   m_col 'CNT_ARCHIVED' 'Total Archived'     14.
   m_col 'CNT_RESTORED' 'Total Restored'     14.
-  m_col 'CNT_ACTIVE'   'Active in Archive'  18.
+  m_col 'CNT_ACTIVE'   TEXT-003  18.
   m_col 'LAST_ARCH_ON' 'Last Activity Date' 18.
   m_col 'LAST_ARCH_BY' 'Last By'            12.
-  m_col 'LAST_ACTION'  'Last Action'        12.
+  m_col 'LAST_ACTION'  TEXT-021        12.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -3849,7 +3849,7 @@ FORM display_alv.
     EXCEPTIONS OTHERS        = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE 'Failed to create ALV container' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-104 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3873,7 +3873,7 @@ FORM get_archive_programs.
 
   IF sy-subrc <> 0.
     CLEAR: gv_prog_write, gv_prog_del.
-    MESSAGE 'Archiving Object is invalid or not configured in AOBJ'
+    MESSAGE TEXT-049
             TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
@@ -3922,11 +3922,11 @@ FORM maintenance_spool_params.
 
   IF sy-subrc = 0 AND lv_valid = 'X'.
     gv_spool_set = 'X'.
-    MESSAGE 'Print parameters set (Spool)' TYPE 'S'.
+    MESSAGE TEXT-126 TYPE 'S'.
   ELSEIF sy-subrc = 0.
-    MESSAGE 'Cancelled or invalid spool parameters' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-099 TYPE 'S' DISPLAY LIKE 'W'.
   ELSE.
-    MESSAGE 'Failed to call GET_PRINT_PARAMETERS' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-103 TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
@@ -3956,12 +3956,12 @@ FORM maintenance_start_date.
       OTHERS           = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE 'Failed to open Start Time dialog (BP_START_DATE_EDITOR).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-106 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   gv_start_date = 'X'.
-  MESSAGE 'Start date/time set (standard job scheduling)' TYPE 'S'.
+  MESSAGE TEXT-127 TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -3995,7 +3995,7 @@ FORM check_dependencies
       SELECT COUNT(*) FROM (ls_dep-child_table) INTO @lv_child_cnt.
       IF lv_child_cnt > 0.
         ADD lv_child_cnt TO lv_total.
-        lv_dep_info &&= |{ ls_dep-child_table }: { lv_child_cnt } records  |.
+        lv_dep_info &&= |{ ls_dep-child_table }: { lv_child_cnt } records  | ##NO_TEXT.
       ENDIF.
     CATCH cx_sy_dynamic_osql_error.
       " Child table may not exist in this system — skip
@@ -4009,10 +4009,10 @@ FORM check_dependencies
   " Warn user — let them decide
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
-      titlebar              = 'Dependency Check Warning'
-      text_question         = |{ gv_tabname } has dependent child records ({ lv_total } total). Archive anyway?|
-      text_button_1         = 'Archive'
-      text_button_2         = 'No'
+      titlebar              = TEXT-144
+      text_question         = |{ gv_tabname } has dependent child records ({ lv_total } total). Archive anyway?| ##NO_TEXT
+      text_button_1         = TEXT-137
+      text_button_2         = TEXT-132
       default_button        = '2'
       display_cancel_button = ' '
     IMPORTING
@@ -4022,7 +4022,7 @@ FORM check_dependencies
 
   IF lv_answer <> '1'.
     cv_ok = abap_false.
-    MESSAGE |Archive cancelled. Dependent records exist: { lv_dep_info }|
+    MESSAGE |Archive cancelled. Dependent records exist: { lv_dep_info }| ##NO_TEXT
             TYPE 'S' DISPLAY LIKE 'W'.
   ENDIF.
 ENDFORM.
@@ -4054,7 +4054,7 @@ FORM f4_gv_tabname_dynp.
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
       retfield     = 'TABLE_NAME'
-      window_title = 'Tables in ZSP26_ARCH_CFG'
+      window_title = TEXT-152
       dynpprog     = sy-repid
       dynpnr       = sy-dynnr
       dynprofield  = 'GV_TABNAME'
@@ -4093,9 +4093,9 @@ FORM arch_popup_wvar_3ch_fb
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
       titlebar       = iv_titel
-      text_question  = '-'
-      text_button_1  = 'Change variant'
-      text_button_2  = 'Copy or delete...'
+      text_question  = '-' ##NO_TEXT
+      text_button_1  = TEXT-154
+      text_button_2  = TEXT-155
       default_button = '1'
     IMPORTING
       answer         = lv_a
@@ -4109,16 +4109,16 @@ FORM arch_popup_wvar_3ch_fb
     RETURN.
   ENDIF.
   IF lv_a <> '2'.
-    MESSAGE |Invalid selection ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |Invalid selection ({ lv_a }).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
       titlebar       = iv_titel
-      text_question  = '-'
-      text_button_1  = 'Copy variant'
-      text_button_2  = 'Delete variant'
+      text_question  = '-' ##NO_TEXT
+      text_button_1  = TEXT-156
+      text_button_2  = TEXT-157
       default_button = '1'
     IMPORTING
       answer         = lv_a
@@ -4132,7 +4132,7 @@ FORM arch_popup_wvar_3ch_fb
   ELSEIF lv_a = '2'.
     cv_answer = '3'.
   ELSE.
-    MESSAGE |Invalid selection ({ lv_a }).| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |Invalid selection ({ lv_a }).| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
   ENDIF.
 ENDFORM.
 
@@ -4154,11 +4154,11 @@ FORM zsp26_hub_edit_wvar_0500.
         lv_vlog  TYPE string.
 
   IF gv_variant IS INITIAL.
-    MESSAGE 'Please enter a Variant name' TYPE 'I'.
+    MESSAGE TEXT-067 TYPE 'I'.
     RETURN.
   ENDIF.
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Select an archive table before editing Variant' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-082 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -4180,7 +4180,7 @@ FORM zsp26_hub_edit_wvar_0500.
     USING gv_tabname gv_variant
     CHANGING lv_vtech lv_vok.
   IF lv_vok = abap_false.
-    MESSAGE 'Variant name (ID) is invalid or too long.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-098 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -4196,13 +4196,13 @@ FORM zsp26_hub_edit_wvar_0500.
   ENDIF.
 
   IF lv_run IS INITIAL.
-    lv_msg = |Variant { gv_variant } does not exist. Create SAP variant { lv_vtech }?|.
+    lv_msg = |Variant { gv_variant } does not exist. Create SAP variant { lv_vtech }?| ##NO_TEXT.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
-        titlebar              = 'Create Variant'
+        titlebar              = TEXT-145
         text_question         = lv_msg
-        text_button_1         = 'Create'
-        text_button_2         = 'Cancel'
+        text_button_1         = TEXT-134
+        text_button_2         = TEXT-130
         display_cancel_button = ' '
       IMPORTING
         answer                = lv_ans
@@ -4215,7 +4215,7 @@ FORM zsp26_hub_edit_wvar_0500.
       USING gv_prog_write lv_vtech gv_tabname
       CHANGING lv_ok.
     IF lv_ok = abap_false.
-      MESSAGE |Failed to create variant { lv_vtech }. Check variant authorization.| TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE |Failed to create variant { lv_vtech }. Check variant authorization.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
     PERFORM arch_submit_wvar_ss USING lv_vtech.
@@ -4223,7 +4223,7 @@ FORM zsp26_hub_edit_wvar_0500.
   ENDIF.
 
   " Variant already exists: one popup for Change / Copy / Delete (SE91-style)
-  lv_tit_s = |Variant { lv_run } ({ gv_variant })|.
+  lv_tit_s = |Variant { lv_run } ({ gv_variant })| ##NO_TEXT.
   PERFORM arch_popup_wvar_3ch USING lv_tit_s CHANGING lv_pick.
   IF lv_pick <> '1' AND lv_pick <> '2' AND lv_pick <> '3'.
     RETURN.
@@ -4238,13 +4238,13 @@ FORM zsp26_hub_edit_wvar_0500.
         USING gv_prog_write gv_tabname lv_run.
 
     WHEN '3'.
-      lv_msg = |Delete SAP variant { lv_run }? This cannot be undone.|.
+      lv_msg = |Delete SAP variant { lv_run }? This cannot be undone.| ##NO_TEXT.
       CALL FUNCTION 'POPUP_TO_CONFIRM'
         EXPORTING
-          titlebar              = 'Delete Variant'
+          titlebar              = TEXT-146
           text_question         = lv_msg
-          text_button_1         = 'Delete'
-          text_button_2         = 'Cancel'
+          text_button_1         = TEXT-133
+          text_button_2         = TEXT-130
           display_cancel_button = ' '
         IMPORTING
           answer                = lv_ans2
@@ -4263,9 +4263,9 @@ FORM zsp26_hub_edit_wvar_0500.
       IF sy-subrc = 0.
         COMMIT WORK AND WAIT.
         CLEAR gv_variant.
-        MESSAGE |Deleted variant { lv_run }.| TYPE 'S'.
+        MESSAGE |Deleted variant { lv_run }.| ##NO_TEXT TYPE 'S'.
       ELSE.
-        MESSAGE |Could not delete variant { lv_run }.| TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE |Could not delete variant { lv_run }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
       ENDIF.
   ENDCASE.
 ENDFORM.
@@ -4308,25 +4308,25 @@ FORM arch_copy_write_variant_dialog
       error_in_fields = 1
       OTHERS            = 2.
   IF sy-subrc = 1.
-    MESSAGE 'Failed to open name input popup (POPUP_GET_VALUES / RSVARI-VARIANT). Check DDIC.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-109 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   IF sy-subrc <> 0 OR lv_ret = 'A'.
     IF lv_ret = 'A'.
-      MESSAGE 'Variant copy cancelled.' TYPE 'S'.
+      MESSAGE TEXT-097 TYPE 'S'.
     ENDIF.
     RETURN.
   ENDIF.
 
   READ TABLE lt_fields INTO ls_field INDEX 1.
   IF sy-subrc <> 0.
-    MESSAGE 'Failed to read input value.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-110 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   lv_new = ls_field-value.
   CONDENSE lv_new.
   IF lv_new IS INITIAL.
-    MESSAGE 'Please enter a new variant name (cannot be empty).' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-068 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -4334,7 +4334,7 @@ FORM arch_copy_write_variant_dialog
     USING iv_tabname lv_new
     CHANGING lv_tgt lv_ok.
   IF lv_ok = abap_false.
-    MESSAGE 'Target variant name is invalid or too long.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-092 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -4345,7 +4345,7 @@ FORM arch_copy_write_variant_dialog
     IMPORTING
       r_c     = lv_rc.
   IF lv_rc = 0.
-    MESSAGE 'Target variant already exists.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-091 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -4353,14 +4353,14 @@ FORM arch_copy_write_variant_dialog
     USING iv_report iv_src lv_tgt iv_tabname
     CHANGING lv_ok.
   IF lv_ok = abap_false.
-    MESSAGE |Copy failed for { lv_tgt }.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Copy failed for { lv_tgt }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   gv_variant = CONV variant( lv_new ).
   CONDENSE gv_variant NO-GAPS.
   TRANSLATE gv_variant TO UPPER CASE.
-  MESSAGE |Copied to variant { lv_tgt }. Update screen if needed.| TYPE 'S'.
+  MESSAGE |Copied to variant { lv_tgt }. Update screen if needed.| ##NO_TEXT TYPE 'S'.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -4450,7 +4450,7 @@ FORM arch_copy_write_variant
   ls_varit-langu   = sy-langu.
   ls_varit-report  = lv_rep.
   ls_varit-variant = iv_tgt.
-  ls_varit-vtext   = |{ iv_tabname } /C { iv_src }|.
+  ls_varit-vtext   = |{ iv_tabname } /C { iv_src }| ##NO_TEXT.
   APPEND ls_varit TO lt_varit.
 
   CALL FUNCTION 'RS_CREATE_VARIANT'
@@ -4532,7 +4532,7 @@ FORM arch_admin_build_fieldcat.
     APPEND ls_fc TO gt_fcat_700.
   END-OF-DEFINITION.
   _col 'MANDT' 'Client' 4.
-  _col 'UNAME' 'User'   12.
+  _col 'UNAME' TEXT-047   12.
 ENDFORM.
 
 FORM arch_admin_display_alv.
@@ -4547,7 +4547,7 @@ FORM arch_admin_display_alv.
     EXPORTING container_name = 'ADM_ALV_CONT'
     EXCEPTIONS OTHERS        = 1.
   IF sy-subrc <> 0.
-    MESSAGE 'Failed to create ALV container (Admin)' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-105 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -4570,7 +4570,7 @@ FORM arch_admin_do_add.
 
   CONDENSE gv_adm_pick.
   IF gv_adm_pick IS INITIAL.
-    MESSAGE 'Enter user (F4) or type username.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-057 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   TRANSLATE gv_adm_pick TO UPPER CASE.
@@ -4582,11 +4582,11 @@ FORM arch_admin_do_add.
   IF sy-subrc = 0.
     COMMIT WORK.
     CLEAR gv_adm_pick.
-    MESSAGE |Admin added: { ls_adm-uname }| TYPE 'S'.
+    MESSAGE |Admin added: { ls_adm-uname }| ##NO_TEXT TYPE 'S'.
   ELSEIF sy-subrc = 4.
-    MESSAGE |User { ls_adm-uname } is already an admin| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |User { ls_adm-uname } is already an admin| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'W'.
   ELSE.
-    MESSAGE 'Failed to add (check table / duplicate key).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-100 TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
@@ -4605,7 +4605,7 @@ FORM arch_admin_do_remove.
       et_index_rows = lt_rows.
 
   IF lt_rows IS INITIAL.
-    MESSAGE 'Select a row from the list, then click Remove admin.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-081 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -4617,21 +4617,21 @@ FORM arch_admin_do_remove.
 
   SELECT COUNT(*) FROM zsp26_arch_admin INTO @lv_cnt.
   IF lv_cnt <= 1.
-    MESSAGE 'Cannot remove the last admin.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-052 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   IF ls_adm-uname = sy-uname.
-    MESSAGE 'Cannot remove the currently logged-in admin user.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-051 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   DELETE FROM zsp26_arch_admin WHERE uname = @ls_adm-uname.
   IF sy-subrc = 0.
     COMMIT WORK.
-    MESSAGE |Removed { ls_adm-uname } from admin list| TYPE 'S'.
+    MESSAGE |Removed { ls_adm-uname } from admin list| ##NO_TEXT TYPE 'S'.
   ELSE.
-    MESSAGE 'Failed to remove the selected row.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-111 TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 

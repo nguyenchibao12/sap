@@ -1,4 +1,4 @@
-*&---------------------------------------------------------------------*
+﻿*&---------------------------------------------------------------------*
 *& Include Z_GSP18_SAP15_I01  — PAI Modules
 *&---------------------------------------------------------------------*
 
@@ -23,7 +23,7 @@ MODULE user_command_0400 INPUT.
       LEAVE SCREEN.
     WHEN 'BT_CONTINUE'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Please enter a Table Name' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-064 TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         DATA: ls_cfg_400 TYPE zsp26_arch_cfg,
               lv_ok_400  TYPE abap_bool.
@@ -31,7 +31,7 @@ MODULE user_command_0400 INPUT.
           USING gv_tabname
           CHANGING ls_cfg_400 lv_ok_400.
         IF lv_ok_400 = abap_false.
-          MESSAGE |Table '{ gv_tabname }' is not configured for archiving. Please use F4 to select a valid table.| TYPE 'S' DISPLAY LIKE 'E'.
+          MESSAGE |Table '{ gv_tabname }' is not configured for archiving. Please use F4 to select a valid table.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
         ELSE.
           gv_hub_allowed = abap_true.
           IF lv_adm_0400_i = abap_true.
@@ -87,7 +87,7 @@ MODULE user_command_0100 INPUT.
 
     WHEN 'BT_WRITE'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Please enter a Table Name' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-064 TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM reset_flow_globals.
         gv_test_mode = ' '.
@@ -97,14 +97,14 @@ MODULE user_command_0100 INPUT.
 
     WHEN 'BT_RESTORE'.
       IF gv_tabname IS INITIAL AND lv_is_admin = abap_false.
-        MESSAGE 'Please enter a Table Name' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-064 TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM do_restore_menu.
       ENDIF.
 
     WHEN 'BT_ADK_DELETE'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Please enter a Table Name' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-064 TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM reset_flow_globals.
         SET SCREEN 0600.
@@ -118,7 +118,7 @@ MODULE user_command_0100 INPUT.
       IF lv_is_admin = abap_true.
         PERFORM do_config.
       ELSE.
-        MESSAGE 'Configuration is restricted to admins only' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-053 TYPE 'S' DISPLAY LIKE 'E'.
       ENDIF.
 
     WHEN 'BT_ADMIN'.
@@ -127,7 +127,7 @@ MODULE user_command_0100 INPUT.
         SET SCREEN 0700.
         LEAVE SCREEN.
       ELSE.
-        MESSAGE 'Admin management is restricted to admins only' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-048 TYPE 'S' DISPLAY LIKE 'E'.
       ENDIF.
 
     WHEN 'BT_RUN_LOG'.
@@ -189,7 +189,7 @@ MODULE check_variant_0300 INPUT.
 
   CHECK gv_variant IS NOT INITIAL.
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Select an archive table before editing the variant' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-083 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -209,7 +209,7 @@ MODULE check_variant_0300 INPUT.
     USING gv_tabname gv_variant
     CHANGING lv_vtech_c lv_vok_c.
   IF lv_vok_c = abap_false.
-    MESSAGE 'Invalid Variant name (ID) or exceeds length limit (max 14 characters for SAP).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-060 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -244,7 +244,7 @@ MODULE check_variant_0300 INPUT.
         CONDENSE lv_vc_cur.
         TRANSLATE lv_vc_cur TO UPPER CASE.
         IF lv_vc_tab <> lv_vc_cur.
-          MESSAGE |Variant { lv_vtech_c } contains P_TABLE={ lv_vc_tab } but the current table is { lv_vc_cur }. Please verify.| TYPE 'S' DISPLAY LIKE 'E'.
+          MESSAGE |Variant { lv_vtech_c } contains P_TABLE={ lv_vc_tab } but the current table is { lv_vc_cur }. Please verify.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
           CLEAR gv_variant.
           RETURN.
         ENDIF.
@@ -253,13 +253,13 @@ MODULE check_variant_0300 INPUT.
   ENDIF.
 
   IF lv_rc_chk <> 0.
-    lv_q_c = |Variant { lv_vtech_c } does not exist for table { gv_tabname }. Create it?|.
+    lv_q_c = |Variant { lv_vtech_c } does not exist for table { gv_tabname }. Create it?| ##NO_TEXT.
     CALL FUNCTION 'POPUP_TO_CONFIRM'
       EXPORTING
-        titlebar              = 'Notice'
+        titlebar              = TEXT-147
         text_question         = lv_q_c
-        text_button_1         = 'Yes'
-        text_button_2         = 'No'
+        text_button_1         = TEXT-131
+        text_button_2         = TEXT-132
         display_cancel_button = ' '
       IMPORTING
         answer                = lv_ans_chk
@@ -270,7 +270,7 @@ MODULE check_variant_0300 INPUT.
         USING gv_prog_write lv_vtech_c gv_tabname
         CHANGING lv_ok_c.
       IF lv_ok_c = abap_false.
-        MESSAGE |Failed to create SAP variant "{ lv_vtech_c }". Check variant authorization for report { gv_prog_write }.|
+        MESSAGE |Failed to create SAP variant "{ lv_vtech_c }". Check variant authorization for report { gv_prog_write }.| ##NO_TEXT
           TYPE 'S' DISPLAY LIKE 'E'.
         RETURN.
       ENDIF.
@@ -301,12 +301,12 @@ MODULE user_command_0300 INPUT.
       SET SCREEN 0300.
       LEAVE SCREEN.
     WHEN 'ONLI'.
-      MESSAGE 'Execute (F8) is only available on the Write screen' TYPE 'S' DISPLAY LIKE 'W'.
+      MESSAGE TEXT-058 TYPE 'S' DISPLAY LIKE 'W'.
 
     WHEN 'BT_EDIT' OR 'EDIT_BTN'.
       IF gv_variant IS NOT INITIAL.
         IF gv_tabname IS INITIAL.
-          MESSAGE 'Select an archive table before editing the variant' TYPE 'S' DISPLAY LIKE 'E'.
+          MESSAGE TEXT-083 TYPE 'S' DISPLAY LIKE 'E'.
         ELSE.
           IF gv_prog_write IS INITIAL.
             PERFORM get_archive_programs.
@@ -315,7 +315,7 @@ MODULE user_command_0300 INPUT.
             USING gv_tabname gv_variant
             CHANGING lv_vtech_300 lv_vok_300.
           IF lv_vok_300 = abap_false.
-            MESSAGE 'Invalid Variant name (ID) or exceeds length limit' TYPE 'S' DISPLAY LIKE 'E'.
+            MESSAGE TEXT-059 TYPE 'S' DISPLAY LIKE 'E'.
           ELSE.
             CALL FUNCTION 'RS_VARIANT_EXISTS'
               EXPORTING
@@ -327,13 +327,13 @@ MODULE user_command_0300 INPUT.
             IF lv_rc_300 = 0.
               PERFORM arch_submit_wvar_ss USING lv_vtech_300.
             ELSE.
-              lv_q_300 = |Variant does not exist. Variant field holds "{ gv_variant }". SAP name: { lv_vtech_300 } (for reference). Create it?|.
+              lv_q_300 = |Variant does not exist. Variant field holds "{ gv_variant }". SAP name: { lv_vtech_300 } (for reference). Create it?| ##NO_TEXT.
               CALL FUNCTION 'POPUP_TO_CONFIRM'
                 EXPORTING
-                  titlebar              = 'Notice'
+                  titlebar              = TEXT-147
                   text_question         = lv_q_300
-                  text_button_1         = 'Yes'
-                  text_button_2         = 'No'
+                  text_button_1         = TEXT-131
+                  text_button_2         = TEXT-132
                   display_cancel_button = ' '
                 IMPORTING
                   answer                = lv_ans_300
@@ -344,7 +344,7 @@ MODULE user_command_0300 INPUT.
                   USING gv_prog_write lv_vtech_300 gv_tabname
                   CHANGING lv_ok_300.
                 IF lv_ok_300 = abap_false.
-                  MESSAGE |Failed to create SAP variant "{ lv_vtech_300 }". Check variant authorization.|
+                  MESSAGE |Failed to create SAP variant "{ lv_vtech_300 }". Check variant authorization.| ##NO_TEXT
                     TYPE 'S' DISPLAY LIKE 'E'.
                   RETURN.
                 ENDIF.
@@ -356,7 +356,7 @@ MODULE user_command_0300 INPUT.
           ENDIF.
         ENDIF.
       ELSE.
-        MESSAGE 'Please enter a Variant name' TYPE 'I'.
+        MESSAGE TEXT-067 TYPE 'I'.
       ENDIF.
 
     WHEN 'BT_START' OR 'START_BTN'.
@@ -401,7 +401,7 @@ MODULE f4_gv_variant INPUT.
   CHECK lv_rep IS NOT INITIAL.
 
   IF gv_tabname IS INITIAL.
-    MESSAGE 'Please select a table first (F4 Variant is table-specific)' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-070 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -440,7 +440,7 @@ MODULE f4_gv_variant INPUT.
   DELETE ADJACENT DUPLICATES FROM lt_vf4 COMPARING variant.
 
   IF lt_vf4 IS INITIAL.
-    MESSAGE 'No variant found for this table (PREFIX_ID on VARID) or for the report' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE TEXT-125 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
@@ -450,7 +450,7 @@ MODULE f4_gv_variant INPUT.
       dynpprog     = sy-repid
       dynpnr       = sy-dynnr
       dynprofield  = 'GV_VARIANT'
-      window_title = 'Variants (for current table)'
+      window_title = TEXT-153
       value_org    = 'S'
     TABLES
       value_tab    = lt_vf4
@@ -481,22 +481,22 @@ MODULE user_command_0500 INPUT.
 
     WHEN 'BT_PREVIEW'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Please enter a Table Name on the previous screen' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-065 TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_start_date <> 'X'.
-        MESSAGE 'Start Date not defined. Please set it before executing.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-089 TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_spool_set <> 'X'.
-        MESSAGE 'Spool Parameters not defined. Please set them before executing.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-088 TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM do_archive_write.
       ENDIF.
 
     WHEN 'ONLI'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Please enter a Table Name on the previous screen' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-065 TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_start_date <> 'X'.
-        MESSAGE 'Start Date not defined. Please set it before executing.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-089 TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_spool_set <> 'X'.
-        MESSAGE 'Spool Parameters not defined. Please set them before executing.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-088 TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM do_archive_write_bg_job.
         SET SCREEN 0100.
@@ -526,7 +526,7 @@ MODULE user_command_0600 INPUT.
     WHEN 'BT_EDIT' OR 'EDIT_BTN'.
       IF gv_variant IS NOT INITIAL.
         IF gv_tabname IS INITIAL.
-          MESSAGE 'Select an archive table before editing the variant' TYPE 'S' DISPLAY LIKE 'E'.
+          MESSAGE TEXT-083 TYPE 'S' DISPLAY LIKE 'E'.
           RETURN.
         ENDIF.
         IF gv_prog_del IS INITIAL.
@@ -543,7 +543,7 @@ MODULE user_command_0600 INPUT.
           USING gv_tabname gv_variant
           CHANGING lv_vtech_600 lv_vok_600.
         IF lv_vok_600 = abap_false.
-          MESSAGE 'Invalid Variant name (ID) or exceeds length limit' TYPE 'S' DISPLAY LIKE 'E'.
+          MESSAGE TEXT-059 TYPE 'S' DISPLAY LIKE 'E'.
           RETURN.
         ENDIF.
 
@@ -565,13 +565,13 @@ MODULE user_command_0600 INPUT.
         ELSE.
           DATA: lv_ans_600 TYPE char1,
                 lv_msg_600 TYPE string.
-          lv_msg_600 = |Variant { lv_vtech_600 } does not exist for the Delete program. Create it?|.
+          lv_msg_600 = |Variant { lv_vtech_600 } does not exist for the Delete program. Create it?| ##NO_TEXT.
           CALL FUNCTION 'POPUP_TO_CONFIRM'
             EXPORTING
-              titlebar              = 'Create Delete Variant'
+              titlebar              = TEXT-148
               text_question         = lv_msg_600
-              text_button_1         = 'Create'
-              text_button_2         = 'Cancel'
+              text_button_1         = TEXT-134
+              text_button_2         = TEXT-130
               display_cancel_button = ' '
             IMPORTING
               answer                = lv_ans_600
@@ -590,17 +590,17 @@ MODULE user_command_0600 INPUT.
                 AND RETURN.
               FREE MEMORY ID 'Z_GSP18_WR_SS'.
             ELSE.
-              MESSAGE |Failed to create variant { lv_vtech_600 }.| TYPE 'S' DISPLAY LIKE 'E'.
+              MESSAGE |Failed to create variant { lv_vtech_600 }.| ##NO_TEXT TYPE 'S' DISPLAY LIKE 'E'.
             ENDIF.
           ENDIF.
         ENDIF.
       ELSE.
-        MESSAGE 'Please enter a Variant name' TYPE 'I'.
+        MESSAGE TEXT-067 TYPE 'I'.
       ENDIF.
 
     WHEN 'BT_ARCH_SEL'.
       IF gv_purge_mode = 'X'.
-        MESSAGE 'Purge-only mode does not require Archive Selection.' TYPE 'S'.
+        MESSAGE TEXT-076 TYPE 'S'.
       ELSE.
         PERFORM arch_del_pick_session_popup USING 'D'.
       ENDIF.
@@ -609,7 +609,7 @@ MODULE user_command_0600 INPUT.
       IF gv_purge_mode = 'X'.
         PERFORM do_show_eligible_data.
       ELSE.
-        MESSAGE 'Show eligible is available only in Purge-only mode.' TYPE 'S' DISPLAY LIKE 'W'.
+        MESSAGE TEXT-087 TYPE 'S' DISPLAY LIKE 'W'.
       ENDIF.
 
     WHEN 'BT_START' OR 'START_BTN'.
@@ -622,18 +622,18 @@ MODULE user_command_0600 INPUT.
 
     WHEN 'ONLI'.
       IF gv_tabname IS INITIAL.
-        MESSAGE 'Please enter a Table Name on the previous screen' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-065 TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_start_date <> 'X'.
-        MESSAGE 'Start Date not defined. Please set it before executing.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-089 TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_spool_set <> 'X'.
-        MESSAGE 'Spool Parameters not defined. Please set them before executing.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-088 TYPE 'S' DISPLAY LIKE 'E'.
       ELSEIF gv_purge_mode = 'X'.
         PERFORM do_purge_only_direct.
       ELSEIF gv_del_sess_def IS INITIAL AND gv_variant IS INITIAL.
-        MESSAGE 'Please select an Archive Session or Variant for delete' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-073 TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         IF gv_test_mode = 'X'.
-          MESSAGE 'Test mode active: delete job will only simulate, no DB data will be removed.' TYPE 'S' DISPLAY LIKE 'W'.
+          MESSAGE TEXT-128 TYPE 'S' DISPLAY LIKE 'W'.
         ENDIF.
         PERFORM do_archive_delete_bg_job.
         SET SCREEN 0100.
