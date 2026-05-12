@@ -74,10 +74,10 @@ INITIALIZATION.
     FREE MEMORY ID 'Z_GSP18_ARCH_TAB'.
   ENDIF.
 
-  g_scr_h0 = 'Table: press F4 to pick from configuration. Turn off Test Mode to write the archive file.'.
-  g_scr_h1 = 'Dates/retention use configuration; extra rules may still filter rows.'.
-  bt_tbls = 'Show All Tables'.
-  bt_data = 'Show Eligible Data'.
+  g_scr_h0 = TEXT-001.
+  g_scr_h1 = TEXT-002.
+  bt_tbls   = TEXT-003.
+  bt_data   = TEXT-004.
 
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN OUTPUT.
@@ -156,20 +156,19 @@ AT SELECTION-SCREEN.
 
         lo_cols = lo_alv->get_columns( ).
         TRY. lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
-             lo_col->set_long_text( 'Table Name' ). CATCH cx_salv_not_found. ENDTRY.
+             lo_col->set_long_text( TEXT-005 ). CATCH cx_salv_not_found. ENDTRY.
         TRY. lo_col ?= lo_cols->get_column( 'DATA_FIELD' ).
-             lo_col->set_long_text( 'Date Field' ). CATCH cx_salv_not_found. ENDTRY.
+             lo_col->set_long_text( TEXT-006 ). CATCH cx_salv_not_found. ENDTRY.
         TRY. lo_col ?= lo_cols->get_column( 'RETENTION' ).
-             lo_col->set_long_text( 'Retention (Days)' ). CATCH cx_salv_not_found. ENDTRY.
+             lo_col->set_long_text( TEXT-007 ). CATCH cx_salv_not_found. ENDTRY.
         TRY. lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).
-             lo_col->set_long_text( 'Active' ). CATCH cx_salv_not_found. ENDTRY.
+             lo_col->set_long_text( TEXT-008 ). CATCH cx_salv_not_found. ENDTRY.
         TRY. lo_col ?= lo_cols->get_column( 'ELIGIBLE' ).
-             lo_col->set_long_text( 'Eligible Records' ). CATCH cx_salv_not_found. ENDTRY.
+             lo_col->set_long_text( TEXT-009 ). CATCH cx_salv_not_found. ENDTRY.
         TRY. lo_col ?= lo_cols->get_column( 'CUTOFF_DATE' ).
-             lo_col->set_long_text( 'Cutoff Date' ). CATCH cx_salv_not_found. ENDTRY.
+             lo_col->set_long_text( TEXT-010 ). CATCH cx_salv_not_found. ENDTRY.
 
-        lo_alv->get_display_settings( )->set_list_header(
-          'Archive Configuration — All Active Tables' ).
+        lo_alv->get_display_settings( )->set_list_header( TEXT-011 ).
         lo_alv->display( ).
       CATCH cx_salv_msg. ENDTRY.
 
@@ -177,7 +176,7 @@ AT SELECTION-SCREEN.
       PERFORM validate_table_against_cfg
         USING p_table CHANGING gs_cfg lv_cfg_ok.
       IF lv_cfg_ok = abap_false.
-        MESSAGE |Table '{ p_table }' is not active in archive configuration or is unknown to the dictionary.| TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE |Table '{ p_table }' is not active in archive configuration or is unknown to the dictionary.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
         RETURN.
       ENDIF.
 
@@ -205,7 +204,7 @@ AT SELECTION-SCREEN.
 
       IF <lt_src> IS INITIAL.
         IF lv_sql_elig_cnt > 0.
-          lv_m = |{ lv_sql_elig_cnt } row(s) passed the date window but none passed the extra archive rules. Review rules for this table in configuration.|.
+          lv_m = |{ lv_sql_elig_cnt } row(s) passed the date window but none passed the extra archive rules. Review rules for this table in configuration.| ##NO_TEXT.
           MESSAGE lv_m TYPE 'S' DISPLAY LIKE 'W'.
         ELSE.
           CLEAR lv_tbl_tot.
@@ -214,13 +213,13 @@ AT SELECTION-SCREEN.
             CLEAR lv_c0.
             SELECT COUNT(*) FROM (p_table) INTO @lv_c0 WHERE (lv_w0).
             IF lv_c0 > 0.
-              lv_m = |{ lv_tbl_tot } row(s) exist but none qualify after rules are applied. Widen the date range or review archive rules for this table.|.
+              lv_m = |{ lv_tbl_tot } row(s) exist but none qualify after rules are applied. Widen the date range or review archive rules for this table.| ##NO_TEXT.
             ELSE.
-              lv_m = |{ lv_tbl_tot } row(s) exist but none match the configured date field ({ lv_df }) up to { lv_co }. Widen the date range or change the date field in configuration (e.g. posting vs document date).|.
+              lv_m = |{ lv_tbl_tot } row(s) exist but none match the configured date field ({ lv_df }) up to { lv_co }. Widen the date range or change the date field in configuration (e.g. posting vs document date).| ##NO_TEXT.
             ENDIF.
             MESSAGE lv_m TYPE 'S' DISPLAY LIKE 'W'.
           ELSE.
-            lv_m = |No rows found for { p_table } in this client. If you expected data, check the table, client, and keys in the data browser.|.
+            lv_m = |No rows found for { p_table } in this client. If you expected data, check the table, client, and keys in the data browser.| ##NO_TEXT.
             MESSAGE lv_m TYPE 'S' DISPLAY LIKE 'W'.
           ENDIF.
         ENDIF.
@@ -235,7 +234,7 @@ AT SELECTION-SCREEN.
         lo_alv2->get_functions( )->set_all( abap_true ).
         lo_alv2->get_columns( )->set_optimize( abap_true ).
         lo_alv2->get_display_settings( )->set_list_header(
-          |[PREVIEW] { p_table } — { lines( <lt_src> ) } rows (dynamic line type)| ).
+          |[PREVIEW] { p_table } — { lines( <lt_src> ) } rows (dynamic line type)| ) ##NO_TEXT.
         lo_alv2->display( ).
       CATCH cx_salv_msg. ENDTRY.
 
@@ -249,7 +248,7 @@ START-OF-SELECTION.
   PERFORM validate_table_against_cfg
     USING p_table CHANGING gs_cfg lv_cfg_ok.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Table '{ p_table }' cannot be archived: missing active configuration or date field not in the dictionary.| TYPE 'A'.
+    MESSAGE |Table '{ p_table }' cannot be archived: missing active configuration or date field not in the dictionary.| TYPE 'A' ##NO_TEXT.
   ENDIF.
 
   lv_tpl_df = gs_cfg-data_field.
@@ -260,16 +259,16 @@ START-OF-SELECTION.
                       ELSE sy-datum - gs_cfg-retention ).
 
   WRITE: /.
-  WRITE: / |=== Archive write: { p_table } ===|.
-  WRITE: / |Configuration ID: { lv_tpl_cid }|.
-  WRITE: / |Date field      : { lv_tpl_df }|.
-  WRITE: / |Retention (days): { lv_tpl_ret }|.
+  WRITE: / |=== Archive write: { p_table } ===| ##NO_TEXT.
+  WRITE: / |Configuration ID: { lv_tpl_cid }| ##NO_TEXT.
+  WRITE: / |Date field      : { lv_tpl_df }| ##NO_TEXT.
+  WRITE: / |Retention (days): { lv_tpl_ret }| ##NO_TEXT.
   IF s_date-low IS NOT INITIAL.
-    WRITE: / |Date From  : { s_date-low }|.
+    WRITE: / |Date From  : { s_date-low }| ##NO_TEXT.
   ELSE.
-    WRITE: / 'Date From  : (no lower bound)'.
+    WRITE: / TEXT-012.
   ENDIF.
-  WRITE: / |Date To    : { lv_cutoff }|.
+  WRITE: / |Date To    : { lv_cutoff }| ##NO_TEXT.
   WRITE: /.
 
   DATA: lv_where    TYPE string,
@@ -298,15 +297,15 @@ START-OF-SELECTION.
 
   lv_sql_elig_cnt = lines( <lt_src> ).
   IF lv_sql_elig_cnt >= lc_max_rows.
-    WRITE: / |Warning: only the first { lc_max_rows } rows were read; more rows may exist.|.
+    WRITE: / |Warning: only the first { lc_max_rows } rows were read; more rows may exist.| ##NO_TEXT.
   ENDIF.
   PERFORM apply_rules_to_src.
 
-  WRITE: / |Records eligible: { lines( <lt_src> ) }|.
+  WRITE: / |Records eligible: { lines( <lt_src> ) }| ##NO_TEXT.
 
   IF <lt_src> IS INITIAL.
     IF lv_sql_elig_cnt > 0.
-      WRITE: / |{ lv_sql_elig_cnt } row(s) matched the date window but none passed row-level archive rules.|.
+      WRITE: / |{ lv_sql_elig_cnt } row(s) matched the date window but none passed row-level archive rules.| ##NO_TEXT.
     ELSE.
       CLEAR lv_tbl_tot.
       SELECT COUNT(*) FROM (p_table) INTO @lv_tbl_tot.
@@ -314,15 +313,15 @@ START-OF-SELECTION.
         CLEAR lv_c0.
         SELECT COUNT(*) FROM (p_table) INTO @lv_c0 WHERE (lv_where0).
         IF lv_c0 > 0.
-          WRITE: / |{ lv_tbl_tot } row(s) exist; { lv_c0 } in the date window but none after rules — review archive rules.|.
+          WRITE: / |{ lv_tbl_tot } row(s) exist; { lv_c0 } in the date window but none after rules — review archive rules.| ##NO_TEXT.
         ELSE.
-          WRITE: / |{ lv_tbl_tot } row(s) exist but none match date field { lv_tpl_df } up to { lv_cutoff } — widen dates or change date field.|.
+          WRITE: / |{ lv_tbl_tot } row(s) exist but none match date field { lv_tpl_df } up to { lv_cutoff } — widen dates or change date field.| ##NO_TEXT.
         ENDIF.
       ELSE.
-        WRITE: / |No rows for cutoff { lv_cutoff } on field { lv_tpl_df }; table may be empty in this client.|.
+        WRITE: / |No rows for cutoff { lv_cutoff } on field { lv_tpl_df }; table may be empty in this client.| ##NO_TEXT.
       ENDIF.
     ENDIF.
-    WRITE: / 'No rows qualify for archiving.'.
+    WRITE: / TEXT-013.
     RETURN.
   ENDIF.
 
@@ -339,7 +338,7 @@ START-OF-SELECTION.
     EXCEPTIONS
       OTHERS    = 1.
   IF sy-subrc <> 0 OR lt_dd IS INITIAL.
-    MESSAGE |Could not read field list for table { p_table }; archiving cannot continue.| TYPE 'A'.
+    MESSAGE |Could not read field list for table { p_table }; archiving cannot continue.| TYPE 'A' ##NO_TEXT.
   ENDIF.
 
   LOOP AT <lt_src> ASSIGNING <row>.
@@ -416,7 +415,7 @@ START-OF-SELECTION.
         archiving_standard_violation  = 5
         OTHERS                        = 6.
     IF sy-subrc <> 0.
-      MESSAGE 'Could not open archive for writing. Check archive object setup and your authorizations.' TYPE 'A'.
+      MESSAGE TEXT-014 TYPE 'A'.
     ENDIF.
 
     " Register generic DDIC record structure
@@ -437,10 +436,10 @@ START-OF-SELECTION.
         OTHERS                      = 3.
     IF sy-subrc <> 0.
       lv_err = lv_err + 1.
-      WRITE: / |Error: archive structure registration failed (return code { sy-subrc }).|.
+      WRITE: / |Error: archive structure registration failed (return code { sy-subrc }).| ##NO_TEXT.
       CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
         EXPORTING archive_handle = lv_arch_h EXCEPTIONS OTHERS = 0.
-      MESSAGE 'Archive structure registration failed; run cannot continue.' TYPE 'A'.
+      MESSAGE TEXT-015 TYPE 'A'.
     ENDIF.
 
     CALL FUNCTION 'ARCHIVE_NEW_OBJECT'
@@ -453,7 +452,7 @@ START-OF-SELECTION.
     IF sy-subrc <> 0.
       CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
         EXPORTING archive_handle = lv_arch_h EXCEPTIONS OTHERS = 0.
-      MESSAGE 'Could not create a new archive object in the file.' TYPE 'A'.
+      MESSAGE TEXT-016 TYPE 'A'.
     ENDIF.
 
     CALL FUNCTION 'ARCHIVE_PUT_TABLE'
@@ -469,13 +468,13 @@ START-OF-SELECTION.
         OTHERS                    = 4.
     IF sy-subrc <> 0.
       lv_err = lv_err + 1.
-      WRITE: / |Error: writing data to the archive file failed (return code { sy-subrc }).|.
+      WRITE: / |Error: writing data to the archive file failed (return code { sy-subrc }).| ##NO_TEXT.
       CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
         EXPORTING
           archive_handle = lv_arch_h
         EXCEPTIONS
           OTHERS         = 0.
-      MESSAGE 'Writing rows to the archive file failed.' TYPE 'A'.
+      MESSAGE TEXT-017 TYPE 'A'.
     ENDIF.
 
     lv_cnt = lines( <lt_arch> ).
@@ -496,7 +495,7 @@ START-OF-SELECTION.
           archive_handle = lv_arch_h
         EXCEPTIONS
           OTHERS         = 0.
-      MESSAGE 'Saving the archive object failed.' TYPE 'A'.
+      MESSAGE TEXT-018 TYPE 'A'.
     ENDIF.
 
     CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
@@ -521,20 +520,20 @@ START-OF-SELECTION.
     ls_log-end_time    = lv_ts_e.
     ls_log-exec_user   = sy-uname.
     ls_log-exec_date   = sy-datum.
-    ls_log-message     = |Archived { lv_cnt } row(s) for { p_table } (cutoff { lv_cutoff }, session handle { lv_arch_h }).|.
+    ls_log-message     = |Archived { lv_cnt } row(s) for { p_table } (cutoff { lv_cutoff }, session handle { lv_arch_h }).| ##NO_TEXT.
     INSERT zsp26_arch_log FROM ls_log.
     IF sy-subrc <> 0.
-      WRITE: / |Warning: archive completed but application log could not be saved (return code { sy-subrc }).|.
+      WRITE: / |Warning: archive completed but application log could not be saved (return code { sy-subrc }).| ##NO_TEXT.
     ENDIF.
     COMMIT WORK.
 
   WRITE: /.
-  WRITE: / '=== Summary ==='.
-  WRITE: / |Rows in selection: { lines( <lt_src> ) }|.
-  WRITE: / |Rows written to archive file: { lv_cnt }|.
-  WRITE: / 'Write step finished: data is in the archive file; database rows are not removed yet.'.
-  WRITE: / 'Next step: run the Delete program from the hub to remove the same rows from the database.'.
-  WRITE: / 'Use the hub Delete flow and pick the archive session that matches this run.'.
+  WRITE: / TEXT-019.
+  WRITE: / |Rows in selection: { lines( <lt_src> ) }| ##NO_TEXT.
+  WRITE: / |Rows written to archive file: { lv_cnt }| ##NO_TEXT.
+  WRITE: / TEXT-020.
+  WRITE: / TEXT-021.
+  WRITE: / TEXT-022.
 
 *&---------------------------------------------------------------------*
 FORM apply_rules_to_src.
