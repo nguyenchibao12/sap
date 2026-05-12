@@ -323,10 +323,12 @@ FORM show_archive_preview.
 
     TRY.
       lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
-      DATA(lv_col_key) = |Key ({ lv_kfld })| ##NO_TEXT.
+      DATA lv_col_key TYPE scrtext_l.
+      lv_col_key = |Key ({ lv_kfld })| ##NO_TEXT.
       lo_col->set_long_text( lv_col_key ).
       lo_col ?= lo_cols->get_column( 'DATE_VAL' ).
-      DATA(lv_col_dat) = |Date ({ gs_cfg-data_field })| ##NO_TEXT.
+      DATA lv_col_dat TYPE scrtext_l.
+      lv_col_dat = |Date ({ gs_cfg-data_field })| ##NO_TEXT.
       lo_col->set_long_text( lv_col_dat ).
       lo_col ?= lo_cols->get_column( 'AGE_DAYS' ).
       lo_col->set_long_text( TEXT-004 ).
@@ -338,8 +340,9 @@ FORM show_archive_preview.
     ENDTRY.
 
     lo_disp = lo_alv->get_display_settings( ).
-    DATA(lv_prev_hdr) = |PREVIEW — { gv_tabname }  [ Total: { lines( lt_prev ) }  READY: { gv_rdy_cnt }  TOO NEW: { gv_skp_cnt - lv_fail_cnt }  RULE FAIL: { lv_fail_cnt } / Retention: { gs_cfg-retention }d / Field: { gs_cfg-data_field } ]| ##NO_TEXT.
-    lo_disp->set_list_header( lv_prev_hdr ).
+    DATA lv_prev_hdr TYPE string.
+    lv_prev_hdr = |PREVIEW — { gv_tabname }  [ Total: { lines( lt_prev ) }  READY: { gv_rdy_cnt }  TOO NEW: { gv_skp_cnt - lv_fail_cnt }  RULE FAIL: { lv_fail_cnt } / Retention: { gs_cfg-retention }d / Field: { gs_cfg-data_field } ]| ##NO_TEXT.
+    lo_disp->set_list_header( CONV #( lv_prev_hdr ) ).
 
     lo_alv->display( ).
 
@@ -1154,7 +1157,8 @@ FORM do_show_eligible_data.
           lo_col->set_long_text( TEXT-020 ).
           lo_col->set_output_length( 42 ).
           lo_col ?= lo_cols->get_column( 'DATE_VAL' ).
-          DATA(lv_elig_dat) = |Date ({ ls_cfg-data_field })| ##NO_TEXT.
+          DATA lv_elig_dat TYPE scrtext_l.
+          lv_elig_dat = |Date ({ ls_cfg-data_field })| ##NO_TEXT.
           lo_col->set_long_text( lv_elig_dat ).
           lo_col->set_output_length( 12 ).
           lo_col ?= lo_cols->get_column( 'AGE_DAYS' ).
@@ -2056,8 +2060,9 @@ FORM do_monitor.
     ENDTRY.
 
     lo_disp = go_mon_alv->get_display_settings( ).
-    DATA(lv_mon_hdr) = |ARCHIVE MONITORING — Business Overview — { lines( gt_mon_disp ) } tables — { sy-datum }| ##NO_TEXT.
-    lo_disp->set_list_header( lv_mon_hdr ).
+    DATA lv_mon_hdr TYPE string.
+    lv_mon_hdr = |ARCHIVE MONITORING — Business Overview — { lines( gt_mon_disp ) } tables — { sy-datum }| ##NO_TEXT.
+    lo_disp->set_list_header( CONV #( lv_mon_hdr ) ).
     lo_disp->set_striped_pattern( if_salv_c_bool_sap=>true ).
     go_mon_alv->display( ).
 
@@ -2126,8 +2131,9 @@ FORM show_mon_detail USING iv_table TYPE tabname.
     CATCH cx_salv_not_found. ENDTRY.
 
     lo_disp = lo_alv->get_display_settings( ).
-    DATA(lv_det_hdr) = |DETAIL LOG: { iv_table } — { lines( lt_log ) } entries| ##NO_TEXT.
-    lo_disp->set_list_header( lv_det_hdr ).
+    DATA lv_det_hdr TYPE string.
+    lv_det_hdr = |DETAIL LOG: { iv_table } — { lines( lt_log ) } entries| ##NO_TEXT.
+    lo_disp->set_list_header( CONV #( lv_det_hdr ) ).
     lo_alv->display( ).
 
   CATCH cx_salv_msg INTO DATA(lx2).
@@ -2551,12 +2557,14 @@ FORM show_hub_admi_session_groups.
           lo_col->set_long_text( ' ' ).
           lo_col->set_icon( if_salv_c_bool_sap=>true ).
           lo_col ?= lo_cols->get_column( 'SESSION_GROUP' ).
-          DATA(lv_grp_s) = 'Group' ##NO_TEXT.
+          DATA lv_grp_s TYPE scrtext_s.
+          lv_grp_s = 'Group' ##NO_TEXT.
           lo_col->set_short_text( lv_grp_s ).
           lo_col->set_medium_text( TEXT-037 ).
           lo_col->set_long_text( TEXT-037 ).
           lo_col ?= lo_cols->get_column( 'SESSION_RANGE' ).
-          DATA(lv_rng_s) = 'Ranges' ##NO_TEXT.
+          DATA lv_rng_s TYPE scrtext_s.
+          lv_rng_s = 'Ranges' ##NO_TEXT.
           lo_col->set_short_text( lv_rng_s ).
           lo_col->set_medium_text( TEXT-038 ).
           lo_col->set_long_text( TEXT-038 ).
@@ -2564,8 +2572,9 @@ FORM show_hub_admi_session_groups.
       ENDTRY.
 
       lo_disp = lo_alv->get_display_settings( ).
-      DATA(lv_sess_hdr) = |Archiving Sessions ({ lv_obj }) — grouped ranges (Errors / Incomplete / Complete)| ##NO_TEXT.
-      lo_disp->set_list_header( lv_sess_hdr ).
+      DATA lv_sess_hdr TYPE string.
+      lv_sess_hdr = |Archiving Sessions ({ lv_obj }) — grouped ranges (Errors / Incomplete / Complete)| ##NO_TEXT.
+      lo_disp->set_list_header( CONV #( lv_sess_hdr ) ).
       lo_alv->display( ).
 
     CATCH cx_salv_msg INTO DATA(lx_rs).
@@ -2813,8 +2822,9 @@ FORM run_show_document_detail
         CHANGING  t_table      = lt_det ).
       lo_alv_det->get_functions( )->set_all( abap_true ).
       lo_alv_det->get_columns( )->set_optimize( abap_true ).
-      DATA(lv_det_err) = |Session { pv_doc }: no readable archive payload (rc={ pv_rc })| ##NO_TEXT.
-      lo_alv_det->get_display_settings( )->set_list_header( lv_det_err ).
+      DATA lv_det_err TYPE string.
+      lv_det_err = |Session { pv_doc }: no readable archive payload (rc={ pv_rc })| ##NO_TEXT.
+      lo_alv_det->get_display_settings( )->set_list_header( CONV #( lv_det_err ) ).
       lo_alv_det->display( ).
     CATCH cx_salv_msg.
   ENDTRY.
@@ -3099,11 +3109,12 @@ FORM show_hub_btc_job_list.
 
       lo_disp = go_btc_alv->get_display_settings( ).
       IF lv_btc_adm = abap_true.
-        DATA(lv_btc_hdr) = |Background jobs ZARCH* — admin view (all users) — { lines( gt_btc_rows ) } rows| ##NO_TEXT.
-        lo_disp->set_list_header( lv_btc_hdr ).
+        DATA lv_btc_hdr TYPE string.
+        lv_btc_hdr = |Background jobs ZARCH* — admin view (all users) — { lines( gt_btc_rows ) } rows| ##NO_TEXT.
+        lo_disp->set_list_header( CONV #( lv_btc_hdr ) ).
       ELSE.
         lv_btc_hdr = |Background jobs ZARCH* — { sy-uname } — { lines( gt_btc_rows ) } rows| ##NO_TEXT.
-        lo_disp->set_list_header( lv_btc_hdr ).
+        lo_disp->set_list_header( CONV #( lv_btc_hdr ) ).
       ENDIF.
       go_btc_alv->display( ).
 
@@ -3145,8 +3156,9 @@ FORM show_btc_job_protocol
       lo_f = lo_alv->get_functions( ).
       lo_f->set_all( abap_true ).
       lo_d = lo_alv->get_display_settings( ).
-      DATA(lv_prot_hdr) = |Job protocol: { pv_name } / { pv_cnt }| ##NO_TEXT.
-      lo_d->set_list_header( lv_prot_hdr ).
+      DATA lv_prot_hdr TYPE string.
+      lv_prot_hdr = |Job protocol: { pv_name } / { pv_cnt }| ##NO_TEXT.
+      lo_d->set_list_header( CONV #( lv_prot_hdr ) ).
       lo_alv->get_columns( )->set_optimize( abap_true ).
       lo_alv->display( ).
     CATCH cx_salv_msg INTO DATA(lx_p).
@@ -3256,11 +3268,12 @@ FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
         CATCH cx_salv_not_found. ENDTRY.
       lo_d = lo_alv->get_display_settings( ).
       IF lv_tn IS NOT INITIAL.
-        DATA(lv_log_hdr) = |ZSP26_ARCH_LOG — { lv_tn } — { lines( lt_lr ) }| ##NO_TEXT.
-        lo_d->set_list_header( lv_log_hdr ).
+        DATA lv_log_hdr TYPE string.
+        lv_log_hdr = |ZSP26_ARCH_LOG — { lv_tn } — { lines( lt_lr ) }| ##NO_TEXT.
+        lo_d->set_list_header( CONV #( lv_log_hdr ) ).
       ELSE.
         lv_log_hdr = |ZSP26_ARCH_LOG — user { sy-uname } — { lines( lt_lr ) }| ##NO_TEXT.
-        lo_d->set_list_header( lv_log_hdr ).
+        lo_d->set_list_header( CONV #( lv_log_hdr ) ).
       ENDIF.
       lo_alv->display( ).
     CATCH cx_salv_msg INTO DATA(lx_z).
@@ -3447,8 +3460,9 @@ FORM show_purge_run_data USING VALUE(pv_arch_id) TYPE zsp26_de_archid.
         CATCH cx_salv_not_found.
       ENDTRY.
       lo_d = lo_alv->get_display_settings( ).
-      DATA(lv_purge_hdr) = |PURGE snapshot { pv_arch_id } — { lines( lt_pv ) } row(s)| ##NO_TEXT.
-      lo_d->set_list_header( lv_purge_hdr ).
+      DATA lv_purge_hdr TYPE string.
+      lv_purge_hdr = |PURGE snapshot { pv_arch_id } — { lines( lt_pv ) } row(s)| ##NO_TEXT.
+      lo_d->set_list_header( CONV #( lv_purge_hdr ) ).
       lo_alv->display( ).
     CATCH cx_salv_msg INTO DATA(lx_ps).
       MESSAGE lx_ps->get_text( ) TYPE 'E'.
@@ -3525,8 +3539,9 @@ FORM do_config.
     ENDTRY.
 
     lo_disp = lo_alv->get_display_settings( ).
-    DATA(lv_cfg_hdr) = |ARCHIVE CONFIG — { lines( lt_cfg ) } rows / Register: use popup or toolbar [Register] if available.| ##NO_TEXT.
-    lo_disp->set_list_header( lv_cfg_hdr ).
+    DATA lv_cfg_hdr TYPE string.
+    lv_cfg_hdr = |ARCHIVE CONFIG — { lines( lt_cfg ) } rows / Register: use popup or toolbar [Register] if available.| ##NO_TEXT.
+    lo_disp->set_list_header( CONV #( lv_cfg_hdr ) ).
 
     lo_alv->display( ).
 
