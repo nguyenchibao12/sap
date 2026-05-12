@@ -148,8 +148,16 @@ MODULE init_fields_0500 OUTPUT.
   gv_disp_mandt = sy-mandt.
   gv_disp_uname = sy-uname.
 
-  gv_stat_start_tx = COND #( WHEN gv_start_date = 'X' THEN 'Defined' ELSE 'Not Defined' ).
-  gv_stat_spool_tx = COND #( WHEN gv_spool_set = 'X' THEN 'Defined' ELSE 'Not Defined' ).
+  IF gv_start_date = 'X'.
+    gv_stat_start_tx = 'Defined' ##NO_TEXT.
+  ELSE.
+    gv_stat_start_tx = 'Not Defined' ##NO_TEXT.
+  ENDIF.
+  IF gv_spool_set = 'X'.
+    gv_stat_spool_tx = 'Defined' ##NO_TEXT.
+  ELSE.
+    gv_stat_spool_tx = 'Not Defined' ##NO_TEXT.
+  ENDIF.
 
   IF gv_prog_write IS INITIAL.
     PERFORM get_archive_programs.
@@ -189,19 +197,27 @@ MODULE init_fields_0600 OUTPUT.
   gv_disp_mandt  = sy-mandt.
   gv_disp_uname  = sy-uname.
 
-  gv_scr600_head = |Archive for { gv_object }|.
+  gv_scr600_head = |Archive for { gv_object }| ##NO_TEXT.
 
   IF gv_purge_mode = 'X'.
-    gv_stat_arch_tx = 'N/A (Purge-only)'.
+    gv_stat_arch_tx = 'N/A (Purge-only)' ##NO_TEXT.
   ELSEIF gv_del_sess_def = 'X' AND gs_del_admi-document IS NOT INITIAL.
-    gv_stat_arch_tx = |Defined ({ gs_del_admi-document })|.
+    gv_stat_arch_tx = |Defined ({ gs_del_admi-document })| ##NO_TEXT.
   ELSEIF gv_del_sess_def = 'X' OR gv_variant IS NOT INITIAL.
-    gv_stat_arch_tx = 'Defined'.
+    gv_stat_arch_tx = 'Defined' ##NO_TEXT.
   ELSE.
-    gv_stat_arch_tx = 'Not Defined'.
+    gv_stat_arch_tx = 'Not Defined' ##NO_TEXT.
   ENDIF.
-  gv_stat_start_tx = COND #( WHEN gv_start_date = 'X' THEN 'Defined' ELSE 'Not Defined' ).
-  gv_stat_spool_tx = COND #( WHEN gv_spool_set = 'X' THEN 'Defined' ELSE 'Not Defined' ).
+  IF gv_start_date = 'X'.
+    gv_stat_start_tx = 'Defined' ##NO_TEXT.
+  ELSE.
+    gv_stat_start_tx = 'Not Defined' ##NO_TEXT.
+  ENDIF.
+  IF gv_spool_set = 'X'.
+    gv_stat_spool_tx = 'Defined' ##NO_TEXT.
+  ELSE.
+    gv_stat_spool_tx = 'Not Defined' ##NO_TEXT.
+  ENDIF.
 
   IF gv_prog_del IS INITIAL.
     PERFORM get_archive_programs.

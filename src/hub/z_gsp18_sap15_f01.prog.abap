@@ -664,7 +664,7 @@ FORM hub_job_close_with_startspec
       job_nosteps                 = 5
       job_notex                   = 6
       lock_failed                 = 7
-      OTHERS                      = 8.
+      OTHERS                      = 8 ##FM_SUBRC_OK.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -2789,12 +2789,12 @@ FORM run_show_document_detail
       AND document = pv_doc.
 
   CLEAR ls_det.
-  ls_det-item = 'Session'.
+  ls_det-item = 'Session' ##NO_TEXT.
   ls_det-value = pv_doc.
   APPEND ls_det TO lt_det.
 
   CLEAR ls_det.
-  ls_det-item = 'Open RC'.
+  ls_det-item = 'Open RC' ##NO_TEXT.
   ls_det-value = pv_rc.
   APPEND ls_det TO lt_det.
 
@@ -2805,7 +2805,7 @@ FORM run_show_document_detail
     APPEND ls_det TO lt_det.
 
     CLEAR ls_det.
-    ls_det-item = 'Create date'.
+    ls_det-item = 'Create date' ##NO_TEXT.
     ls_det-value = ls_run-creat_date.
     APPEND ls_det TO lt_det.
 
@@ -2881,11 +2881,11 @@ FORM show_hub_btc_job_list.
     ls_btc-strtdate = ls_co-strtdate.
     ls_btc-strttime = ls_co-strttime.
     CASE ls_co-status.
-      WHEN 'F'. ls_btc-status_txt = 'Finished'.
-      WHEN 'A'. ls_btc-status_txt = 'Scheduled'.
-      WHEN 'R'. ls_btc-status_txt = 'Running'.
-      WHEN 'P'. ls_btc-status_txt = 'Released'.
-      WHEN 'X'. ls_btc-status_txt = 'Canceled'.
+      WHEN 'F'. ls_btc-status_txt = 'Finished' ##NO_TEXT.
+      WHEN 'A'. ls_btc-status_txt = 'Scheduled' ##NO_TEXT.
+      WHEN 'R'. ls_btc-status_txt = 'Running' ##NO_TEXT.
+      WHEN 'P'. ls_btc-status_txt = 'Released' ##NO_TEXT.
+      WHEN 'X'. ls_btc-status_txt = 'Canceled' ##NO_TEXT.
       WHEN OTHERS. ls_btc-status_txt = ls_co-status.
     ENDCASE.
     APPEND ls_btc TO gt_btc_rows.
@@ -3062,26 +3062,26 @@ FORM show_hub_btc_job_list.
           lo_funcs->add_function(
             name     = 'BTC_PROT'
             icon     = '@12@'
-            text     = 'Job protocol'
-            tooltip  = 'Read job log (BP_JOBLOG_READ) — equivalent to SM37 log'
+            text     = 'Job protocol' ##NO_TEXT
+            tooltip  = 'Read job log (BP_JOBLOG_READ) — equivalent to SM37 log' ##NO_TEXT
             position = if_salv_c_function_position=>left_of_salv_functions ).
           lo_funcs->add_function(
             name     = 'BTC_SPOOL'
             icon     = '@0X@'
-            text     = 'Spool ID'
-            tooltip  = 'View spool List ID for step (if available)'
+            text     = 'Spool ID' ##NO_TEXT
+            tooltip  = 'View spool List ID for step (if available)' ##NO_TEXT
             position = if_salv_c_function_position=>left_of_salv_functions ).
           lo_funcs->add_function(
             name     = 'BTC_Z26LOG'
             icon     = '@3W@'
-            text     = 'ZSP26_ARCH_LOG'
-            tooltip  = 'Application log ARCHIVE/DELETE by hub table or user'
+            text     = 'ZSP26_ARCH_LOG' ##NO_TEXT
+            tooltip  = 'Application log ARCHIVE/DELETE by hub table or user' ##NO_TEXT
             position = if_salv_c_function_position=>left_of_salv_functions ).
           lo_funcs->add_function(
             name     = 'BTC_SESS'
             icon     = '@3I@'
-            text     = 'Archive sessions'
-            tooltip  = 'Open session list to browse or open archived data'
+            text     = 'Archive sessions' ##NO_TEXT
+            tooltip  = 'Open session list to browse or open archived data' ##NO_TEXT
             position = if_salv_c_function_position=>left_of_salv_functions ).
         CATCH cx_salv_method_not_supported
               cx_salv_wrong_call
@@ -3304,13 +3304,13 @@ FORM do_delete_old_logs.
 
   ls_field-tabname   = 'ZSP26_ARCH_LOG'.
   ls_field-fieldname = 'REC_COUNT'.
-  ls_field-fieldtext = 'Days to retain'.
+  ls_field-fieldtext = 'Days to retain' ##NO_TEXT.
   ls_field-value     = '90'.
   APPEND ls_field TO lt_fields.
 
   CALL FUNCTION 'POPUP_GET_VALUES'
     EXPORTING
-      popup_title = 'Delete old logs — enter days to retain'
+      popup_title = 'Delete old logs — enter days to retain' ##NO_TEXT
     IMPORTING
       returncode  = lv_rc
     TABLES
@@ -3501,16 +3501,16 @@ FORM do_config.
       lo_funcs->add_function(
         name     = 'REG_TAB'
         icon     = '@0Y@'
-        text     = 'Register'
-        tooltip  = 'Register a Z table (add if GUI shows; main: previous popup)'
+        text     = 'Register' ##NO_TEXT
+        tooltip  = 'Register a Z table (add if GUI shows; main: previous popup)' ##NO_TEXT
         position = if_salv_c_function_position=>left_of_salv_functions ).
     CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported.
       TRY.
         lo_funcs->add_function(
           name     = 'REG_TAB'
           icon     = '@0Y@'
-          text     = 'Register'
-          tooltip  = 'Register a new Z table'
+          text     = 'Register' ##NO_TEXT
+          tooltip  = 'Register a new Z table' ##NO_TEXT
           position = if_salv_c_function_position=>right_of_salv_functions ).
       CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported.
       ENDTRY.
@@ -3565,7 +3565,9 @@ FORM f4_reg_table.
         ls_dd  TYPE ty_dd_tab,
         lt_ret TYPE TABLE OF ddshretval,
         ls_ret TYPE ddshretval,
-        lv_win(40) TYPE c VALUE 'Z Tables with DATE field (DDIC)'.
+        lv_win(40) TYPE c.
+
+  lv_win = 'Z Tables with DATE field (DDIC)' ##NO_TEXT.
 
   SELECT tabname, ddtext FROM dd02v
     INTO CORRESPONDING FIELDS OF TABLE @lt_dd_all
@@ -3660,7 +3662,7 @@ FORM f4_reg_datfld.
     RETURN.
   ENDIF.
 
-  lv_win = 'Date fields'.
+  lv_win = 'Date fields' ##NO_TEXT.
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
       retfield     = 'FIELDNAME'
@@ -3870,7 +3872,7 @@ FORM build_fieldcat.
   DEFINE m_col.
     CLEAR ls_fc.
     ls_fc-fieldname = &1.
-    ls_fc-coltext   = &2.
+    ls_fc-coltext   = &2 ##NO_TEXT.
     ls_fc-outputlen = &3.
     APPEND ls_fc TO gt_fcat_200.
   END-OF-DEFINITION.
@@ -4337,14 +4339,14 @@ FORM arch_copy_write_variant_dialog
   CLEAR ls_field.
   ls_field-tabname   = 'RSVARI'.
   ls_field-fieldname = 'VARIANT'.
-  ls_field-fieldtext = 'Ten variant moi'.
+  ls_field-fieldtext = 'Ten variant moi' ##NO_TEXT.
   CLEAR ls_field-value.
   APPEND ls_field TO lt_fields.
 
   CLEAR lv_ret.
   CALL FUNCTION 'POPUP_GET_VALUES'
     EXPORTING
-      popup_title    = 'Copy variant'
+      popup_title    = 'Copy variant' ##NO_TEXT
       start_column   = 5
       start_row      = 5
       no_value_check = 'X'
@@ -4575,7 +4577,7 @@ FORM arch_admin_build_fieldcat.
   DEFINE _col.
     CLEAR ls_fc.
     ls_fc-fieldname = &1.
-    ls_fc-coltext   = &2.
+    ls_fc-coltext   = &2 ##NO_TEXT.
     ls_fc-outputlen = &3.
     APPEND ls_fc TO gt_fcat_700.
   END-OF-DEFINITION.
@@ -4690,7 +4692,7 @@ FORM arch_admin_f4_usr02.
   DATA: lt_u4 TYPE STANDARD TABLE OF ty_u4 WITH DEFAULT KEY,
         lv_tit(40) TYPE c.
 
-  lv_tit = 'SAP user (USR02)'.
+  lv_tit = 'SAP user (USR02)' ##NO_TEXT.
 
   SELECT bname AS uname FROM usr02
     INTO TABLE @lt_u4
