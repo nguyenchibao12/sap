@@ -64,7 +64,6 @@ MODULE user_command_0100 INPUT.
   CONDENSE gv_tabname.
   TRANSLATE gv_tabname TO UPPER CASE.
   PERFORM is_arch_admin CHANGING lv_is_admin.
-  CLEAR gv_full_restore.
 
   CASE lv_cmd.
     WHEN 'BT_REFRESH'.

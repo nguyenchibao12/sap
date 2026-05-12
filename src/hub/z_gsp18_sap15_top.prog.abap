@@ -63,7 +63,6 @@ DATA: gv_tabname TYPE zsp26_de_tabname. " Matches DDIC screen 0400 (ROLLNAME) + 
 " Only allow entering hub 0100 after user clicks Continue from 0400 (prevents wrong TSTC DYPNO opening 0100 directly)
 DATA: gv_hub_allowed TYPE abap_bool VALUE abap_false.
 DATA: gv_admin_pick_table TYPE xfeld VALUE space. " Admin requested to stay on table-selection screen
-DATA: gv_full_restore TYPE xfeld VALUE space. " Admin only: restore all tables in selected session
 
 " Archive operation globals
 DATA: gs_cfg      TYPE zsp26_arch_cfg,

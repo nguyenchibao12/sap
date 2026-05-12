@@ -24,7 +24,6 @@ MODULE status_0100 OUTPUT.
   ENDIF.
 
   PERFORM is_arch_admin CHANGING lv_adm_0100.
-  CLEAR gv_full_restore.
 
   LOOP AT SCREEN.
     CASE screen-name.
@@ -47,10 +46,6 @@ MODULE status_0100 OUTPUT.
         ELSE.
           screen-active = 0.
         ENDIF.
-        MODIFY SCREEN.
-      WHEN 'LBL_FULL_RESTORE'
-        OR 'GV_FULL_RESTORE'.
-        screen-active = 0.
         MODIFY SCREEN.
     ENDCASE.
   ENDLOOP.
