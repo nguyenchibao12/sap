@@ -482,7 +482,7 @@ FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
       retfield     = 'TABLE_NAME'
-      window_title = 'Z Tables (YES=archive configured)'
+      window_title = 'Z Tables (YES=archive configured)' ##NO_TEXT ##NO_TEXT
       dynpprog     = sy-repid
       dynpnr       = sy-dynnr
       dynprofield  = 'P_TABLE'

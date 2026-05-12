@@ -42,7 +42,7 @@ PARAMETERS: p_doc   TYPE admi_run-document.
 *----------------------------------------------------------------------*
 INITIALIZATION.
 *----------------------------------------------------------------------*
-  g_scr_r0 = 'F4=ZSP26_ARCH_CFG. P_REST=restore. P_DOC=session (optional). P_JSON=legacy JSON.'.
+  g_scr_r0 = TEXT-001.
 
   DATA: lv_hub_tab TYPE tabname,
         ls_ra      TYPE admi_run.
@@ -120,7 +120,7 @@ START-OF-SELECTION.
         OTHERS                        = 9.
   ENDIF.
   IF sy-subrc <> 0.
-    MESSAGE 'Cannot open the archive for reading. Check the session ID or pick the correct archive file.' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-002 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -192,7 +192,7 @@ START-OF-SELECTION.
       OTHERS         = 0.
 
   IF lt_disp IS INITIAL.
-    MESSAGE |No data found for { p_table }. Check the archive session matches your write run, or use legacy mode if your file uses the old format.| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No data found for { p_table }. Check the archive session matches your write run, or use legacy mode if your file uses the old format.| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
   ELSEIF p_rest = 'X'.
     " INSERT + log + MESSAGE already done in read_process_zstr_object — do not open ALV again.
   ELSE.
@@ -211,14 +211,14 @@ START-OF-SELECTION.
       lo_cols = lo_alv->get_columns( ).
       lo_cols->set_optimize( abap_true ).
       TRY. lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
-          lo_col->set_long_text( 'Table Name' ). CATCH cx_salv_not_found. ENDTRY.
+          lo_col->set_long_text( TEXT-003 ). CATCH cx_salv_not_found. ENDTRY.
       TRY. lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
-          lo_col->set_long_text( 'Key Values' ). CATCH cx_salv_not_found. ENDTRY.
+          lo_col->set_long_text( TEXT-004 ). CATCH cx_salv_not_found. ENDTRY.
       TRY. lo_col ?= lo_cols->get_column( 'DATA_JSON' ).
           lo_col->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
       lo_disp_s = lo_alv->get_display_settings( ).
       lo_disp_s->set_list_header(
-        |GENERIC ADK — { p_table } [ { lines( lt_disp ) } ]| ).
+        |GENERIC ADK — { p_table } [ { lines( lt_disp ) } ]| ##NO_TEXT ).
       lo_alv->display( ).
     CATCH cx_salv_msg INTO lx_gen.
       MESSAGE lx_gen->get_text( ) TYPE 'E'.
@@ -303,16 +303,16 @@ FORM read_process_zstr_object
       APPEND ls_fill TO lt_arch.
     ENDDO.
     IF lines( lt_arch ) > 0.
-      WRITE: / |Note: primary read returned no rows; reading next records ({ lines( lt_arch ) } row(s)).|.
+      WRITE: / |Note: primary read returned no rows; reading next records ({ lines( lt_arch ) } row(s)).| ##NO_TEXT.
     ENDIF.
   ENDIF.
 
   IF lt_arch IS INITIAL.
-    WRITE: / |Skipped object: no rows read (code { lv_gt_rc }).|.
+    WRITE: / |Skipped object: no rows read (code { lv_gt_rc }).| ##NO_TEXT.
     RETURN.
   ENDIF.
   IF lv_gt_rc <> 0 AND lv_gt_rc <> 1.
-    WRITE: / |Warning: unexpected read status { lv_gt_rc } with { lines( lt_arch ) } row(s); continuing.|.
+    WRITE: / |Warning: unexpected read status { lv_gt_rc } with { lines( lt_arch ) } row(s); continuing.| ##NO_TEXT.
   ENDIF.
 
   " Merge REC_TYPE D (first JSON chunk) + 2 (continuations); old archives = single D only.
@@ -383,7 +383,7 @@ FORM read_process_zstr_object
           CREATE DATA gr_dyn TYPE (lv_tn_row).
         CATCH cx_sy_create_data_error.
           lv_ief = lv_ief + 1.
-          WRITE: / |  Skipped restore: table { lv_tn_row } is not defined in the dictionary.|.
+          WRITE: / |  Skipped restore: table { lv_tn_row } is not defined in the dictionary.| ##NO_TEXT.
           CONTINUE.
       ENDTRY.
       ASSIGN gr_dyn->* TO FIELD-SYMBOL(<rec_dyn>).
@@ -463,25 +463,25 @@ FORM read_process_zstr_object
 
     SORT lt_tbl_stat BY table_name.
     LOOP AT lt_tbl_stat INTO ls_tbl_stat.
-      lv_tbl_seg = |{ ls_tbl_stat-table_name }:OK={ ls_tbl_stat-cnt_ok },ERR={ ls_tbl_stat-cnt_err }|.
+      lv_tbl_seg = |{ ls_tbl_stat-table_name }:OK={ ls_tbl_stat-cnt_ok },ERR={ ls_tbl_stat-cnt_err }| ##NO_TEXT.
       IF lv_tbl_msg IS INITIAL.
         lv_tbl_msg = lv_tbl_seg.
       ELSEIF strlen( lv_tbl_msg ) + strlen( lv_tbl_seg ) + 2 <= 120.
-        lv_tbl_msg = |{ lv_tbl_msg }; { lv_tbl_seg }|.
+        lv_tbl_msg = |{ lv_tbl_msg }; { lv_tbl_seg }| ##NO_TEXT.
       ELSE.
-        lv_tbl_msg = |{ lv_tbl_msg }; ...|.
+        lv_tbl_msg = |{ lv_tbl_msg }; ...| ##NO_TEXT.
         EXIT.
       ENDIF.
     ENDLOOP.
 
-    ls_log-message = |RESTORE { lv_mode_txt } DOC={ lv_doc_txt } OK={ lv_ins } ERR={ lv_ief } RC={ lv_ins_rc } [{ lv_tbl_msg }]|.
+    ls_log-message = |RESTORE { lv_mode_txt } DOC={ lv_doc_txt } OK={ lv_ins } ERR={ lv_ief } RC={ lv_ins_rc } [{ lv_tbl_msg }]| ##NO_TEXT.
     INSERT zsp26_arch_log FROM ls_log.
     COMMIT WORK.
     IF lv_ins > 0.
-      MESSAGE |Restored { lv_ins } rows| TYPE 'S'.
+      MESSAGE |Restored { lv_ins } rows| TYPE 'S' ##NO_TEXT.
     ELSEIF lv_ief > 0.
       MESSAGE |Restore finished with 0 rows inserted; { lv_ief } failed. Check data format or table keys.|
-              TYPE 'S' DISPLAY LIKE 'W'.
+              TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     ENDIF.
   ENDIF.
 
@@ -508,7 +508,7 @@ FORM run_read_legacy_json.
       EXCEPTIONS OTHERS = 1.
   ENDIF.
   IF sy-subrc <> 0.
-    MESSAGE 'Cannot open archive for read (legacy).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-005 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -558,7 +558,7 @@ FORM run_read_legacy_json.
       OTHERS         = 0.
 
   IF lt_disp IS INITIAL.
-    MESSAGE |No legacy JSON records for '{ p_table }'| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |No legacy JSON records for '{ p_table }'| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -581,15 +581,15 @@ FORM run_read_legacy_json.
     lo_cols->set_optimize( abap_true ).
 
     TRY. lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
-        lo_col->set_long_text( 'Table Name' ). CATCH cx_salv_not_found. ENDTRY.
+        lo_col->set_long_text( TEXT-003 ). CATCH cx_salv_not_found. ENDTRY.
     TRY. lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
-        lo_col->set_long_text( 'Key Values' ). CATCH cx_salv_not_found. ENDTRY.
+        lo_col->set_long_text( TEXT-004 ). CATCH cx_salv_not_found. ENDTRY.
     TRY. lo_col ?= lo_cols->get_column( 'DATA_JSON' ).
         lo_col->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
 
     lo_disp_s = lo_alv->get_display_settings( ).
     lo_disp_s->set_list_header(
-      |LEGACY JSON — { p_table } [ { lines( lt_disp ) } ]| ).
+      |LEGACY JSON — { p_table } [ { lines( lt_disp ) } ]| ##NO_TEXT ).
 
     lo_alv->display( ).
 
@@ -656,11 +656,11 @@ FORM run_read_legacy_json.
     ls_log2-status     = COND #( WHEN lv_err = 0 THEN 'S' ELSE 'W' ).
     ls_log2-exec_user  = sy-uname.
     ls_log2-exec_date  = sy-datum.
-    ls_log2-message    = |Legacy RESTORE: { lv_ok } rows. Err={ lv_err }|.
+    ls_log2-message    = |Legacy RESTORE: { lv_ok } rows. Err={ lv_err }| ##NO_TEXT.
     INSERT zsp26_arch_log FROM ls_log2.
     COMMIT WORK.
 
-    MESSAGE |Restored { lv_ok } records. Errors: { lv_err }| TYPE 'S'.
+    MESSAGE |Restored { lv_ok } records. Errors: { lv_err }| TYPE 'S' ##NO_TEXT.
   ENDIF.
 ENDFORM.
 
@@ -767,7 +767,7 @@ FORM f4_arch_doc_user CHANGING cv_doc TYPE admi_run-document.
       dynpprog     = sy-repid
       dynpnr       = sy-dynnr
       dynprofield  = 'P_DOC'
-      window_title = 'Archive Sessions — Select for Restore'
+      window_title = TEXT-006
       value_org    = 'S'
     TABLES
       value_tab    = lt_f4

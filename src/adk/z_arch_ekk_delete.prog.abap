@@ -72,8 +72,8 @@ START-OF-SELECTION.
   CONDENSE p_table.
   TRANSLATE p_table TO UPPER CASE.
 
-  WRITE: / |=== Archive delete: table { p_table } ===|.
-  IF p_test = 'X'. WRITE: / '*** TEST MODE — database rows are not removed ***'. ENDIF.
+  WRITE: / |=== Archive delete: table { p_table } ===| ##NO_TEXT.
+  IF p_test = 'X'. WRITE: / TEXT-001. ENDIF.
   WRITE: /.
 
   CLEAR: ls_hub_admi, lv_arch_key.
@@ -96,7 +96,7 @@ START-OF-SELECTION.
           lv_col_doc  TYPE fieldname,
           lv_col_cli  TYPE fieldname.
 
-    WRITE: / |Session { ls_hub_admi-document } (archive object { ls_hub_admi-object })|.
+    WRITE: / |Session { ls_hub_admi-document } (archive object { ls_hub_admi-object })| ##NO_TEXT.
     lv_open_obj = ls_hub_admi-object.
 
     CLEAR lt_af_dd.
@@ -108,7 +108,7 @@ START-OF-SELECTION.
       EXCEPTIONS
         OTHERS    = 1.
     IF sy-subrc <> 0 OR lt_af_dd IS INITIAL.
-      WRITE: / 'Error: could not read archive file metadata from the system.'.
+      WRITE: / TEXT-002.
       RETURN.
     ENDIF.
 
@@ -172,11 +172,11 @@ START-OF-SELECTION.
     ENDIF.
 
     IF lv_col_doc IS INITIAL.
-      WRITE: / 'Available archive index columns on this system:'.
+      WRITE: / TEXT-003.
       LOOP AT lt_af_dd INTO ls_af_dd.
-        WRITE: / '  - ' && ls_af_dd-fieldname.
+        WRITE: / |  - { ls_af_dd-fieldname }| ##NO_TEXT.
       ENDLOOP.
-      MESSAGE 'ADMI_FILES structure on this system is non-standard (document column not found).' TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE TEXT-004 TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
 
@@ -257,7 +257,7 @@ START-OF-SELECTION.
 
       IF lv_ok_hit = abap_false OR lv_arch_key IS INITIAL.
         FREE MEMORY ID 'Z_GSP18_ADMI_DEL'.
-        MESSAGE 'File key not found in ADMI_FILES for the selected session (OBJECT/DOCUMENT).' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-005 TYPE 'S' DISPLAY LIKE 'E'.
         RETURN.
       ENDIF.
     ENDIF.
@@ -270,14 +270,14 @@ START-OF-SELECTION.
 
   " Pre-check: warn if this session already has a DELETE log
   IF gv_del_doc_log IS NOT INITIAL AND p_test = ' '.
-    lv_prev_del_like = |%DOC={ gv_del_doc_log }%|.
+    lv_prev_del_like = |%DOC={ gv_del_doc_log }%| ##NO_TEXT.
     SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_prev_del_cnt
       WHERE action  = 'DELETE'
         AND status  = 'S'
         AND message LIKE @lv_prev_del_like.
     IF lv_prev_del_cnt > 0.
-      WRITE: / |Notice: session { gv_del_doc_log } already logged { lv_prev_del_cnt } successful delete run(s).|.
-      WRITE: / 'DB data may already have been deleted. If no rows are deleted this time, a warning will be logged.'.
+      WRITE: / |Notice: session { gv_del_doc_log } already logged { lv_prev_del_cnt } successful delete run(s).| ##NO_TEXT.
+      WRITE: / TEXT-006.
       WRITE: /.
     ENDIF.
   ENDIF.
@@ -292,7 +292,7 @@ START-OF-SELECTION.
   DATA lv_open_rc TYPE sy-subrc.
 
   IF lv_arch_key IS NOT INITIAL.
-    WRITE: / |Archive file key: { lv_arch_key }|.
+    WRITE: / |Archive file key: { lv_arch_key }| ##NO_TEXT.
     CALL FUNCTION 'ARCHIVE_OPEN_FOR_DELETE'
       EXPORTING
         aindflag     = space
@@ -313,12 +313,12 @@ START-OF-SELECTION.
         OTHERS                = 9.
     lv_open_rc = sy-subrc.
   ELSE.
-    WRITE: / 'No file key in the index; opening archive by object only.'.
+    WRITE: / TEXT-007.
     lv_open_rc = 4.
   ENDIF.
 
   IF lv_open_rc <> 0.
-    WRITE: / |Open by file key failed (code { lv_open_rc }); retrying by object.|.
+    WRITE: / |Open by file key failed (code { lv_open_rc }); retrying by object.| ##NO_TEXT.
     " Fallback: open by object when key/session mapping differs on this system.
     CALL FUNCTION 'ARCHIVE_OPEN_FOR_DELETE'
       EXPORTING
@@ -341,14 +341,14 @@ START-OF-SELECTION.
   ENDIF.
 
   IF lv_open_rc <> 0.
-    WRITE: / |Could not open archive for delete (code { lv_open_rc }).|.
+    WRITE: / |Could not open archive for delete (code { lv_open_rc }).| ##NO_TEXT.
     CASE lv_open_rc.
       WHEN 4.
-        MESSAGE 'Cannot open archive for delete (no matching files).' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-008 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 5.
-        MESSAGE 'Archive object (AOBJ) not found or not registered.' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-009 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN OTHERS.
-        MESSAGE 'Cannot open archive for delete (check permissions, files, session).' TYPE 'S' DISPLAY LIKE 'E'.
+        MESSAGE TEXT-010 TYPE 'S' DISPLAY LIKE 'E'.
     ENDCASE.
     RETURN.
   ENDIF.
@@ -377,19 +377,19 @@ START-OF-SELECTION.
       OTHERS                  = 3.
 
   IF sy-subrc <> 0.
-    WRITE: / |Error: could not read archive contents (code { sy-subrc }).|.
+    WRITE: / |Error: could not read archive contents (code { sy-subrc }).| ##NO_TEXT.
     CALL FUNCTION 'ARCHIVE_CLOSE_FILE'
       EXPORTING archive_handle = lv_arch_h
       EXCEPTIONS OTHERS         = 0.
     RETURN.
   ENDIF.
-  WRITE: / |Archive: { lv_arch_name }; Session: { lv_doc }; Object: { lv_obj }|.
+  WRITE: / |Archive: { lv_arch_name }; Session: { lv_doc }; Object: { lv_obj }| ##NO_TEXT.
   IF gv_del_doc_log IS INITIAL AND lv_doc IS NOT INITIAL.
     gv_del_doc_log = lv_doc.
   ENDIF.
   LOOP AT lt_used INTO ls_used_inf.
     PERFORM adk_used_row_to_tabname USING ls_used_inf CHANGING lv_tab_try.
-    WRITE: / |  Contains table type: { lv_tab_try }|.
+    WRITE: / |  Contains table type: { lv_tab_try }| ##NO_TEXT.
   ENDLOOP.
   WRITE: /.
 
@@ -415,20 +415,20 @@ START-OF-SELECTION.
         OTHERS                    = 11.
     IF sy-subrc <> 0.
       IF lv_ro_ix = 1.
-        WRITE: / |End of first read pass (code { sy-subrc }); continuing with next-object step.|.
+        WRITE: / |End of first read pass (code { sy-subrc }); continuing with next-object step.| ##NO_TEXT.
         lv_gno_fallback = abap_true.
       ENDIF.
       EXIT.
     ENDIF.
 
-    WRITE: / |Object batch { lv_ro_ix } (internal step { lv_obj_h })|.
+    WRITE: / |Object batch { lv_ro_ix } (internal step { lv_obj_h })| ##NO_TEXT.
     PERFORM process_delete_adk_object USING lv_obj_h lt_used lv_use_p_table
       CHANGING lv_cnt lv_err.
   ENDDO.
 
   IF lv_gno_fallback = abap_true.
     WRITE: /.
-    WRITE: / 'Reading remaining objects from the archive file...'.
+    WRITE: / TEXT-011.
     CLEAR lv_gno_ix.
     DO.
       ADD 1 TO lv_gno_ix.
@@ -444,11 +444,11 @@ START-OF-SELECTION.
           OTHERS                  = 6.
       IF sy-subrc <> 0.
         IF lv_gno_ix = 1.
-          WRITE: / |No more objects in file (code { sy-subrc }); file may be empty or already processed.|.
+          WRITE: / |No more objects in file (code { sy-subrc }); file may be empty or already processed.| ##NO_TEXT.
         ENDIF.
         EXIT.
       ENDIF.
-      WRITE: / |Object { lv_gno_ix }: read OK|.
+      WRITE: / |Object { lv_gno_ix }: read OK| ##NO_TEXT.
       PERFORM process_delete_adk_object USING lv_arch_h lt_used lv_use_p_table
         CHANGING lv_cnt lv_err.
     ENDDO.
@@ -465,10 +465,10 @@ START-OF-SELECTION.
   ENDIF.
 
   WRITE: /.
-  WRITE: / |=== Summary: rows removed { lv_cnt }, issues { lv_err } ===|.
-  WRITE: / 'If counts look wrong, check the table list printed above and the application log.'.
+  WRITE: / |=== Summary: rows removed { lv_cnt }, issues { lv_err } ===| ##NO_TEXT.
+  WRITE: / TEXT-012.
   IF p_test = 'X'.
-    WRITE: / 'Turn off Test Mode to remove database rows and write the delete log.'.
+    WRITE: / TEXT-013.
   ENDIF.
 
 *&---------------------------------------------------------------------*
@@ -566,7 +566,7 @@ FORM process_delete_adk_object
   lv_gt_rc = sy-subrc.
 
   IF lv_gt_rc = 0 AND lt_arch_gen IS NOT INITIAL.
-    WRITE: / |  Loaded { lines( lt_arch_gen ) } archive row(s) for processing.|.
+    WRITE: / |  Loaded { lines( lt_arch_gen ) } archive row(s) for processing.| ##NO_TEXT.
     lv_got = abap_true.
     LOOP AT lt_arch_gen INTO ls_arch_gen.
       CHECK ls_arch_gen-rec_type = 'D'.
@@ -584,7 +584,7 @@ FORM process_delete_adk_object
       TRANSLATE lv_del_tab TO UPPER CASE.
       IF lv_del_tab IS INITIAL.
         ADD 1 TO cv_err.
-        WRITE: / '  Warning: archive row has no table name.'.
+        WRITE: / TEXT-014.
         CONTINUE.
       ENDIF.
 
@@ -599,7 +599,7 @@ FORM process_delete_adk_object
         PERFORM zsp26_arch_norm_keyfname CHANGING lv_kf_gen.
         CHECK lv_kf_gen IS NOT INITIAL.
         IF NOT lv_kf_gen CO '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_/'.
-          WRITE: / |  Error: invalid key name in archive data: { lv_kf_gen }|.
+          WRITE: / |  Error: invalid key name in archive data: { lv_kf_gen }| ##NO_TEXT.
           lv_bad_key = abap_true.
           EXIT.
         ENDIF.
@@ -616,12 +616,12 @@ FORM process_delete_adk_object
       ENDIF.
       IF lv_where_gen IS INITIAL.
         ADD 1 TO cv_err.
-        WRITE: / |  Warning: missing key values for table { lv_del_tab }.|.
+        WRITE: / |  Warning: missing key values for table { lv_del_tab }.| ##NO_TEXT.
         CONTINUE.
       ENDIF.
       PERFORM zsp26_arch_fix_where_glued_and USING lv_del_tab CHANGING lv_where_gen.
       lv_mandt_q = |{ sy-mandt }|.
-      lv_where_gen = |MANDT EQ '{ lv_mandt_q }' AND | && lv_where_gen.
+      lv_where_gen = |MANDT EQ '{ lv_mandt_q }' AND | && lv_where_gen ##NO_TEXT.
 
       IF p_test = ' '.
         TRY.
@@ -632,13 +632,13 @@ FORM process_delete_adk_object
             ADD 1 TO cv_err.
             lv_del_rc = 8.
             lv_dbcnt  = 0.
-            WRITE: / |  Error: could not delete from { lv_del_tab }: { lo_osql->get_text( ) }|.
-            WRITE: / '  (Selection condition omitted here for readability.)'.
+            WRITE: / |  Error: could not delete from { lv_del_tab }: { lo_osql->get_text( ) }| ##NO_TEXT.
+            WRITE: / TEXT-015.
           CATCH cx_root INTO lo_any.
             ADD 1 TO cv_err.
             lv_del_rc = 8.
             lv_dbcnt  = 0.
-            WRITE: / |  Error: delete failed for { lv_del_tab }: { lo_any->get_text( ) }|.
+            WRITE: / |  Error: delete failed for { lv_del_tab }: { lo_any->get_text( ) }| ##NO_TEXT.
         ENDTRY.
         IF ( lv_del_rc = 0 OR lv_del_rc = 4 ) AND lv_dbcnt > 0.
           PERFORM archive_adk_mark_deleted_row USING pv_handle CHANGING lv_skip_rec_fm.
@@ -646,18 +646,18 @@ FORM process_delete_adk_object
           ADD 1 TO cv_cnt.
           PERFORM del_agg_bump_legacy USING lt_del_agg lv_del_tab.
         ELSEIF ( lv_del_rc = 0 OR lv_del_rc = 4 ) AND lv_dbcnt = 0.
-          WRITE: / |  Skipped { lv_del_tab } ({ ls_arch_gen-key_vals }): row not in database (already removed).|.
+          WRITE: / |  Skipped { lv_del_tab } ({ ls_arch_gen-key_vals }): row not in database (already removed).| ##NO_TEXT.
         ELSEIF lv_del_rc <> 8.
           ADD 1 TO cv_err.
-          WRITE: / |  Error: delete from { lv_del_tab } returned code { lv_del_rc }.|.
+          WRITE: / |  Error: delete from { lv_del_tab } returned code { lv_del_rc }.| ##NO_TEXT.
         ENDIF.
       ELSE.
         ADD 1 TO cv_cnt.
-        WRITE: / |  [TEST] Would remove { lv_del_tab } / { ls_arch_gen-key_vals }|.
+        WRITE: / |  [TEST] Would remove { lv_del_tab } / { ls_arch_gen-key_vals }| ##NO_TEXT.
       ENDIF.
     ENDLOOP.
   ELSE.
-    WRITE: / |  Primary archive format empty (code { lv_gt_rc }); trying alternate table layout.|.
+    WRITE: / |  Primary archive format empty (code { lv_gt_rc }); trying alternate table layout.| ##NO_TEXT.
   ENDIF.
 
   IF lv_got = abap_false.
@@ -689,7 +689,7 @@ FORM process_delete_adk_object
     ENDIF.
 
     IF lv_got = abap_false.
-      WRITE: / '  Warning: could not read rows for this object from the archive file.'.
+      WRITE: / TEXT-016.
       ADD 1 TO cv_err.
     ENDIF.
   ENDIF.
@@ -781,10 +781,10 @@ FORM process_one_arch_table
           wrong_access_to_archive  = 3
           OTHERS                   = 4.
     CATCH cx_sy_dyn_call_illegal_type.
-      WRITE: / |  Warning: table layout mismatch for { pv_tab }; skipped.|.
+      WRITE: / |  Warning: table layout mismatch for { pv_tab }; skipped.| ##NO_TEXT.
       RETURN.
     CATCH cx_sy_dyn_call_illegal_func.
-      WRITE: / '  Warning: archive read API not available for this table on this system.'.
+      WRITE: / TEXT-017.
       RETURN.
   ENDTRY.
 
@@ -809,12 +809,12 @@ FORM process_one_arch_table
       ENDIF.
     ELSE.
       cv_err = cv_err + 1.
-      WRITE: / |  Error: database delete failed for { pv_tab } (code { sy-subrc }).|.
+      WRITE: / |  Error: database delete failed for { pv_tab } (code { sy-subrc }).| ##NO_TEXT.
     ENDIF.
   ELSE.
     lv_t = lines( <lt> ).
     cv_cnt = cv_cnt + lv_t.
-    WRITE: / |  [TEST] Would remove { lv_t } row(s) from { pv_tab }.|.
+    WRITE: / |  [TEST] Would remove { lv_t } row(s) from { pv_tab }.| ##NO_TEXT.
   ENDIF.
 ENDFORM.
 
@@ -863,10 +863,10 @@ FORM flush_arch_log_delete
       ls_log-end_time   = lv_ts.
       ls_log-exec_user  = sy-uname.
       ls_log-exec_date  = sy-datum.
-      ls_log-message    = |ADK DELETE DOC={ gv_del_doc_log } (GET_TABLE): { ls_a-cnt } rows, tab { ls_a-table_name }. err { pv_err }|.
+      ls_log-message    = |ADK DELETE DOC={ gv_del_doc_log } (GET_TABLE): { ls_a-cnt } rows, tab { ls_a-table_name }. err { pv_err }| ##NO_TEXT.
       INSERT zsp26_arch_log FROM ls_log.
       IF sy-subrc <> 0.
-        WRITE: / |Warning: could not save application log line for { ls_a-table_name }.|.
+        WRITE: / |Warning: could not save application log line for { ls_a-table_name }.| ##NO_TEXT.
       ENDIF.
     ENDLOOP.
   ELSEIF pv_err > 0.
@@ -883,7 +883,7 @@ FORM flush_arch_log_delete
     ls_log-end_time   = lv_ts.
     ls_log-exec_user  = sy-uname.
     ls_log-exec_date  = sy-datum.
-    ls_log-message    = |ADK DELETE DOC={ gv_del_doc_log }: errors { pv_err } — 0 rows deleted, ROLLBACK issued.|.
+    ls_log-message    = |ADK DELETE DOC={ gv_del_doc_log }: errors { pv_err } — 0 rows deleted, ROLLBACK issued.| ##NO_TEXT.
     INSERT zsp26_arch_log FROM ls_log.
     ROLLBACK WORK.
     RETURN.
@@ -902,11 +902,11 @@ FORM flush_arch_log_delete
     ls_log-exec_user  = sy-uname.
     ls_log-exec_date  = sy-datum.
     IF lv_prev_del_cnt > 0.
-      ls_log-message = |ADK DELETE DOC={ gv_del_doc_log }: 0 rows — DB data already deleted (duplicate run).|.
-      WRITE: / |Notice: no rows removed for session { gv_del_doc_log } (data was already removed).|.
+      ls_log-message = |ADK DELETE DOC={ gv_del_doc_log }: 0 rows — DB data already deleted (duplicate run).| ##NO_TEXT.
+      WRITE: / |Notice: no rows removed for session { gv_del_doc_log } (data was already removed).| ##NO_TEXT.
     ELSE.
-      ls_log-message = |ADK DELETE DOC={ gv_del_doc_log }: 0 rows — no archive objects found in session.|.
-      WRITE: / |Notice: session { gv_del_doc_log } has no objects to process in the archive file.|.
+      ls_log-message = |ADK DELETE DOC={ gv_del_doc_log }: 0 rows — no archive objects found in session.| ##NO_TEXT.
+      WRITE: / |Notice: session { gv_del_doc_log } has no objects to process in the archive file.| ##NO_TEXT.
     ENDIF.
     INSERT zsp26_arch_log FROM ls_log.
   ENDIF.
@@ -944,7 +944,7 @@ FORM run_delete_legacy_json.
   open_error       = 3
   OTHERS           = 4.
   IF sy-subrc <> 0.
-    MESSAGE 'Cannot open archive (legacy / P_JSON).' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-018 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -976,9 +976,9 @@ FORM run_delete_legacy_json.
       lv_where_loc &&= lv_kf_loc && ` EQ '` && lv_kv_esc_loc && `'`.
     ENDLOOP.
     PERFORM zsp26_arch_fix_where_glued_and USING ls_arec_loc-table_name CHANGING lv_where_loc.
-    lv_where_loc = 'MANDT EQ ''' && sy-mandt && ''' AND ' && lv_where_loc.
+    lv_where_loc = |MANDT EQ '{ sy-mandt }' AND | && lv_where_loc ##NO_TEXT.
 
-    WRITE: / |  Legacy row: { ls_arec_loc-table_name } / { ls_arec_loc-key_vals }|.
+    WRITE: / |  Legacy row: { ls_arec_loc-table_name } / { ls_arec_loc-key_vals }| ##NO_TEXT.
 
     IF p_test = ' '.
       CLEAR lv_leg_subrc.
@@ -988,11 +988,11 @@ FORM run_delete_legacy_json.
         CATCH cx_sy_dynamic_osql_error INTO lo_leg.
           ADD 1 TO lv_err_loc.
           lv_leg_subrc = 8.
-          WRITE: / |    Error (legacy): { lo_leg->get_text( ) }|.
+          WRITE: / |    Error (legacy): { lo_leg->get_text( ) }| ##NO_TEXT.
         CATCH cx_root INTO lo_leg2.
           ADD 1 TO lv_err_loc.
           lv_leg_subrc = 8.
-          WRITE: / |    Error (legacy): { lo_leg2->get_text( ) }|.
+          WRITE: / |    Error (legacy): { lo_leg2->get_text( ) }| ##NO_TEXT.
       ENDTRY.
       IF lv_leg_subrc = 0.
         PERFORM archive_adk_mark_deleted_row USING lv_leg_h CHANGING lv_leg_fb.
@@ -1004,7 +1004,7 @@ FORM run_delete_legacy_json.
         ADD 1 TO lv_leg_del_n.
         ADD 1 TO lv_cnt_loc.
         PERFORM del_agg_bump_legacy USING lt_del_loc ls_arec_loc-table_name.
-        WRITE: / '    Note: row already removed from database.'.
+        WRITE: / TEXT-019.
       ELSEIF lv_leg_subrc <> 8.
         ADD 1 TO lv_err_loc.
       ENDIF.
@@ -1027,7 +1027,7 @@ FORM run_delete_legacy_json.
     PERFORM flush_arch_log_delete USING lt_del_loc lv_err_loc.
   ENDIF.
 
-  WRITE: / |=== Legacy format summary: processed { lv_cnt_loc }, issues { lv_err_loc } ===|.
+  WRITE: / |=== Legacy format summary: processed { lv_cnt_loc }, issues { lv_err_loc } ===| ##NO_TEXT.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

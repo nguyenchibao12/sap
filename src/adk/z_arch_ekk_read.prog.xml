@@ -16,6 +16,42 @@
      <ENTRY>Z_ARCH_EKK: ADK Read/Restore Program</ENTRY>
      <LENGTH>38</LENGTH>
     </item>
+    <item>
+     <ID>I</ID>
+     <KEY>001</KEY>
+     <ENTRY>F4=ZSP26_ARCH_CFG. P_REST=restore. P_DOC=session (optional). P_JSON=legacy JSON.</ENTRY>
+     <LENGTH>82</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>002</KEY>
+     <ENTRY>Cannot open the archive for reading. Check the session ID or pick the correct archive file.</ENTRY>
+     <LENGTH>91</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>003</KEY>
+     <ENTRY>Table Name</ENTRY>
+     <LENGTH>10</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>004</KEY>
+     <ENTRY>Key Values</ENTRY>
+     <LENGTH>10</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>005</KEY>
+     <ENTRY>Cannot open archive for read (legacy).</ENTRY>
+     <LENGTH>38</LENGTH>
+    </item>
+    <item>
+     <ID>I</ID>
+     <KEY>006</KEY>
+     <ENTRY>Archive Sessions &#x2014; Select for Restore</ENTRY>
+     <LENGTH>38</LENGTH>
+    </item>
    </TPOOL>
   </asx:values>
  </asx:abap>
