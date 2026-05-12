@@ -324,9 +324,9 @@ FORM show_archive_preview.
 
     TRY.
       lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
-      lo_col->set_long_text( |Key ({ lv_kfld })| ) ##NO_TEXT.
+      lo_col->set_long_text( |Key ({ lv_kfld })| ##NO_TEXT ).
       lo_col ?= lo_cols->get_column( 'DATE_VAL' ).
-      lo_col->set_long_text( |Date ({ gs_cfg-data_field })| ) ##NO_TEXT.
+      lo_col->set_long_text( |Date ({ gs_cfg-data_field })| ##NO_TEXT ).
       lo_col ?= lo_cols->get_column( 'AGE_DAYS' ).
       lo_col->set_long_text( TEXT-004 ).
       lo_col ?= lo_cols->get_column( 'STATUS' ).
@@ -338,9 +338,9 @@ FORM show_archive_preview.
 
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |PREVIEW — { gv_tabname }  [ Total: { lines( lt_prev ) } | &&
-      |  READY: { gv_rdy_cnt }  TOO NEW: { gv_skp_cnt - lv_fail_cnt }  RULE FAIL: { lv_fail_cnt } | &&
-      |/ Retention: { gs_cfg-retention }d / Field: { gs_cfg-data_field } ]| ) ##NO_TEXT.
+      |PREVIEW — { gv_tabname }  [ Total: { lines( lt_prev ) } | ##NO_TEXT &&
+      |  READY: { gv_rdy_cnt }  TOO NEW: { gv_skp_cnt - lv_fail_cnt }  RULE FAIL: { lv_fail_cnt } | ##NO_TEXT &&
+      |/ Retention: { gs_cfg-retention }d / Field: { gs_cfg-data_field } ]| ##NO_TEXT ).
 
     lo_alv->display( ).
 
@@ -618,11 +618,10 @@ FORM hub_job_close_with_startspec
            VALUE(pv_jobcount) TYPE tbtcjob-jobcount.
 
   DATA: lv_strtimmed TYPE c LENGTH 1.
-  CONSTANTS lc_btc_stdt_immediate TYPE tbtcstrt-startdttyp VALUE 'I'. " type pool BTC: BTC_STDT_IMMEDIATE
 
   CLEAR lv_strtimmed.
   CASE gs_btc_start-startdttyp.
-    WHEN lc_btc_stdt_immediate.
+    WHEN btc_stdt_immediate.
       lv_strtimmed = 'X'.
     WHEN OTHERS.
       " leave initial — date/time, after job, event, workday, …
@@ -1156,7 +1155,7 @@ FORM do_show_eligible_data.
           lo_col->set_long_text( TEXT-020 ).
           lo_col->set_output_length( 42 ).
           lo_col ?= lo_cols->get_column( 'DATE_VAL' ).
-          lo_col->set_long_text( |Date ({ ls_cfg-data_field })| ) ##NO_TEXT.
+          lo_col->set_long_text( |Date ({ ls_cfg-data_field })| ##NO_TEXT ).
           lo_col->set_output_length( 12 ).
           lo_col ?= lo_cols->get_column( 'AGE_DAYS' ).
           lo_col->set_long_text( TEXT-004 ).
@@ -1985,15 +1984,15 @@ FORM do_monitor.
       lo_funcs->add_function(
         name     = 'MON_DETAIL'
         icon     = '@2I@'
-        text     = 'Detail Log'
-        tooltip  = 'View detailed log for the selected table'
-        position = if_salv_c_function_position=>right_of_salv_functions ) ##NO_TEXT.
+        text     = 'Detail Log' ##NO_TEXT
+        tooltip  = 'View detailed log for the selected table' ##NO_TEXT
+        position = if_salv_c_function_position=>right_of_salv_functions ).
       lo_funcs->add_function(
         name     = 'MON_HELP'
         icon     = '@0S@'
-        text     = 'Guide'
-        tooltip  = 'Column guide and how to read the data'
-        position = if_salv_c_function_position=>right_of_salv_functions ) ##NO_TEXT.
+        text     = 'Guide' ##NO_TEXT
+        tooltip  = 'Column guide and how to read the data' ##NO_TEXT
+        position = if_salv_c_function_position=>right_of_salv_functions ).
     CATCH cx_salv_method_not_supported
           cx_salv_wrong_call
           cx_salv_existing. ENDTRY.
@@ -2058,7 +2057,7 @@ FORM do_monitor.
 
     lo_disp = go_mon_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |ARCHIVE MONITORING — Business Overview — { lines( gt_mon_disp ) } tables — { sy-datum }| ) ##NO_TEXT.
+      |ARCHIVE MONITORING — Business Overview — { lines( gt_mon_disp ) } tables — { sy-datum }| ##NO_TEXT ).
     lo_disp->set_striped_pattern( if_salv_c_bool_sap=>true ).
     go_mon_alv->display( ).
 
@@ -2071,9 +2070,9 @@ ENDFORM.
 *& FORM SHOW_MON_HELP — quick guide for reading the Monitor
 *&---------------------------------------------------------------------*
 FORM show_mon_help.
-  CALL FUNCTION 'POPUP_TO_DISPLAY_TEXT' ##NO_TEXT
+  CALL FUNCTION 'POPUP_TO_DISPLAY_TEXT'
     EXPORTING
-      titel     = 'How to read this screen'
+      titel     = 'How to read this screen' ##NO_TEXT
       textline1 = '1) Candidates=rows old enough. 2) Arch/Del=run log totals.'
       textline2 = '3) Space(MB)=estimate only. 4) Start with highest Candidates.'.
 ENDFORM.
@@ -2128,7 +2127,7 @@ FORM show_mon_detail USING iv_table TYPE tabname.
 
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |DETAIL LOG: { iv_table } — { lines( lt_log ) } entries| ) ##NO_TEXT.
+      |DETAIL LOG: { iv_table } — { lines( lt_log ) } entries| ##NO_TEXT ).
     lo_alv->display( ).
 
   CATCH cx_salv_msg INTO DATA(lx2).
@@ -2524,9 +2523,9 @@ FORM show_hub_admi_session_groups.
           lo_funcs->add_function(
             name     = 'RUN_OPEN'
             icon     = '@2L@'
-            text     = 'Open Session'
-            tooltip  = 'Open selected session (or pick one session within a range)'
-            position = if_salv_c_function_position=>right_of_salv_functions ) ##NO_TEXT.
+            text     = 'Open Session' ##NO_TEXT
+            tooltip  = 'Open selected session (or pick one session within a range)' ##NO_TEXT
+            position = if_salv_c_function_position=>right_of_salv_functions ).
         CATCH cx_salv_method_not_supported
               cx_salv_wrong_call
               cx_salv_existing.
@@ -2549,14 +2548,14 @@ FORM show_hub_admi_session_groups.
           lo_col ?= lo_cols->get_column( 'DOC_TO_N' ).
           lo_col->set_visible( if_salv_c_bool_sap=>false ).
           lo_col ?= lo_cols->get_column( 'GRP_ICON' ).
-          lo_col->set_long_text( ' ' ) ##NO_TEXT.
+          lo_col->set_long_text( ' ' ##NO_TEXT ).
           lo_col->set_icon( if_salv_c_bool_sap=>true ).
           lo_col ?= lo_cols->get_column( 'SESSION_GROUP' ).
-          lo_col->set_short_text( 'Group' ) ##NO_TEXT.
+          lo_col->set_short_text( 'Group' ##NO_TEXT ).
           lo_col->set_medium_text( TEXT-037 ).
           lo_col->set_long_text( TEXT-037 ).
           lo_col ?= lo_cols->get_column( 'SESSION_RANGE' ).
-          lo_col->set_short_text( 'Ranges' ) ##NO_TEXT.
+          lo_col->set_short_text( 'Ranges' ##NO_TEXT ).
           lo_col->set_medium_text( TEXT-038 ).
           lo_col->set_long_text( TEXT-038 ).
         CATCH cx_salv_not_found.
@@ -2564,7 +2563,7 @@ FORM show_hub_admi_session_groups.
 
       lo_disp = lo_alv->get_display_settings( ).
       lo_disp->set_list_header(
-        |Archiving Sessions ({ lv_obj }) — grouped ranges (Errors / Incomplete / Complete)| ) ##NO_TEXT.
+        |Archiving Sessions ({ lv_obj }) — grouped ranges (Errors / Incomplete / Complete)| ##NO_TEXT ).
       lo_alv->display( ).
 
     CATCH cx_salv_msg INTO DATA(lx_rs).
@@ -2813,7 +2812,7 @@ FORM run_show_document_detail
       lo_alv_det->get_functions( )->set_all( abap_true ).
       lo_alv_det->get_columns( )->set_optimize( abap_true ).
       lo_alv_det->get_display_settings( )->set_list_header(
-        |Session { pv_doc }: no readable archive payload (rc={ pv_rc })| ) ##NO_TEXT.
+        |Session { pv_doc }: no readable archive payload (rc={ pv_rc })| ##NO_TEXT ).
       lo_alv_det->display( ).
     CATCH cx_salv_msg.
   ENDTRY.
@@ -3098,9 +3097,9 @@ FORM show_hub_btc_job_list.
 
       lo_disp = go_btc_alv->get_display_settings( ).
       IF lv_btc_adm = abap_true.
-        lo_disp->set_list_header( |Background jobs ZARCH* — admin view (all users) — { lines( gt_btc_rows ) } rows| ) ##NO_TEXT.
+        lo_disp->set_list_header( |Background jobs ZARCH* — admin view (all users) — { lines( gt_btc_rows ) } rows| ##NO_TEXT ).
       ELSE.
-        lo_disp->set_list_header( |Background jobs ZARCH* — { sy-uname } — { lines( gt_btc_rows ) } rows| ) ##NO_TEXT.
+        lo_disp->set_list_header( |Background jobs ZARCH* — { sy-uname } — { lines( gt_btc_rows ) } rows| ##NO_TEXT ).
       ENDIF.
       go_btc_alv->display( ).
 
@@ -3142,7 +3141,7 @@ FORM show_btc_job_protocol
       lo_f = lo_alv->get_functions( ).
       lo_f->set_all( abap_true ).
       lo_d = lo_alv->get_display_settings( ).
-      lo_d->set_list_header( |Job protocol: { pv_name } / { pv_cnt }| ) ##NO_TEXT.
+      lo_d->set_list_header( |Job protocol: { pv_name } / { pv_cnt }| ##NO_TEXT ).
       lo_alv->get_columns( )->set_optimize( abap_true ).
       lo_alv->display( ).
     CATCH cx_salv_msg INTO DATA(lx_p).
@@ -3252,9 +3251,9 @@ FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
         CATCH cx_salv_not_found. ENDTRY.
       lo_d = lo_alv->get_display_settings( ).
       IF lv_tn IS NOT INITIAL.
-        lo_d->set_list_header( |ZSP26_ARCH_LOG — { lv_tn } — { lines( lt_lr ) }| ) ##NO_TEXT.
+        lo_d->set_list_header( |ZSP26_ARCH_LOG — { lv_tn } — { lines( lt_lr ) }| ##NO_TEXT ).
       ELSE.
-        lo_d->set_list_header( |ZSP26_ARCH_LOG — user { sy-uname } — { lines( lt_lr ) }| ) ##NO_TEXT.
+        lo_d->set_list_header( |ZSP26_ARCH_LOG — user { sy-uname } — { lines( lt_lr ) }| ##NO_TEXT ).
       ENDIF.
       lo_alv->display( ).
     CATCH cx_salv_msg INTO DATA(lx_z).
@@ -3441,7 +3440,7 @@ FORM show_purge_run_data USING VALUE(pv_arch_id) TYPE zsp26_de_archid.
         CATCH cx_salv_not_found.
       ENDTRY.
       lo_d = lo_alv->get_display_settings( ).
-      lo_d->set_list_header( |PURGE snapshot { pv_arch_id } — { lines( lt_pv ) } row(s)| ) ##NO_TEXT.
+      lo_d->set_list_header( |PURGE snapshot { pv_arch_id } — { lines( lt_pv ) } row(s)| ##NO_TEXT ).
       lo_alv->display( ).
     CATCH cx_salv_msg INTO DATA(lx_ps).
       MESSAGE lx_ps->get_text( ) TYPE 'E'.
@@ -3519,8 +3518,8 @@ FORM do_config.
 
     lo_disp = lo_alv->get_display_settings( ).
     lo_disp->set_list_header(
-      |ARCHIVE CONFIG — { lines( lt_cfg ) } rows | &&
-      |/ Register: use popup or toolbar [Register] if available.| ) ##NO_TEXT.
+      |ARCHIVE CONFIG — { lines( lt_cfg ) } rows | ##NO_TEXT &&
+      |/ Register: use popup or toolbar [Register] if available.| ).
 
     lo_alv->display( ).
 
