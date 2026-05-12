@@ -198,7 +198,7 @@ MODULE check_variant_0300 INPUT.
   TRANSLATE lv_vlog_chk TO UPPER CASE.
   CONDENSE lv_vlog_chk NO-GAPS.
   IF lv_vlog_chk = 'DEFAULT'.
-    MESSAGE |"DEFAULT" is reserved for the system variant. Please use a different name (e.g. VAR_01).| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |"DEFAULT" is reserved for the system variant. Please use a different name (e.g. VAR_01).| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     CLEAR gv_variant.
     RETURN.
   ENDIF.

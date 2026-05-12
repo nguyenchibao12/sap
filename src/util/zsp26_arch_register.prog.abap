@@ -82,7 +82,7 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_datfld.
     EXCEPTIONS OTHERS    = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE |Cannot read table structure for { p_table } from DDIC.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Cannot read table structure for { p_table } from DDIC.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -96,7 +96,7 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_datfld.
   ENDLOOP.
 
   IF lt_flds IS INITIAL.
-    MESSAGE |Table { p_table } has no DATE-type field - cannot archive by date.| TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE |Table { p_table } has no DATE-type field - cannot archive by date.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -106,7 +106,7 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_datfld.
       dynpprog     = sy-repid
       dynpnr       = sy-dynnr
       dynprofield  = 'P_DATFLD'
-      window_title = |Date Fields of { p_table }|
+      window_title = |Date Fields of { p_table }| ##NO_TEXT
       value_org    = 'S'
     TABLES
       value_tab    = lt_flds

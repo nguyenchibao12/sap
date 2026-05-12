@@ -609,6 +609,63 @@ FORM arch_get_write_vrun
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& FORM HUB_JOB_CLOSE_WITH_STARTSPEC
+*&  TBTCSTRT from BP_START_DATE_EDITOR → JOB_CLOSE (SAP Help NW).
+*&  STRTIMMED = 'X' only for immediate start; otherwise pass schedule.
+*&---------------------------------------------------------------------*
+FORM hub_job_close_with_startspec
+  USING    VALUE(pv_jobname)  TYPE tbtcjob-jobname
+           VALUE(pv_jobcount) TYPE tbtcjob-jobcount.
+
+  DATA: lv_strtimmed TYPE c LENGTH 1.
+
+  CLEAR lv_strtimmed.
+  CASE gs_btc_start-startdttyp.
+    WHEN btc_stdt_immediate.
+      lv_strtimmed = 'X'.
+    WHEN OTHERS.
+      " leave initial — date/time, after job, event, workday, …
+  ENDCASE.
+
+  CALL FUNCTION 'JOB_CLOSE'
+    EXPORTING
+      jobname                     = pv_jobname
+      jobcount                    = pv_jobcount
+      strtimmed                   = lv_strtimmed
+      sdlstrtdt                   = gs_btc_start-sdlstrtdt
+      sdlstrttm                   = gs_btc_start-sdlstrttm
+      laststrtdt                  = gs_btc_start-laststrtdt
+      laststrttm                  = gs_btc_start-laststrttm
+      prddays                     = gs_btc_start-prddays
+      prdhours                    = gs_btc_start-prdhours
+      prdmins                     = gs_btc_start-prdmins
+      prdmonths                   = gs_btc_start-prdmonths
+      prdweeks                    = gs_btc_start-prdweeks
+      targetsystem                = gs_btc_start-instname
+      at_opmode_periodic          = gs_btc_start-periodic
+      pred_jobname                = gs_btc_start-predjob
+      pred_jobcount               = gs_btc_start-predjobcnt
+      predjob_checkstat           = gs_btc_start-checkstat
+      event_id                    = gs_btc_start-eventid
+      event_param                 = gs_btc_start-eventparm
+      event_periodic              = gs_btc_start-periodic
+      calendar_id                 = gs_btc_start-calendarid
+      startdate_restriction       = gs_btc_start-prdbehav
+      start_on_workday_not_before = gs_btc_start-notbefore
+      start_on_workday_nr         = gs_btc_start-wdayno
+      workday_count_direction     = gs_btc_start-wdaycdir
+    EXCEPTIONS
+      cant_start_immediate        = 1
+      invalid_startdate           = 2
+      jobname_missing             = 3
+      job_close_failed            = 4
+      job_nosteps                 = 5
+      job_notex                   = 6
+      lock_failed                 = 7
+      OTHERS                      = 8.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& FORM DO_ARCHIVE_WRITE_BG_JOB — schedule ADK Write in SM37 (single table)
 *&---------------------------------------------------------------------*
 FORM do_archive_write_bg_job.
@@ -704,20 +761,7 @@ FORM do_archive_write_bg_job.
 
   gv_tabname = lv_save.
 
-  CALL FUNCTION 'JOB_CLOSE'
-    EXPORTING
-      jobname              = lv_jobname
-      jobcount             = lv_jobcount
-      strtimmed            = 'X'
-    EXCEPTIONS
-      cant_start_immediate = 1
-      invalid_startdate    = 2
-      jobname_missing      = 3
-      job_close_failed     = 4
-      job_nosteps          = 5
-      job_notex            = 6
-      lock_failed          = 7
-      OTHERS               = 8.
+  PERFORM hub_job_close_with_startspec USING lv_jobname lv_jobcount.
   IF sy-subrc <> 0.
     MESSAGE TEXT-162 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
@@ -925,20 +969,7 @@ FORM do_archive_delete_bg_job.
     RETURN.
   ENDIF.
 
-  CALL FUNCTION 'JOB_CLOSE'
-    EXPORTING
-      jobname              = lv_jobname
-      jobcount             = lv_jobcount
-      strtimmed            = 'X'
-    EXCEPTIONS
-      cant_start_immediate = 1
-      invalid_startdate    = 2
-      jobname_missing      = 3
-      job_close_failed     = 4
-      job_nosteps          = 5
-      job_notex            = 6
-      lock_failed          = 7
-      OTHERS               = 8.
+  PERFORM hub_job_close_with_startspec USING lv_jobname lv_jobcount.
   IF sy-subrc <> 0.
     MESSAGE TEXT-162 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
@@ -4161,7 +4192,7 @@ FORM zsp26_hub_edit_wvar_0500.
   TRANSLATE lv_vlog TO UPPER CASE.
   CONDENSE lv_vlog NO-GAPS.
   IF lv_vlog = 'DEFAULT'.
-    MESSAGE |"DEFAULT" is reserved for system variants (created by utility). Use a different name (e.g. VAR_01).| TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE |"DEFAULT" is reserved for system variants (created by utility). Use a different name (e.g. VAR_01).| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     RETURN.
   ENDIF.
   IF gv_prog_write IS INITIAL.
