@@ -16,7 +16,7 @@ TYPES: BEGIN OF ty_cfg_disp,
          table_name  TYPE tabname,
          data_field  TYPE fieldname,
          retention   TYPE i,
-         is_active   TYPE c,
+         is_active   TYPE c LENGTH 1,
          eligible    TYPE i,
          cutoff_date TYPE d,
        END OF ty_cfg_disp.
@@ -32,7 +32,7 @@ SELECTION-SCREEN END OF BLOCK b0.
 
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME.
 SELECTION-SCREEN COMMENT /1(79) g_scr_h1.
-SELECT-OPTIONS: s_date FOR sy-datum.
+SELECT-OPTIONS: s_date FOR sy-datum ##NEEDED.
 SELECTION-SCREEN END OF BLOCK b1.
 
 SELECTION-SCREEN: BEGIN OF LINE,
@@ -75,7 +75,7 @@ FORM at_ss_output_arch_write.
   CLEAR lv_hide_exec.
   IMPORT zsp26_no_ss_exec = lv_hide_exec FROM MEMORY ID 'Z_GSP18_WR_SS'.
   IF sy-subrc = 0 AND lv_hide_exec = 'X'.
-    PERFORM insert_into_excl(RSDBRUNT) USING 'ONLI'.
+    PERFORM insert_into_excl IN PROGRAM 'RSDBRUNT' USING 'ONLI'.
     LOOP AT SCREEN.
       IF screen-name CS 'P_TABLE'.
         screen-input = 0.
@@ -117,7 +117,7 @@ FORM at_sel_screen_arch_write.
             lv_cnt2   TYPE i,
             lv_co_pop TYPE d.
 
-      REFRESH: lt_cfg, lt_cfgraw.
+      CLEAR: lt_cfg, lt_cfgraw.
       SELECT * FROM zsp26_arch_cfg INTO TABLE @lt_cfgraw WHERE is_active = 'X'.
 
       LOOP AT lt_cfgraw INTO ls_cfgraw.
