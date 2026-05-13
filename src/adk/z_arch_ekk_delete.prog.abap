@@ -8,7 +8,7 @@
 *&---------------------------------------------------------------------*
 REPORT z_arch_ekk_delete.
 
-INCLUDE z_gsp18_arch_dyn. ##INCL_OK
+INCLUDE z_gsp18_arch_dyn ##INCL_OK.
 
 TYPES: BEGIN OF ty_arch_rec,
          rec_type   TYPE c LENGTH 1,

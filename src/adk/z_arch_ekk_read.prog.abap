@@ -1,6 +1,6 @@
 REPORT z_arch_ekk_read.
 
-INCLUDE z_gsp18_arch_dyn. ##INCL_OK
+INCLUDE z_gsp18_arch_dyn ##INCL_OK.
 
 *&---------------------------------------------------------------------*
 *& Report  Z_ARCH_EKK_READ
