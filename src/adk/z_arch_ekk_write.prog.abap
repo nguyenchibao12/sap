@@ -156,22 +156,48 @@ FORM at_sel_screen_arch_write.
         lo_alv->get_columns( )->set_optimize( abap_true ).
 
         lo_cols = lo_alv->get_columns( ).
-        TRY. lo_col = lo_cols->get_column( 'TABLE_NAME' ).
-             lo_col->set_long_text( TEXT-005 ). CATCH cx_salv_not_found ##NO_HANDLER. ENDTRY.
-        TRY. lo_col = lo_cols->get_column( 'DATA_FIELD' ).
-             lo_col->set_long_text( TEXT-006 ). CATCH cx_salv_not_found ##NO_HANDLER. ENDTRY.
-        TRY. lo_col = lo_cols->get_column( 'RETENTION' ).
-             lo_col->set_long_text( TEXT-007 ). CATCH cx_salv_not_found ##NO_HANDLER. ENDTRY.
-        TRY. lo_col = lo_cols->get_column( 'IS_ACTIVE' ).
-             lo_col->set_long_text( TEXT-008 ). CATCH cx_salv_not_found ##NO_HANDLER. ENDTRY.
-        TRY. lo_col = lo_cols->get_column( 'ELIGIBLE' ).
-             lo_col->set_long_text( TEXT-009 ). CATCH cx_salv_not_found ##NO_HANDLER. ENDTRY.
-        TRY. lo_col = lo_cols->get_column( 'CUTOFF_DATE' ).
-             lo_col->set_long_text( TEXT-010 ). CATCH cx_salv_not_found ##NO_HANDLER. ENDTRY.
+        TRY.
+          lo_col = lo_cols->get_column( 'TABLE_NAME' ).
+          lo_col->set_long_text( TEXT-005 ).
+        CATCH cx_salv_not_found.
+          CLEAR lo_col.
+        ENDTRY.
+        TRY.
+          lo_col = lo_cols->get_column( 'DATA_FIELD' ).
+          lo_col->set_long_text( TEXT-006 ).
+        CATCH cx_salv_not_found.
+          CLEAR lo_col.
+        ENDTRY.
+        TRY.
+          lo_col = lo_cols->get_column( 'RETENTION' ).
+          lo_col->set_long_text( TEXT-007 ).
+        CATCH cx_salv_not_found.
+          CLEAR lo_col.
+        ENDTRY.
+        TRY.
+          lo_col = lo_cols->get_column( 'IS_ACTIVE' ).
+          lo_col->set_long_text( TEXT-008 ).
+        CATCH cx_salv_not_found.
+          CLEAR lo_col.
+        ENDTRY.
+        TRY.
+          lo_col = lo_cols->get_column( 'ELIGIBLE' ).
+          lo_col->set_long_text( TEXT-009 ).
+        CATCH cx_salv_not_found.
+          CLEAR lo_col.
+        ENDTRY.
+        TRY.
+          lo_col = lo_cols->get_column( 'CUTOFF_DATE' ).
+          lo_col->set_long_text( TEXT-010 ).
+        CATCH cx_salv_not_found.
+          CLEAR lo_col.
+        ENDTRY.
 
         lo_alv->get_display_settings( )->set_list_header( TEXT-011 ).
         lo_alv->display( ).
-      CATCH cx_salv_msg ##NO_HANDLER. ENDTRY.
+      CATCH cx_salv_msg.
+        CLEAR lo_alv.
+      ENDTRY.
 
     WHEN 'SHOW_DATA'.
       PERFORM validate_table_against_cfg
@@ -238,7 +264,9 @@ FORM at_sel_screen_arch_write.
         lv_prev_hdr2 = |[PREVIEW] { p_table } — { lines( <lt_src> ) } rows (dynamic line type)| ##NO_TEXT.
         lo_alv2->get_display_settings( )->set_list_header( CONV #( lv_prev_hdr2 ) ).
         lo_alv2->display( ).
-      CATCH cx_salv_msg ##NO_HANDLER. ENDTRY.
+      CATCH cx_salv_msg.
+        CLEAR lo_alv2.
+      ENDTRY.
 
   ENDCASE.
 ENDFORM.
@@ -251,10 +279,10 @@ START-OF-SELECTION.
 *&---------------------------------------------------------------------*
 FORM run_arch_ekk_write_main.
 
-  FIELD-SYMBOLS: <lt_src> TYPE STANDARD TABLE,
-                 <lt_arch> TYPE STANDARD TABLE OF zstr_arch_rec WITH DEFAULT KEY,
-                 <row>     TYPE any,
-                 <fkv2>    TYPE any.
+  FIELD-SYMBOLS <lt_src> TYPE STANDARD TABLE.
+  FIELD-SYMBOLS <lt_arch> TYPE STANDARD TABLE OF zstr_arch_rec WITH DEFAULT KEY.
+  FIELD-SYMBOLS <row> TYPE any.
+  FIELD-SYMBOLS <fkv2> TYPE any.
 
   DATA: gs_cfg          TYPE zsp26_arch_cfg,
         gr_src          TYPE REF TO data,
