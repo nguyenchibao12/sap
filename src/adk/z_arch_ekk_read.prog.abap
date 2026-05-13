@@ -24,15 +24,7 @@ TYPES: BEGIN OF ty_disp,
         data_json  TYPE string,
       END OF ty_disp.
 
-DATA: ls_arec    TYPE ty_arch_rec,      ##NEEDED
-      lt_disp    TYPE TABLE OF ty_disp, ##NEEDED
-      ls_disp    TYPE ty_disp,          ##NEEDED
-      g_scr_r0(72) TYPE c,              ##NEEDED
-      lv_arch_h  TYPE syst-tabix,       ##NEEDED
-      lv_obj     TYPE arch_obj-object VALUE 'Z_ARCH_EKK', ##NEEDED
-      gr_dyn     TYPE REF TO data.      ##NEEDED
-
-FIELD-SYMBOLS: <lt_dyn> TYPE ANY TABLE. ##NEEDED
+TYPES ty_tt_disp TYPE STANDARD TABLE OF ty_disp WITH DEFAULT KEY.
 
 PARAMETERS: p_table TYPE tabname.
 PARAMETERS: p_rest  TYPE c       AS CHECKBOX DEFAULT ' '.
@@ -42,8 +34,29 @@ PARAMETERS: p_doc   TYPE admi_run-document.
 *----------------------------------------------------------------------*
 INITIALIZATION.
 *----------------------------------------------------------------------*
-  g_scr_r0 = TEXT-001.
+  PERFORM arch_read_init_screen.
 
+*----------------------------------------------------------------------*
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
+*----------------------------------------------------------------------*
+  PERFORM f4_arch_cfg_table CHANGING p_table.
+
+*----------------------------------------------------------------------*
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_doc.
+*----------------------------------------------------------------------*
+  PERFORM f4_arch_doc_user CHANGING p_doc.
+
+*----------------------------------------------------------------------*
+START-OF-SELECTION.
+*----------------------------------------------------------------------*
+  IF p_json = 'X'.
+    PERFORM run_read_legacy_json.
+    RETURN.
+  ENDIF.
+  PERFORM arch_read_main.
+
+*&---------------------------------------------------------------------*
+FORM arch_read_init_screen.
   DATA: lv_hub_tab TYPE tabname,
         ls_ra      TYPE admi_run.
 
@@ -65,25 +78,23 @@ INITIALIZATION.
     p_doc = ls_ra-document.
   ENDIF.
   FREE MEMORY ID 'Z_GSP18_ARCH_READ_DOC'.
+ENDFORM.
 
-*----------------------------------------------------------------------*
-AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
-*----------------------------------------------------------------------*
-  PERFORM f4_arch_cfg_table CHANGING p_table.
-
-*----------------------------------------------------------------------*
-AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_doc.
-*----------------------------------------------------------------------*
-  PERFORM f4_arch_doc_user CHANGING p_doc.
-
-*----------------------------------------------------------------------*
-START-OF-SELECTION.
-*----------------------------------------------------------------------*
-
-  IF p_json = 'X'.
-    PERFORM run_read_legacy_json.
-    RETURN.
-  ENDIF.
+*&---------------------------------------------------------------------*
+FORM arch_read_main.
+  DATA: lv_arch_h TYPE syst-tabix,
+        lv_obj    TYPE arch_obj-object VALUE 'Z_ARCH_EKK',
+        lv_obj_h  TYPE syst-tabix,
+        lv_ro_ix  TYPE i VALUE 0,
+        lv_gno_ix TYPE i VALUE 0,
+        lt_disp   TYPE ty_tt_disp,
+        lo_alv    TYPE REF TO cl_salv_table,
+        lo_funcs  TYPE REF TO cl_salv_functions,
+        lo_cols   TYPE REF TO cl_salv_columns_table,
+        lo_col    TYPE REF TO cl_salv_column_table,
+        lo_disp_s TYPE REF TO cl_salv_display_settings,
+        lx_gen    TYPE REF TO cx_salv_msg,
+        lv_adk_hdr TYPE string.
 
   IF p_doc IS NOT INITIAL.
     CALL FUNCTION 'ARCHIVE_OPEN_FOR_READ'
@@ -127,13 +138,8 @@ START-OF-SELECTION.
   CONDENSE p_table.
   TRANSLATE p_table TO UPPER CASE.
 
-  DATA: lv_obj_h TYPE syst-tabix,
-        lv_ro_ix TYPE i VALUE 0,
-        lv_gno_ix TYPE i VALUE 0.
-
   CLEAR lt_disp.
 
-  " 1) File handle path first — avoids READ_OBJECT moving cursor before GET_NEXT (same as Z_ARCH_EKK_DELETE).
   CLEAR lv_gno_ix.
   DO.
     lv_gno_ix = lv_gno_ix + 1.
@@ -151,10 +157,9 @@ START-OF-SELECTION.
       EXIT.
     ENDIF.
 
-    PERFORM read_process_zstr_object USING lv_arch_h.
+    PERFORM read_process_zstr_object USING lv_arch_h CHANGING lt_disp.
   ENDDO.
 
-  " 2) Object-handle path if nothing found (older stacks / other file layout).
   IF lines( lt_disp ) = 0.
     CLEAR lv_ro_ix.
     DO.
@@ -181,7 +186,7 @@ START-OF-SELECTION.
         EXIT.
       ENDIF.
 
-      PERFORM read_process_zstr_object USING lv_obj_h.
+      PERFORM read_process_zstr_object USING lv_obj_h CHANGING lt_disp.
     ENDDO.
   ENDIF.
 
@@ -196,41 +201,45 @@ START-OF-SELECTION.
   ELSEIF p_rest = 'X'.
     " INSERT + log + MESSAGE already done in read_process_zstr_object — do not open ALV again.
   ELSE.
-    DATA: lo_alv    TYPE REF TO cl_salv_table,
-          lo_funcs  TYPE REF TO cl_salv_functions,
-          lo_cols   TYPE REF TO cl_salv_columns_table,
-          lo_col    TYPE REF TO cl_salv_column_table,
-          lo_disp_s TYPE REF TO cl_salv_display_settings,
-          lx_gen    TYPE REF TO cx_salv_msg.
     TRY.
-      cl_salv_table=>factory(
-        IMPORTING r_salv_table = lo_alv
-        CHANGING  t_table      = lt_disp ).
-      lo_funcs = lo_alv->get_functions( ).
-      lo_funcs->set_all( abap_true ).
-      lo_cols = lo_alv->get_columns( ).
-      lo_cols->set_optimize( abap_true ).
-      TRY. lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
-          lo_col->set_long_text( TEXT-003 ). CATCH cx_salv_not_found. ENDTRY.
-      TRY. lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
-          lo_col->set_long_text( TEXT-004 ). CATCH cx_salv_not_found. ENDTRY.
-      TRY. lo_col ?= lo_cols->get_column( 'DATA_JSON' ).
-          lo_col->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
-      lo_disp_s = lo_alv->get_display_settings( ).
-      DATA lv_adk_hdr TYPE string.
-      lv_adk_hdr = |GENERIC ADK — { p_table } [ { lines( lt_disp ) } ]| ##NO_TEXT.
-      lo_disp_s->set_list_header( CONV #( lv_adk_hdr ) ).
-      lo_alv->display( ).
-    CATCH cx_salv_msg INTO lx_gen.
-      MESSAGE lx_gen->get_text( ) TYPE 'E'.
+        cl_salv_table=>factory(
+          IMPORTING r_salv_table = lo_alv
+          CHANGING  t_table      = lt_disp ).
+        lo_funcs = lo_alv->get_functions( ).
+        lo_funcs->set_all( abap_true ).
+        lo_cols = lo_alv->get_columns( ).
+        lo_cols->set_optimize( abap_true ).
+        TRY.
+            lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
+            lo_col->set_long_text( TEXT-003 ).
+          CATCH cx_salv_not_found ##NO_HANDLER.
+        ENDTRY.
+        TRY.
+            lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
+            lo_col->set_long_text( TEXT-004 ).
+          CATCH cx_salv_not_found ##NO_HANDLER.
+        ENDTRY.
+        TRY.
+            lo_col ?= lo_cols->get_column( 'DATA_JSON' ).
+            lo_col->set_visible( abap_false ).
+          CATCH cx_salv_not_found ##NO_HANDLER.
+        ENDTRY.
+        lo_disp_s = lo_alv->get_display_settings( ).
+        lv_adk_hdr = |GENERIC ADK — { p_table } [ { lines( lt_disp ) } ]| ##NO_TEXT.
+        lo_disp_s->set_list_header( CONV #( lv_adk_hdr ) ).
+        lo_alv->display( ).
+      CATCH cx_salv_msg INTO lx_gen.
+        MESSAGE lx_gen->get_text( ) TYPE 'E'.
     ENDTRY.
   ENDIF.
+ENDFORM.
 
 *&---------------------------------------------------------------------*
-*& One ADK object: GET_TABLE ZSTR_ARCH_REC → lt_disp; optional restore.
+*& One ADK object: GET_TABLE ZSTR_ARCH_REC → ct_disp; optional restore.
 *&---------------------------------------------------------------------*
 FORM read_process_zstr_object
-  USING VALUE(pv_handle) TYPE syst-tabix.
+  USING VALUE(pv_handle) TYPE syst-tabix
+  CHANGING ct_disp TYPE ty_tt_disp.
 
   TYPES: BEGIN OF ty_tbl_stat,
            table_name TYPE tabname,
@@ -258,7 +267,9 @@ FORM read_process_zstr_object
         lv_doc_txt  TYPE char40,
         lv_tbl_msg  TYPE string,
         lv_tbl_seg  TYPE string,
-        lv_stat_ix  TYPE sy-tabix.
+        lv_stat_ix  TYPE sy-tabix,
+        ls_disp     TYPE ty_disp,
+        gr_dyn      TYPE REF TO data.
 
   DATA: BEGIN OF ls_mj,
           mj_table TYPE tabname,
@@ -267,7 +278,7 @@ FORM read_process_zstr_object
         END OF ls_mj.
   DATA lv_mj_ok TYPE abap_bool.
 
-  lv_disp0 = lines( lt_disp ).
+  lv_disp0 = lines( ct_disp ).
 
   CLEAR lt_arch.
 
@@ -337,7 +348,7 @@ FORM read_process_zstr_object
           ENDIF.
         ENDIF.
         IF lv_mj_ok = abap_true.
-          APPEND ls_disp TO lt_disp.
+          APPEND ls_disp TO ct_disp.
         ENDIF.
       ENDIF.
       CLEAR: ls_mj-mj_table, ls_mj-mj_keys, ls_mj-mj_json.
@@ -365,18 +376,18 @@ FORM read_process_zstr_object
       ENDIF.
     ENDIF.
     IF lv_mj_ok = abap_true.
-      APPEND ls_disp TO lt_disp.
+      APPEND ls_disp TO ct_disp.
     ENDIF.
   ENDIF.
 
   IF p_rest = 'X'.
-    IF lines( lt_disp ) <= lv_disp0.
+    IF lines( ct_disp ) <= lv_disp0.
       RETURN.
     ENDIF.
     lv_from = lv_disp0 + 1.
     GET TIME STAMP FIELD lv_ts_s.
     CLEAR: lv_ins, lv_ief, lt_tbl_stat, lv_tbl_msg.
-    LOOP AT lt_disp INTO ls_disp FROM lv_from.
+    LOOP AT ct_disp INTO ls_disp FROM lv_from.
       lv_tn_row = ls_disp-table_name.
       CONDENSE lv_tn_row.
       TRANSLATE lv_tn_row TO UPPER CASE.
@@ -396,7 +407,7 @@ FORM read_process_zstr_object
           PERFORM restore_assign_current_mandt USING gr_dyn.
           MODIFY (lv_tn_row) FROM <rec_dyn>.
           IF sy-subrc = 0.
-            ADD 1 TO lv_ins.
+            lv_ins = lv_ins + 1.
             CLEAR ls_tbl_stat.
             READ TABLE lt_tbl_stat INTO ls_tbl_stat WITH KEY table_name = lv_tn_row.
             lv_stat_ix = sy-tabix.
@@ -445,8 +456,10 @@ FORM read_process_zstr_object
       COMMIT WORK.
     ENDIF.
     GET TIME STAMP FIELD lv_ts_e.
-    TRY. ls_log-log_id = cl_system_uuid=>create_uuid_x16_static( ).
-    CATCH cx_uuid_error. ENDTRY.
+    TRY.
+        ls_log-log_id = cl_system_uuid=>create_uuid_x16_static( ).
+      CATCH cx_uuid_error ##NO_HANDLER.
+    ENDTRY.
     SELECT config_id FROM zsp26_arch_cfg
       INTO @ls_log-config_id UP TO 1 ROWS
       WHERE table_name = @p_table AND is_active = 'X'.
@@ -490,7 +503,10 @@ ENDFORM.
 
 *----------------------------------------------------------------------*
 FORM run_read_legacy_json.
-  DATA: lv_arch_h_loc TYPE syst-tabix.
+  DATA: lv_arch_h_loc TYPE syst-tabix,
+        lt_disp         TYPE ty_tt_disp,
+        ls_arec         TYPE ty_arch_rec,
+        ls_disp         TYPE ty_disp.
 
   IF p_doc IS NOT INITIAL.
     CALL FUNCTION 'ARCHIVE_OPEN_FOR_READ'
@@ -581,12 +597,21 @@ FORM run_read_legacy_json.
     lo_cols = lo_alv->get_columns( ).
     lo_cols->set_optimize( abap_true ).
 
-    TRY. lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
-        lo_col->set_long_text( TEXT-003 ). CATCH cx_salv_not_found. ENDTRY.
-    TRY. lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
-        lo_col->set_long_text( TEXT-004 ). CATCH cx_salv_not_found. ENDTRY.
-    TRY. lo_col ?= lo_cols->get_column( 'DATA_JSON' ).
-        lo_col->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
+    TRY.
+        lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
+        lo_col->set_long_text( TEXT-003 ).
+      CATCH cx_salv_not_found ##NO_HANDLER.
+    ENDTRY.
+    TRY.
+        lo_col ?= lo_cols->get_column( 'KEY_VALS' ).
+        lo_col->set_long_text( TEXT-004 ).
+      CATCH cx_salv_not_found ##NO_HANDLER.
+    ENDTRY.
+    TRY.
+        lo_col ?= lo_cols->get_column( 'DATA_JSON' ).
+        lo_col->set_visible( abap_false ).
+      CATCH cx_salv_not_found ##NO_HANDLER.
+    ENDTRY.
 
     lo_disp_s = lo_alv->get_display_settings( ).
     DATA lv_json_hdr TYPE string.
@@ -646,8 +671,10 @@ FORM run_read_legacy_json.
         lv_log_tab = ls_disp-table_name.
       ENDIF.
     ENDIF.
-    TRY. ls_log2-log_id = cl_system_uuid=>create_uuid_x16_static( ).
-    CATCH cx_uuid_error. ENDTRY.
+    TRY.
+        ls_log2-log_id = cl_system_uuid=>create_uuid_x16_static( ).
+      CATCH cx_uuid_error ##NO_HANDLER.
+    ENDTRY.
     SELECT config_id FROM zsp26_arch_cfg
       INTO @ls_log2-config_id UP TO 1 ROWS
       WHERE table_name = @lv_log_tab AND is_active = 'X'.
@@ -734,10 +761,10 @@ FORM f4_arch_doc_user CHANGING cv_doc TYPE admi_run-document.
         lv_is_admin TYPE abap_bool.
 
   " Check admin via ZSP26_ARCH_ADMIN table
-  SELECT SINGLE uname FROM zsp26_arch_admin
-    INTO @DATA(lv_u)
-    WHERE uname = @sy-uname.
-  lv_is_admin = COND abap_bool( WHEN sy-subrc = 0 THEN abap_true ELSE abap_false ).
+  SELECT COUNT( * ) FROM zsp26_arch_admin
+    WHERE uname = @sy-uname
+    INTO @DATA(lv_adm_cnt).
+  lv_is_admin = COND #( WHEN lv_adm_cnt > 0 THEN abap_true ELSE abap_false ).
 
   IF lv_is_admin = abap_true.
     SELECT * FROM admi_run
