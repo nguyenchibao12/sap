@@ -280,13 +280,12 @@ START-OF-SELECTION.
 FORM run_arch_ekk_write_main.
 
   FIELD-SYMBOLS <lt_src> TYPE STANDARD TABLE.
-  FIELD-SYMBOLS <lt_arch> TYPE STANDARD TABLE OF zstr_arch_rec WITH DEFAULT KEY.
   FIELD-SYMBOLS <row> TYPE any.
   FIELD-SYMBOLS <fkv2> TYPE any.
 
   DATA: gs_cfg          TYPE zsp26_arch_cfg,
         gr_src          TYPE REF TO data,
-        gr_arch         TYPE REF TO data,
+        lt_arch         TYPE TABLE OF zstr_arch_rec,
         lt_dd           TYPE TABLE OF dfies,
         lv_cutoff       TYPE d,
         lv_cnt          TYPE i VALUE 0,
@@ -387,9 +386,7 @@ FORM run_arch_ekk_write_main.
   ENDIF.
 
   " Build generic archive payload rows (ZSTR_ARCH_REC)
-  CREATE DATA gr_arch TYPE TABLE OF zstr_arch_rec.
-  ASSIGN gr_arch->* TO <lt_arch>.
-  CLEAR <lt_arch>.
+  CLEAR lt_arch.
 
   CALL FUNCTION 'DDIF_FIELDINFO_GET'
     EXPORTING
@@ -439,7 +436,7 @@ FORM run_arch_ekk_write_main.
       ls_arch_rec-key_vals   = lv_keyvals.
       ls_arch_rec-exec_user  = sy-uname.
       GET TIME STAMP FIELD ls_arch_rec-exec_ts.
-      INSERT ls_arch_rec INTO TABLE <lt_arch>.
+      INSERT ls_arch_rec INTO TABLE lt_arch.
     ELSE.
       CLEAR lv_jpos.
       WHILE lv_jpos < lv_jlen.
@@ -454,7 +451,7 @@ FORM run_arch_ekk_write_main.
         ls_arch_rec-data_json = lv_json+lv_jpos(lv_take).
         ls_arch_rec-exec_user  = sy-uname.
         GET TIME STAMP FIELD ls_arch_rec-exec_ts.
-        INSERT ls_arch_rec INTO TABLE <lt_arch>.
+        INSERT ls_arch_rec INTO TABLE lt_arch.
         lv_jpos = lv_jpos + lv_take.
       ENDWHILE.
     ENDIF.
@@ -519,7 +516,7 @@ FORM run_arch_ekk_write_main.
         archive_handle   = lv_arch_h
         record_structure = 'ZSTR_ARCH_REC'
       TABLES
-        table            = <lt_arch>
+        table            = lt_arch
       EXCEPTIONS
         internal_error            = 1
         wrong_access_to_archive   = 2
@@ -536,7 +533,7 @@ FORM run_arch_ekk_write_main.
       MESSAGE TEXT-017 TYPE 'A'.
     ENDIF.
 
-    lv_cnt = lines( <lt_arch> ).
+    lv_cnt = lines( lt_arch ).
 
     " On this system, ARCHIVE_CLOSE_OBJECT is unavailable.
     " Persist object explicitly, then close archive file.
