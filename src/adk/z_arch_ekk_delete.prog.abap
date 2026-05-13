@@ -392,7 +392,7 @@ START-OF-SELECTION.
 
   DO.
     CLEAR lv_obj_h.
-    ADD 1 TO lv_ro_ix.
+    lv_ro_ix = lv_ro_ix + 1.
     CALL FUNCTION 'ARCHIVE_READ_OBJECT'
       EXPORTING
         object = lv_obj
@@ -428,7 +428,7 @@ START-OF-SELECTION.
     WRITE: / TEXT-011.
     CLEAR lv_gno_ix.
     DO.
-      ADD 1 TO lv_gno_ix.
+      lv_gno_ix = lv_gno_ix + 1.
       CALL FUNCTION 'ARCHIVE_GET_NEXT_OBJECT'
         EXPORTING
           archive_handle = lv_arch_h
@@ -499,7 +499,7 @@ FORM archive_adk_mark_del_obj USING VALUE(pv_handle) TYPE syst-tabix.
         internal_error          = 0
         wrong_access_to_archive = 0
         OTHERS                  = 0.
-  CATCH cx_sy_dyn_call_illegal_func.
+  CATCH cx_sy_dyn_call_illegal_func ##NO_HANDLER.
   ENDTRY.
 ENDFORM.
 
@@ -548,7 +548,7 @@ FORM process_delete_adk_object
 
   CLEAR lv_got.
 
-  REFRESH lt_arch_gen.
+  CLEAR lt_arch_gen.
   CLEAR lv_gt_rc.
   CALL FUNCTION 'ARCHIVE_GET_TABLE'
     EXPORTING
@@ -582,13 +582,13 @@ FORM process_delete_adk_object
       CONDENSE lv_del_tab.
       TRANSLATE lv_del_tab TO UPPER CASE.
       IF lv_del_tab IS INITIAL.
-        ADD 1 TO cv_err.
+        cv_err = cv_err + 1.
         WRITE: / TEXT-014.
         CONTINUE.
       ENDIF.
 
       CLEAR: lv_where_gen, lv_pair_gen, lv_kf_gen, lv_kv_gen, lv_kv_esc, lv_bad_key.
-      REFRESH lt_pairs_gen.
+      CLEAR lt_pairs_gen.
       SPLIT ls_arch_gen-key_vals AT '|' INTO TABLE lt_pairs_gen.
       LOOP AT lt_pairs_gen INTO lv_pair_gen.
         SPLIT lv_pair_gen AT '=' INTO lv_kf_gen lv_kv_gen.
@@ -610,11 +610,11 @@ FORM process_delete_adk_object
         lv_where_gen = lv_where_gen && lv_kf_gen && ` EQ '` && lv_kv_esc && `'`.
       ENDLOOP.
       IF lv_bad_key = abap_true.
-        ADD 1 TO cv_err.
+        cv_err = cv_err + 1.
         CONTINUE.
       ENDIF.
       IF lv_where_gen IS INITIAL.
-        ADD 1 TO cv_err.
+        cv_err = cv_err + 1.
         WRITE: / |  Warning: missing key values for table { lv_del_tab }.| ##NO_TEXT.
         CONTINUE.
       ENDIF.
@@ -628,30 +628,30 @@ FORM process_delete_adk_object
             lv_del_rc = sy-subrc.
             lv_dbcnt  = sy-dbcnt.
           CATCH cx_sy_dynamic_osql_error INTO lo_osql.
-            ADD 1 TO cv_err.
+            cv_err = cv_err + 1.
             lv_del_rc = 8.
             lv_dbcnt  = 0.
             WRITE: / |  Error: could not delete from { lv_del_tab }: { lo_osql->get_text( ) }| ##NO_TEXT.
             WRITE: / TEXT-015.
           CATCH cx_root INTO lo_any.
-            ADD 1 TO cv_err.
+            cv_err = cv_err + 1.
             lv_del_rc = 8.
             lv_dbcnt  = 0.
             WRITE: / |  Error: delete failed for { lv_del_tab }: { lo_any->get_text( ) }| ##NO_TEXT.
         ENDTRY.
         IF ( lv_del_rc = 0 OR lv_del_rc = 4 ) AND lv_dbcnt > 0.
           PERFORM archive_adk_mark_deleted_row USING pv_handle CHANGING lv_skip_rec_fm.
-          ADD 1 TO lv_zstr_db_del.
-          ADD 1 TO cv_cnt.
+          lv_zstr_db_del = lv_zstr_db_del + 1.
+          cv_cnt = cv_cnt + 1.
           PERFORM del_agg_bump_legacy USING lt_del_agg lv_del_tab.
         ELSEIF ( lv_del_rc = 0 OR lv_del_rc = 4 ) AND lv_dbcnt = 0.
           WRITE: / |  Skipped { lv_del_tab } ({ ls_arch_gen-key_vals }): row not in database (already removed).| ##NO_TEXT.
         ELSEIF lv_del_rc <> 8.
-          ADD 1 TO cv_err.
+          cv_err = cv_err + 1.
           WRITE: / |  Error: delete from { lv_del_tab } returned code { lv_del_rc }.| ##NO_TEXT.
         ENDIF.
       ELSE.
-        ADD 1 TO cv_cnt.
+        cv_cnt = cv_cnt + 1.
         WRITE: / |  [TEST] Would remove { lv_del_tab } / { ls_arch_gen-key_vals }| ##NO_TEXT.
       ENDIF.
     ENDLOOP.
@@ -689,7 +689,7 @@ FORM process_delete_adk_object
 
     IF lv_got = abap_false.
       WRITE: / TEXT-016.
-      ADD 1 TO cv_err.
+      cv_err = cv_err + 1.
     ENDIF.
   ENDIF.
 
@@ -727,7 +727,7 @@ FORM adk_used_row_to_tabname USING    ps_row TYPE any
       CONTINUE.
     ENDIF.
     TRY.
-        MOVE <fs_comp> TO lv_s.
+        lv_s = <fs_comp>.
       CATCH cx_root.
         CONTINUE.
     ENDTRY.
@@ -764,7 +764,7 @@ FORM process_one_arch_table
       RETURN.
   ENDTRY.
   ASSIGN gr_dyn->* TO <lt>.
-  REFRESH <lt>.
+  CLEAR <lt>.
 
   TRY.
       CALL FUNCTION 'ARCHIVE_GET_TABLE'
@@ -959,7 +959,7 @@ FORM run_delete_legacy_json.
     CHECK ls_arec_loc-rec_type = 'D'.
 
     CLEAR: lv_where_loc, lv_pair_loc, lv_kf_loc, lv_kv_loc.
-    REFRESH lt_pairs_loc.
+    CLEAR lt_pairs_loc.
     SPLIT ls_arec_loc-key_vals AT '|' INTO TABLE lt_pairs_loc.
     LOOP AT lt_pairs_loc INTO lv_pair_loc.
       SPLIT lv_pair_loc AT '=' INTO lv_kf_loc lv_kv_loc.
@@ -984,30 +984,30 @@ FORM run_delete_legacy_json.
           DELETE FROM (ls_arec_loc-table_name) WHERE (lv_where_loc).
           lv_leg_subrc = sy-subrc.
         CATCH cx_sy_dynamic_osql_error INTO lo_leg.
-          ADD 1 TO lv_err_loc.
+          lv_err_loc = lv_err_loc + 1.
           lv_leg_subrc = 8.
           WRITE: / |    Error (legacy): { lo_leg->get_text( ) }| ##NO_TEXT.
         CATCH cx_root INTO lo_leg2.
-          ADD 1 TO lv_err_loc.
+          lv_err_loc = lv_err_loc + 1.
           lv_leg_subrc = 8.
           WRITE: / |    Error (legacy): { lo_leg2->get_text( ) }| ##NO_TEXT.
       ENDTRY.
       IF lv_leg_subrc = 0.
         PERFORM archive_adk_mark_deleted_row USING lv_leg_h CHANGING lv_leg_fb.
-        ADD 1 TO lv_leg_del_n.
-        ADD 1 TO lv_cnt_loc.
+        lv_leg_del_n = lv_leg_del_n + 1.
+        lv_cnt_loc = lv_cnt_loc + 1.
         PERFORM del_agg_bump_legacy USING lt_del_loc ls_arec_loc-table_name.
       ELSEIF lv_leg_subrc = 4.
         PERFORM archive_adk_mark_deleted_row USING lv_leg_h CHANGING lv_leg_fb.
-        ADD 1 TO lv_leg_del_n.
-        ADD 1 TO lv_cnt_loc.
+        lv_leg_del_n = lv_leg_del_n + 1.
+        lv_cnt_loc = lv_cnt_loc + 1.
         PERFORM del_agg_bump_legacy USING lt_del_loc ls_arec_loc-table_name.
         WRITE: / TEXT-019.
       ELSEIF lv_leg_subrc <> 8.
-        ADD 1 TO lv_err_loc.
+        lv_err_loc = lv_err_loc + 1.
       ENDIF.
     ELSE.
-      ADD 1 TO lv_cnt_loc.
+      lv_cnt_loc = lv_cnt_loc + 1.
     ENDIF.
   ENDDO.
 
