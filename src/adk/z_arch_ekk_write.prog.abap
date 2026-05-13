@@ -71,11 +71,12 @@ AT SELECTION-SCREEN OUTPUT.
 *&---------------------------------------------------------------------*
 FORM at_ss_output_arch_write.
   " Hub opens this screen only to create/edit variant: hide Execute (F8) — see FORM arch_submit_wvar_ss (Z_GSP18_SAP15_F01)
+  CONSTANTS lc_rsdb_runt TYPE syrepid VALUE 'RSDBRUNT'.
   DATA lv_hide_exec TYPE xfeld.
   CLEAR lv_hide_exec.
   IMPORT zsp26_no_ss_exec = lv_hide_exec FROM MEMORY ID 'Z_GSP18_WR_SS'.
   IF sy-subrc = 0 AND lv_hide_exec = 'X'.
-    PERFORM insert_into_excl IN PROGRAM 'RSDBRUNT' USING 'ONLI'.
+    PERFORM insert_into_excl IN PROGRAM lc_rsdb_runt USING 'ONLI'.
     LOOP AT SCREEN.
       IF screen-name CS 'P_TABLE'.
         screen-input = 0.
