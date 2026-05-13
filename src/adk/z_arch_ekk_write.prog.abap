@@ -75,7 +75,7 @@ FORM at_ss_output_arch_write.
   CLEAR lv_hide_exec.
   IMPORT zsp26_no_ss_exec = lv_hide_exec FROM MEMORY ID 'Z_GSP18_WR_SS'.
   IF sy-subrc = 0 AND lv_hide_exec = 'X'.
-    PERFORM insert_into_excl(RSDBRUNT) IF FOUND USING 'ONLI'.
+    PERFORM insert_into_excl IN PROGRAM 'RSDBRUNT' IF FOUND USING 'ONLI'.
     LOOP AT SCREEN.
       IF screen-name CS 'P_TABLE'.
         screen-input = 0.
