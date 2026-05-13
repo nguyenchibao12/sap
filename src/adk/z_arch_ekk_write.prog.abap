@@ -10,7 +10,7 @@
 *&---------------------------------------------------------------------*
 REPORT z_arch_ekk_write.
 
-INCLUDE z_gsp18_arch_dyn.
+INCLUDE z_gsp18_arch_dyn ##INCL_OK.
 
 TYPES: BEGIN OF ty_cfg_disp,
          table_name  TYPE tabname,
@@ -21,28 +21,7 @@ TYPES: BEGIN OF ty_cfg_disp,
          cutoff_date TYPE d,
        END OF ty_cfg_disp.
 
-DATA: gs_cfg    TYPE zsp26_arch_cfg,
-      gr_src    TYPE REF TO data,
-      gr_arch   TYPE REF TO data,
-      lt_dd     TYPE TABLE OF dfies,
-      lv_cutoff TYPE d,
-      lv_cnt    TYPE i VALUE 0,
-      lv_err    TYPE i VALUE 0,
-      lv_arch_h TYPE syst-tabix,
-      lv_cfg_ok TYPE abap_bool,
-      lv_ts_s   TYPE timestampl,
-      lv_ts_e   TYPE timestampl,
-      lv_sql_elig_cnt TYPE i,
-      lv_tbl_tot      TYPE i,
-      lv_tpl_cid      TYPE zsp26_arch_cfg-config_id,
-      lv_tpl_df       TYPE zsp26_arch_cfg-data_field,
-      lv_tpl_ret      TYPE zsp26_arch_cfg-retention.
-
 CONSTANTS: lc_max_rows TYPE i VALUE 500000.
-
-FIELD-SYMBOLS: <lt_src> TYPE STANDARD TABLE,
-               <lt_arch> TYPE STANDARD TABLE,
-               <row>    TYPE any.
 
 " g_scr_h0 / g_scr_h1: COMMENT /1(79) auto-declares these — do not add DATA (conflicts on ADT/newer releases)
 
@@ -64,7 +43,11 @@ SELECTION-SCREEN END OF LINE.
 *----------------------------------------------------------------------*
 INITIALIZATION.
 *----------------------------------------------------------------------*
-  DATA: lv_hub_tab TYPE tabname.
+  PERFORM init_arch_ekk_write.
+
+*&---------------------------------------------------------------------*
+FORM init_arch_ekk_write.
+  DATA lv_hub_tab TYPE tabname.
 
   IMPORT arch_tabname = lv_hub_tab FROM MEMORY ID 'Z_GSP18_ARCH_TAB'.
   IF sy-subrc = 0.
@@ -78,10 +61,15 @@ INITIALIZATION.
   g_scr_h1 = TEXT-002.
   bt_tbls   = TEXT-003.
   bt_data   = TEXT-004.
+ENDFORM.
 
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN OUTPUT.
 *----------------------------------------------------------------------*
+  PERFORM at_ss_output_arch_write.
+
+*&---------------------------------------------------------------------*
+FORM at_ss_output_arch_write.
   " Hub opens this screen only to create/edit variant: hide Execute (F8) — see FORM arch_submit_wvar_ss (Z_GSP18_SAP15_F01)
   DATA lv_hide_exec TYPE xfeld.
   CLEAR lv_hide_exec.
@@ -95,6 +83,7 @@ AT SELECTION-SCREEN OUTPUT.
       ENDIF.
     ENDLOOP.
   ENDIF.
+ENDFORM.
 
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
@@ -104,6 +93,18 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN.
 *----------------------------------------------------------------------*
+  PERFORM at_sel_screen_arch_write.
+
+*&---------------------------------------------------------------------*
+FORM at_sel_screen_arch_write.
+
+  DATA: gs_cfg          TYPE zsp26_arch_cfg,
+        gr_src          TYPE REF TO data,
+        lv_cfg_ok       TYPE abap_bool,
+        lv_sql_elig_cnt TYPE i,
+        lv_tbl_tot      TYPE i.
+  FIELD-SYMBOLS <lt_src> TYPE STANDARD TABLE.
+
   CASE sy-ucomm.
 
     WHEN 'SHOW_TBLS'.
@@ -156,21 +157,21 @@ AT SELECTION-SCREEN.
 
         lo_cols = lo_alv->get_columns( ).
         TRY. lo_col = lo_cols->get_column( 'TABLE_NAME' ).
-             lo_col->set_long_text( TEXT-005 ). CATCH cx_salv_not_found. ENDTRY.
+             lo_col->set_long_text( TEXT-005 ). CATCH cx_salv_not_found ##NO_HANDLER. ENDTRY.
         TRY. lo_col = lo_cols->get_column( 'DATA_FIELD' ).
-             lo_col->set_long_text( TEXT-006 ). CATCH cx_salv_not_found. ENDTRY.
+             lo_col->set_long_text( TEXT-006 ). CATCH cx_salv_not_found ##NO_HANDLER. ENDTRY.
         TRY. lo_col = lo_cols->get_column( 'RETENTION' ).
-             lo_col->set_long_text( TEXT-007 ). CATCH cx_salv_not_found. ENDTRY.
+             lo_col->set_long_text( TEXT-007 ). CATCH cx_salv_not_found ##NO_HANDLER. ENDTRY.
         TRY. lo_col = lo_cols->get_column( 'IS_ACTIVE' ).
-             lo_col->set_long_text( TEXT-008 ). CATCH cx_salv_not_found. ENDTRY.
+             lo_col->set_long_text( TEXT-008 ). CATCH cx_salv_not_found ##NO_HANDLER. ENDTRY.
         TRY. lo_col = lo_cols->get_column( 'ELIGIBLE' ).
-             lo_col->set_long_text( TEXT-009 ). CATCH cx_salv_not_found. ENDTRY.
+             lo_col->set_long_text( TEXT-009 ). CATCH cx_salv_not_found ##NO_HANDLER. ENDTRY.
         TRY. lo_col = lo_cols->get_column( 'CUTOFF_DATE' ).
-             lo_col->set_long_text( TEXT-010 ). CATCH cx_salv_not_found. ENDTRY.
+             lo_col->set_long_text( TEXT-010 ). CATCH cx_salv_not_found ##NO_HANDLER. ENDTRY.
 
         lo_alv->get_display_settings( )->set_list_header( TEXT-011 ).
         lo_alv->display( ).
-      CATCH cx_salv_msg. ENDTRY.
+      CATCH cx_salv_msg ##NO_HANDLER. ENDTRY.
 
     WHEN 'SHOW_DATA'.
       PERFORM validate_table_against_cfg
@@ -200,7 +201,7 @@ AT SELECTION-SCREEN.
       SELECT * FROM (p_table) INTO TABLE <lt_src> UP TO lc_max_rows ROWS WHERE (lv_w2).
 
       lv_sql_elig_cnt = lines( <lt_src> ).
-      PERFORM apply_rules_to_src.
+      PERFORM apply_rules_to_src USING gs_cfg CHANGING gr_src.
 
       IF <lt_src> IS INITIAL.
         IF lv_sql_elig_cnt > 0.
@@ -237,13 +238,57 @@ AT SELECTION-SCREEN.
         lv_prev_hdr2 = |[PREVIEW] { p_table } — { lines( <lt_src> ) } rows (dynamic line type)| ##NO_TEXT.
         lo_alv2->get_display_settings( )->set_list_header( CONV #( lv_prev_hdr2 ) ).
         lo_alv2->display( ).
-      CATCH cx_salv_msg. ENDTRY.
+      CATCH cx_salv_msg ##NO_HANDLER. ENDTRY.
 
   ENDCASE.
+ENDFORM.
 
 *----------------------------------------------------------------------*
 START-OF-SELECTION.
 *----------------------------------------------------------------------*
+  PERFORM run_arch_ekk_write_main.
+
+*&---------------------------------------------------------------------*
+FORM run_arch_ekk_write_main.
+
+  FIELD-SYMBOLS: <lt_src> TYPE STANDARD TABLE,
+                 <lt_arch> TYPE STANDARD TABLE OF zstr_arch_rec WITH DEFAULT KEY,
+                 <row>     TYPE any,
+                 <fkv2>    TYPE any.
+
+  DATA: gs_cfg          TYPE zsp26_arch_cfg,
+        gr_src          TYPE REF TO data,
+        gr_arch         TYPE REF TO data,
+        lt_dd           TYPE TABLE OF dfies,
+        lv_cutoff       TYPE d,
+        lv_cnt          TYPE i VALUE 0,
+        lv_err          TYPE i VALUE 0,
+        lv_arch_h       TYPE syst-tabix,
+        lv_cfg_ok       TYPE abap_bool,
+        lv_ts_s         TYPE timestampl,
+        lv_ts_e         TYPE timestampl,
+        lv_sql_elig_cnt TYPE i,
+        lv_tbl_tot      TYPE i,
+        lv_tpl_cid      TYPE zsp26_arch_cfg-config_id,
+        lv_tpl_df       TYPE zsp26_arch_cfg-data_field,
+        lv_tpl_ret      TYPE zsp26_arch_cfg-retention,
+        lv_where        TYPE string,
+        lv_where0       TYPE string,
+        lv_c0           TYPE i,
+        ls_dd_wa        TYPE dfies,
+        ls_arch_rec     TYPE zstr_arch_rec,
+        lv_keyvals      TYPE char255,
+        lv_json         TYPE string,
+        lv_jlen         TYPE i,
+        lv_jpos         TYPE i,
+        lv_take         TYPE i,
+        lv_val2         TYPE string,
+        lv_fn2          TYPE fieldname,
+        lv_kfn          TYPE string,
+        lt_reg          TYPE TABLE OF arch_ddic,
+        ls_reg          TYPE arch_ddic,
+        ls_log          TYPE zsp26_arch_log.
+
   CLEAR: lv_cnt, lv_err.
 
   PERFORM validate_table_against_cfg
@@ -272,19 +317,6 @@ START-OF-SELECTION.
   WRITE: / |Date To    : { lv_cutoff }| ##NO_TEXT.
   WRITE: /.
 
-  DATA: lv_where    TYPE string,
-        lv_where0   TYPE string,
-        lv_c0       TYPE i,
-        ls_dd_wa    TYPE dfies,
-        ls_arch_rec TYPE zstr_arch_rec,
-        lv_keyvals  TYPE char255,
-        lv_json     TYPE string,
-        lv_jlen     TYPE i,
-        lv_jpos     TYPE i,
-        lv_take     TYPE i,
-        lv_val2     TYPE string,
-        lv_fn2      TYPE fieldname,
-        lv_kfn      TYPE string.
   PERFORM build_where_from_arch_cfg
     USING gs_cfg s_date-low lv_cutoff
     CHANGING lv_where0.
@@ -300,7 +332,7 @@ START-OF-SELECTION.
   IF lv_sql_elig_cnt >= lc_max_rows.
     WRITE: / |Warning: only the first { lc_max_rows } rows were read; more rows may exist.| ##NO_TEXT.
   ENDIF.
-  PERFORM apply_rules_to_src.
+  PERFORM apply_rules_to_src USING gs_cfg CHANGING gr_src.
 
   WRITE: / |Records eligible: { lines( <lt_src> ) }| ##NO_TEXT.
 
@@ -329,7 +361,7 @@ START-OF-SELECTION.
   " Build generic archive payload rows (ZSTR_ARCH_REC)
   CREATE DATA gr_arch TYPE TABLE OF zstr_arch_rec.
   ASSIGN gr_arch->* TO <lt_arch>.
-  REFRESH <lt_arch>.
+  CLEAR <lt_arch>.
 
   CALL FUNCTION 'DDIF_FIELDINFO_GET'
     EXPORTING
@@ -346,9 +378,9 @@ START-OF-SELECTION.
     CLEAR: lv_keyvals, lv_json.
 
     LOOP AT lt_dd INTO ls_dd_wa WHERE keyflag = 'X' AND fieldname <> 'MANDT'.
-      ASSIGN COMPONENT ls_dd_wa-fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<fkv2>).
+      ASSIGN COMPONENT ls_dd_wa-fieldname OF STRUCTURE <row> TO <fkv2>.
       IF <fkv2> IS ASSIGNED.
-        MOVE <fkv2> TO lv_val2.
+        lv_val2 = <fkv2>.
         lv_fn2 = ls_dd_wa-fieldname.
         CONDENSE lv_fn2.
         TRANSLATE lv_fn2 TO UPPER CASE.
@@ -420,8 +452,6 @@ START-OF-SELECTION.
     ENDIF.
 
     " Register generic DDIC record structure
-    DATA: lt_reg TYPE TABLE OF arch_ddic,
-          ls_reg TYPE arch_ddic.
     CLEAR ls_reg.
     ls_reg-name = 'ZSTR_ARCH_REC'.
     APPEND ls_reg TO lt_reg.
@@ -507,7 +537,6 @@ START-OF-SELECTION.
 
     GET TIME STAMP FIELD lv_ts_e.
 
-    DATA: ls_log TYPE zsp26_arch_log.
     TRY. ls_log-log_id = cl_system_uuid=>create_uuid_x16_static( ).
     CATCH cx_uuid_error.
       ls_log-log_id = CONV sysuuid_x16( |{ sy-datum }{ sy-uzeit }{ sy-tabix }| ).
@@ -536,24 +565,32 @@ START-OF-SELECTION.
   WRITE: / TEXT-021.
   WRITE: / TEXT-022.
 
+ENDFORM.
+
 *&---------------------------------------------------------------------*
-FORM apply_rules_to_src.
+FORM apply_rules_to_src
+  USING    VALUE(ps_cfg) TYPE zsp26_arch_cfg
+  CHANGING cr_src TYPE REF TO data.
+
   DATA: lv_ix TYPE i,
         lv_rp TYPE abap_bool.
-  FIELD-SYMBOLS: <lr> TYPE any.
-  IF NOT <lt_src> IS ASSIGNED.
+  FIELD-SYMBOLS: <lt> TYPE STANDARD TABLE,
+                 <lr> TYPE any.
+
+  ASSIGN cr_src->* TO <lt>.
+  IF sy-subrc <> 0 OR <lt> IS NOT ASSIGNED.
     RETURN.
   ENDIF.
-  lv_ix = lines( <lt_src> ).
+  lv_ix = lines( <lt> ).
   WHILE lv_ix >= 1.
-    READ TABLE <lt_src> INDEX lv_ix ASSIGNING <lr>.
+    READ TABLE <lt> INDEX lv_ix ASSIGNING <lr>.
     IF sy-subrc <> 0.
       lv_ix = lv_ix - 1.
       CONTINUE.
     ENDIF.
-    PERFORM apply_archive_rules USING <lr> gs_cfg-config_id gs_cfg-table_name CHANGING lv_rp.
+    PERFORM apply_archive_rules USING <lr> ps_cfg-config_id ps_cfg-table_name CHANGING lv_rp.
     IF lv_rp = abap_false.
-      DELETE <lt_src> INDEX lv_ix.
+      DELETE <lt> INDEX lv_ix.
     ENDIF.
     lv_ix = lv_ix - 1.
   ENDWHILE.
