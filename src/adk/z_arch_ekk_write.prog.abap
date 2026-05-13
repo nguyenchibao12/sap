@@ -155,17 +155,17 @@ AT SELECTION-SCREEN.
         lo_alv->get_columns( )->set_optimize( abap_true ).
 
         lo_cols = lo_alv->get_columns( ).
-        TRY. lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
+        TRY. lo_col = lo_cols->get_column( 'TABLE_NAME' ).
              lo_col->set_long_text( TEXT-005 ). CATCH cx_salv_not_found. ENDTRY.
-        TRY. lo_col ?= lo_cols->get_column( 'DATA_FIELD' ).
+        TRY. lo_col = lo_cols->get_column( 'DATA_FIELD' ).
              lo_col->set_long_text( TEXT-006 ). CATCH cx_salv_not_found. ENDTRY.
-        TRY. lo_col ?= lo_cols->get_column( 'RETENTION' ).
+        TRY. lo_col = lo_cols->get_column( 'RETENTION' ).
              lo_col->set_long_text( TEXT-007 ). CATCH cx_salv_not_found. ENDTRY.
-        TRY. lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).
+        TRY. lo_col = lo_cols->get_column( 'IS_ACTIVE' ).
              lo_col->set_long_text( TEXT-008 ). CATCH cx_salv_not_found. ENDTRY.
-        TRY. lo_col ?= lo_cols->get_column( 'ELIGIBLE' ).
+        TRY. lo_col = lo_cols->get_column( 'ELIGIBLE' ).
              lo_col->set_long_text( TEXT-009 ). CATCH cx_salv_not_found. ENDTRY.
-        TRY. lo_col ?= lo_cols->get_column( 'CUTOFF_DATE' ).
+        TRY. lo_col = lo_cols->get_column( 'CUTOFF_DATE' ).
              lo_col->set_long_text( TEXT-010 ). CATCH cx_salv_not_found. ENDTRY.
 
         lo_alv->get_display_settings( )->set_list_header( TEXT-011 ).
