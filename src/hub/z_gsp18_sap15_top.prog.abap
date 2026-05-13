@@ -23,7 +23,7 @@ TYPES: BEGIN OF ty_prev,
 
 " Types — Restore preview
 TYPES: BEGIN OF ty_arch_row,
-         sel         TYPE c,
+         sel         TYPE c LENGTH 1,
          arch_id     TYPE zsp26_de_archid,
          data_seq    TYPE i,
          table_name  TYPE tabname,
@@ -126,7 +126,7 @@ TYPES: BEGIN OF ty_mon_disp,
          live_recs   TYPE i,
          arch_recs   TYPE i,            " Phase 2: records in archive (status=A)
          del_recs    TYPE i,            " Phase 2: records deleted after archive
-         pct_saved   TYPE p DECIMALS 1, " Phase 2: % archived vs total
+         pct_saved   TYPE p LENGTH 8 DECIMALS 1, " Phase 2: % archived vs total
          arch_runs   TYPE i,
          rest_runs   TYPE i,
          del_runs    TYPE i,

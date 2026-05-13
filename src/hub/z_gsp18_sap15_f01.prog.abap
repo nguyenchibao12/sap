@@ -270,21 +270,21 @@ FORM show_archive_preview.
     IF lv_rule_pass = abap_false.
       ls_prev-status = 'RULE FAIL' ##NO_TEXT.
       ls_prev-detail = 'Does not meet archive criteria' ##NO_TEXT.
-      ADD 1 TO lv_fail_cnt.
-      ADD 1 TO gv_skp_cnt.
+      lv_fail_cnt = lv_fail_cnt + 1.
+      gv_skp_cnt = gv_skp_cnt + 1.
     ELSEIF ls_prev-date_val IS INITIAL.
       ls_prev-status = 'DATE EMPTY'.
       ls_prev-detail = |Date field { gs_cfg-data_field } is initial (00000000) - skipped| ##NO_TEXT.
-      ADD 1 TO gv_skp_cnt.
+      gv_skp_cnt = gv_skp_cnt + 1.
     ELSEIF ls_prev-age_days >= gs_cfg-retention.
       ls_prev-status = 'READY'.
       ls_prev-detail = |Eligible: { ls_prev-date_val } <= cutoff { lv_cutoff } ({ ls_prev-age_days } days ≥ { gs_cfg-retention }d)| ##NO_TEXT.
-      ADD 1 TO gv_rdy_cnt.
+      gv_rdy_cnt = gv_rdy_cnt + 1.
       INSERT <row> INTO TABLE <lt_ready>.
     ELSE.
       ls_prev-status = 'TOO NEW'.
       ls_prev-detail = |Too new: { ls_prev-date_val } > cutoff { lv_cutoff } ({ ls_prev-age_days }/{ gs_cfg-retention } days)| ##NO_TEXT.
-      ADD 1 TO gv_skp_cnt.
+      gv_skp_cnt = gv_skp_cnt + 1.
     ENDIF.
 
     APPEND ls_prev TO lt_prev.
@@ -1090,7 +1090,7 @@ FORM do_show_eligible_data.
       USING <row> ls_cfg-config_id gv_tabname
       CHANGING lv_pass.
     IF lv_pass = abap_false.
-      ADD 1 TO lv_rule_skip.
+      lv_rule_skip = lv_rule_skip + 1.
       CONTINUE.
     ENDIF.
 
@@ -1127,7 +1127,7 @@ FORM do_show_eligible_data.
     ENDIF.
     ls_elig-detail = |Eligible: { ls_cfg-data_field } <= { lv_cut }| ##NO_TEXT.
     APPEND ls_elig TO lt_elig.
-    ADD 1 TO lv_eligible.
+    lv_eligible = lv_eligible + 1.
   ENDLOOP.
 
   IF lv_eligible = 0.
@@ -1300,7 +1300,7 @@ FORM do_purge_only_direct.
       USING <row> ls_cfg-config_id gv_tabname
       CHANGING lv_pass.
     IF lv_pass = abap_false.
-      ADD 1 TO lv_rule_skip.
+      lv_rule_skip = lv_rule_skip + 1.
       CONTINUE.
     ENDIF.
 
@@ -1325,7 +1325,7 @@ FORM do_purge_only_direct.
     ENDIF.
 
     IF gv_test_mode = 'X'.
-      ADD 1 TO lv_purge_ok.
+      lv_purge_ok = lv_purge_ok + 1.
       CONTINUE.
     ENDIF.
 
@@ -1344,7 +1344,7 @@ FORM do_purge_only_direct.
       lv_json = lv_kv.
     ENDTRY.
 
-    ADD 1 TO lv_seq_p.
+    lv_seq_p = lv_seq_p + 1.
     CLEAR ls_adata.
     ls_adata-arch_id     = lv_purge_id.
     ls_adata-data_seq    = lv_seq_p.
@@ -1356,13 +1356,13 @@ FORM do_purge_only_direct.
     ls_adata-arch_status = 'P'.
     INSERT zsp26_arch_data FROM ls_adata.
     IF sy-subrc <> 0.
-      ADD 1 TO lv_snap_err.
+      lv_snap_err = lv_snap_err + 1.
       CONTINUE.
     ENDIF.
 
     DELETE FROM (gv_tabname) WHERE (lv_wrow).
     IF sy-subrc = 0 AND sy-dbcnt > 0.
-      ADD 1 TO lv_purge_ok.
+      lv_purge_ok = lv_purge_ok + 1.
     ENDIF.
   ENDLOOP.
 
@@ -1475,7 +1475,7 @@ FORM arch_del_pick_session_popup USING VALUE(pv_mode) TYPE c.
     DATA: lt_run_rst TYPE TABLE OF admi_run,
           lv_like_doc TYPE string,
           lv_del_hit  TYPE i.
-    REFRESH lt_run_rst.
+    CLEAR lt_run_rst.
     LOOP AT lt_run INTO ls_run.
       lv_like_doc = |%DOC={ ls_run-document }%| ##NO_TEXT.
       SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_del_hit
@@ -2378,7 +2378,7 @@ FORM show_hub_admi_session_groups.
 
   CLEAR lt_band.
   DO 3 TIMES.
-    REFRESH lt_grp.
+    CLEAR lt_grp.
     LOOP AT lt_det INTO ls_grp WHERE grp_ord = sy-index.
       APPEND ls_grp TO lt_grp.
     ENDLOOP.
@@ -2436,7 +2436,7 @@ FORM show_hub_admi_session_groups.
     ENDIF.
   ENDDO.
 
-  REFRESH: lt_view, gt_run_src_hub.
+  CLEAR: lt_view, gt_run_src_hub.
   LOOP AT lt_det INTO ls_det.
     CLEAR ls_src_hub.
     ls_src_hub-document = ls_det-document.
@@ -2448,15 +2448,15 @@ FORM show_hub_admi_session_groups.
     APPEND ls_src_hub TO gt_run_src_hub.
   ENDLOOP.
 
-  REFRESH lt_view.
+  CLEAR lt_view.
   lv_line = 0.
   DO 3 TIMES.
-    REFRESH lt_grp_band.
+    CLEAR lt_grp_band.
     LOOP AT lt_band INTO ls_grp_band WHERE grp_ord = sy-index.
       APPEND ls_grp_band TO lt_grp_band.
     ENDLOOP.
 
-    ADD 1 TO lv_line.
+    lv_line = lv_line + 1.
     CLEAR ls_view.
     ls_view-grp_ord = sy-index.
     ls_view-line_ord = lv_line.
@@ -2479,7 +2479,7 @@ FORM show_hub_admi_session_groups.
     APPEND ls_view TO lt_view.
 
     IF lt_grp_band IS INITIAL.
-      ADD 1 TO lv_line.
+      lv_line = lv_line + 1.
       CLEAR ls_view.
       ls_view-grp_ord = sy-index.
       ls_view-line_ord = lv_line.
@@ -2495,7 +2495,7 @@ FORM show_hub_admi_session_groups.
     SORT lt_grp_band BY doc_to_n DESCENDING doc_to DESCENDING.
 
     LOOP AT lt_grp_band INTO ls_grp_band.
-      ADD 1 TO lv_line.
+      lv_line = lv_line + 1.
       CLEAR ls_view.
       ls_view-grp_ord = sy-index.
       ls_view-line_ord = lv_line.
@@ -4064,7 +4064,7 @@ FORM check_dependencies
     TRY.
       SELECT COUNT(*) FROM (ls_dep-child_table) INTO @lv_child_cnt.
       IF lv_child_cnt > 0.
-        ADD lv_child_cnt TO lv_total.
+        lv_total = lv_total + lv_child_cnt.
         lv_dep_info &&= |{ ls_dep-child_table }: { lv_child_cnt } records  | ##NO_TEXT.
       ENDIF.
     CATCH cx_sy_dynamic_osql_error ##NO_HANDLER.
