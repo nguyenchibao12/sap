@@ -313,7 +313,7 @@ FORM show_archive_preview.
           text     = 'Archive Now'
           tooltip  = |ADK: archive { gv_rdy_cnt } READY rows to .ARC (Z_ARCH_EKK)| ##NO_TEXT
           position = if_salv_c_function_position=>right_of_salv_functions ).
-      CATCH cx_salv_method_not_supported.
+      CATCH cx_salv_method_not_supported ##NO_HANDLER.
       ENDTRY.
       SET HANDLER lcl_handler=>on_cmd FOR lo_alv->get_event( ).
     ENDIF.
@@ -336,7 +336,7 @@ FORM show_archive_preview.
       lo_col->set_long_text( TEXT-007 ).
       lo_col ?= lo_cols->get_column( 'DETAIL' ).
       lo_col->set_long_text( TEXT-017 ).
-    CATCH cx_salv_not_found.
+    CATCH cx_salv_not_found ##NO_HANDLER.
     ENDTRY.
 
     lo_disp = lo_alv->get_display_settings( ).
@@ -1172,7 +1172,7 @@ FORM do_show_eligible_data.
           lo_col ?= lo_cols->get_column( 'DETAIL' ).
           lo_col->set_long_text( TEXT-035 ).
           lo_col->set_output_length( 48 ).
-        CATCH cx_salv_not_found.
+        CATCH cx_salv_not_found ##NO_HANDLER.
       ENDTRY.
 
       lo_disp = lo_alv->get_display_settings( ).
@@ -1959,8 +1959,10 @@ FORM do_monitor.
     " Snapshot to ZSP26_ARCH_STAT
     DATA: ls_stat TYPE zsp26_arch_stat.
     CLEAR ls_stat.
-    TRY. ls_stat-stat_id = cl_system_uuid=>create_uuid_x16_static( ).
-    CATCH cx_uuid_error. ENDTRY.
+    TRY.
+        ls_stat-stat_id = cl_system_uuid=>create_uuid_x16_static( ).
+      CATCH cx_uuid_error ##NO_HANDLER.
+    ENDTRY.
     ls_stat-table_name = ls_cfg-table_name.
     ls_stat-stat_date  = sy-datum.
     ls_stat-total_recs = ls_disp-live_recs.
@@ -2004,7 +2006,8 @@ FORM do_monitor.
         position = if_salv_c_function_position=>right_of_salv_functions ).
     CATCH cx_salv_method_not_supported
           cx_salv_wrong_call
-          cx_salv_existing. ENDTRY.
+          cx_salv_existing ##NO_HANDLER.
+    ENDTRY.
     SET HANDLER lcl_mon_handler=>on_func FOR go_mon_alv->get_event( ).
 
     lo_cols = go_mon_alv->get_columns( ).
@@ -2050,7 +2053,8 @@ FORM do_monitor.
       lo_col->set_visible( if_salv_c_bool_sap=>false ).
       lo_col ?= lo_cols->get_column( 'EST_ELIG_MB' ).
       lo_col->set_long_text( TEXT-018 ).
-    CATCH cx_salv_not_found. ENDTRY.
+    CATCH cx_salv_not_found ##NO_HANDLER.
+    ENDTRY.
 
     TRY.
       lo_sorts = go_mon_alv->get_sorts( ).
@@ -2061,7 +2065,7 @@ FORM do_monitor.
       lo_sorts->add_sort(
         columnname = 'TABLE_NAME'
         sequence   = if_salv_c_sort=>sort_up ).
-    CATCH cx_salv_not_found cx_salv_data_error cx_salv_existing.
+    CATCH cx_salv_not_found cx_salv_data_error cx_salv_existing ##NO_HANDLER.
     ENDTRY.
 
     lo_disp = go_mon_alv->get_display_settings( ).
@@ -2133,7 +2137,8 @@ FORM show_mon_detail USING iv_table TYPE tabname.
       lo_col ?= lo_cols->get_column( 'REC_COUNT' ).  lo_col->set_long_text( TEXT-029 ).
       lo_col ?= lo_cols->get_column( 'STATUS' ).     lo_col->set_long_text( TEXT-043 ).
       lo_col ?= lo_cols->get_column( 'MESSAGE' ).    lo_col->set_long_text( TEXT-026 ).
-    CATCH cx_salv_not_found. ENDTRY.
+    CATCH cx_salv_not_found ##NO_HANDLER.
+    ENDTRY.
 
     lo_disp = lo_alv->get_display_settings( ).
     DATA lv_det_hdr TYPE string.
@@ -2539,7 +2544,7 @@ FORM show_hub_admi_session_groups.
             position = if_salv_c_function_position=>right_of_salv_functions ).
         CATCH cx_salv_method_not_supported
               cx_salv_wrong_call
-              cx_salv_existing.
+              cx_salv_existing ##NO_HANDLER.
       ENDTRY.
       SET HANDLER lcl_run_handler=>on_func FOR lo_alv->get_event( ).
       lo_evt_run = lo_alv->get_event( ).
@@ -2573,7 +2578,7 @@ FORM show_hub_admi_session_groups.
           lo_col->set_short_text( lv_rng_s ).
           lo_col->set_medium_text( TEXT-038 ).
           lo_col->set_long_text( TEXT-038 ).
-        CATCH cx_salv_not_found.
+        CATCH cx_salv_not_found ##NO_HANDLER.
       ENDTRY.
 
       lo_disp = lo_alv->get_display_settings( ).
@@ -2831,7 +2836,7 @@ FORM run_show_document_detail
       lv_det_err = |Session { pv_doc }: no readable archive payload (rc={ pv_rc })| ##NO_TEXT.
       lo_alv_det->get_display_settings( )->set_list_header( CONV #( lv_det_err ) ).
       lo_alv_det->display( ).
-    CATCH cx_salv_msg.
+    CATCH cx_salv_msg ##NO_HANDLER.
   ENDTRY.
 ENDFORM.
 
@@ -3099,7 +3104,8 @@ FORM show_hub_btc_job_list.
             position = if_salv_c_function_position=>left_of_salv_functions ).
         CATCH cx_salv_method_not_supported
               cx_salv_wrong_call
-              cx_salv_existing. ENDTRY.
+              cx_salv_existing ##NO_HANDLER.
+      ENDTRY.
 
       SET HANDLER lcl_btc_handler=>on_func FOR go_btc_alv->get_event( ).
       lo_evt_btc = go_btc_alv->get_event( ).
@@ -3119,7 +3125,8 @@ FORM show_hub_btc_job_list.
           lo_col ?= lo_cols->get_column( 'STRTTIME' ). lo_col->set_long_text( TEXT-042 ).
           lo_col ?= lo_cols->get_column( 'RUN_REF' ). lo_col->set_long_text( TEXT-006 ).
           lo_col ?= lo_cols->get_column( 'TABLE_NAME' ). lo_col->set_long_text( TEXT-046 ).
-        CATCH cx_salv_not_found. ENDTRY.
+        CATCH cx_salv_not_found ##NO_HANDLER.
+      ENDTRY.
 
       lo_disp = go_btc_alv->get_display_settings( ).
       IF lv_btc_adm = abap_true.
@@ -3279,7 +3286,8 @@ FORM show_hub_arch_log_recent USING VALUE(pv_tab) TYPE tabname.
           lo_col ?= lo_c->get_column( 'REC_COUNT' ). lo_col->set_long_text( TEXT-029 ).
           lo_col ?= lo_c->get_column( 'STATUS' ).    lo_col->set_long_text( TEXT-043 ).
           lo_col ?= lo_c->get_column( 'MESSAGE' ).   lo_col->set_long_text( TEXT-026 ).
-        CATCH cx_salv_not_found. ENDTRY.
+        CATCH cx_salv_not_found ##NO_HANDLER.
+      ENDTRY.
       lo_d = lo_alv->get_display_settings( ).
       IF lv_tn IS NOT INITIAL.
         DATA lv_log_hdr TYPE string.
@@ -3467,7 +3475,7 @@ FORM show_purge_run_data USING VALUE(pv_arch_id) TYPE zsp26_de_archid.
           lo_col ?= lo_c->get_column( 'ARCHIVED_ON' ). lo_col->set_long_text( TEXT-027 ).
           lo_col ?= lo_c->get_column( 'ARCHIVED_BY' ). lo_col->set_long_text( TEXT-028 ).
           lo_col ?= lo_c->get_column( 'DATA_JSON' ).   lo_col->set_long_text( TEXT-034 ).
-        CATCH cx_salv_not_found.
+        CATCH cx_salv_not_found ##NO_HANDLER.
       ENDTRY.
       lo_d = lo_alv->get_display_settings( ).
       DATA lv_purge_hdr TYPE string.
@@ -3522,7 +3530,7 @@ FORM do_config.
           text     = 'Register' ##NO_TEXT
           tooltip  = 'Register a new Z table' ##NO_TEXT
           position = if_salv_c_function_position=>right_of_salv_functions ).
-      CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported.
+      CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported ##NO_HANDLER.
       ENDTRY.
     ENDTRY.
     lo_funcs->set_all( abap_true ).
@@ -3545,7 +3553,7 @@ FORM do_config.
       lo_col->set_long_text( TEXT-013 ).
       lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).
       lo_col->set_long_text( TEXT-003 ).
-    CATCH cx_salv_not_found.
+    CATCH cx_salv_not_found ##NO_HANDLER.
     ENDTRY.
 
     lo_disp = lo_alv->get_display_settings( ).
@@ -4059,7 +4067,7 @@ FORM check_dependencies
         ADD lv_child_cnt TO lv_total.
         lv_dep_info &&= |{ ls_dep-child_table }: { lv_child_cnt } records  | ##NO_TEXT.
       ENDIF.
-    CATCH cx_sy_dynamic_osql_error.
+    CATCH cx_sy_dynamic_osql_error ##NO_HANDLER.
       " Child table may not exist in this system — skip
     ENDTRY.
   ENDLOOP.
@@ -4227,7 +4235,7 @@ FORM zsp26_hub_edit_wvar_0500.
   TRANSLATE lv_vlog TO UPPER CASE.
   CONDENSE lv_vlog NO-GAPS.
   IF lv_vlog = 'DEFAULT'.
-    MESSAGE |"DEFAULT" is reserved for system variants (created by utility). Use a different name (e.g. VAR_01).| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
+    MESSAGE '"DEFAULT" is reserved for system variants (created by utility). Use a different name (e.g. VAR_01).' TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
     RETURN.
   ENDIF.
   IF gv_prog_write IS INITIAL.
