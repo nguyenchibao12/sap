@@ -626,7 +626,12 @@ FORM hub_job_close_with_startspec
     WHEN gc_btc_stdt_immediate.
       lv_strtimmed = 'X'.
     WHEN OTHERS.
-      " leave initial — date/time, after job, event, workday, …
+      " No start condition set at all → fall back to immediate so job actually runs
+      IF gs_btc_start-sdlstrtdt IS INITIAL
+         AND gs_btc_start-eventid  IS INITIAL
+         AND gs_btc_start-predjob  IS INITIAL.
+        lv_strtimmed = 'X'.
+      ENDIF.
   ENDCASE.
 
   CALL FUNCTION 'JOB_CLOSE'
@@ -2834,12 +2839,14 @@ ENDFORM.
 FORM show_hub_btc_job_list.
 
   TYPES: BEGIN OF ty_co_sel,
-           jobname  TYPE tbtcjob-jobname,
-           jobcount TYPE tbtcjob-jobcount,
-           status   TYPE tbtcjob-status,
-           sdluname TYPE syuname,
-           strtdate TYPE d,
-           strttime TYPE t,
+           jobname   TYPE tbtcjob-jobname,
+           jobcount  TYPE tbtcjob-jobcount,
+           status    TYPE tbtcjob-status,
+           sdluname  TYPE syuname,
+           strtdate  TYPE d,
+           strttime  TYPE t,
+           sdlstrtdt TYPE d,
+           sdlstrttm TYPE t,
          END OF ty_co_sel.
 
   DATA: lo_funcs TYPE REF TO cl_salv_functions,
@@ -2858,18 +2865,18 @@ FORM show_hub_btc_job_list.
   PERFORM is_arch_admin CHANGING lv_btc_adm.
 
   IF lv_btc_adm = abap_true.
-    SELECT jobname, jobcount, status, sdluname, strtdate, strttime
+    SELECT jobname, jobcount, status, sdluname, strtdate, strttime, sdlstrtdt, sdlstrttm
       FROM tbtco
       INTO TABLE @lt_co UP TO 80 ROWS
       WHERE jobname LIKE 'ZARCH%'
-      ORDER BY strtdate DESCENDING, strttime DESCENDING.
+      ORDER BY sdlstrtdt DESCENDING, strtdate DESCENDING, strttime DESCENDING.
   ELSE.
-    SELECT jobname, jobcount, status, sdluname, strtdate, strttime
+    SELECT jobname, jobcount, status, sdluname, strtdate, strttime, sdlstrtdt, sdlstrttm
       FROM tbtco
       INTO TABLE @lt_co UP TO 80 ROWS
       WHERE jobname LIKE 'ZARCH%'
         AND ( sdluname = @sy-uname OR authckman = @sy-uname )
-      ORDER BY strtdate DESCENDING, strttime DESCENDING.
+      ORDER BY sdlstrtdt DESCENDING, strtdate DESCENDING, strttime DESCENDING.
   ENDIF.
 
   LOOP AT lt_co INTO ls_co.
@@ -2878,11 +2885,18 @@ FORM show_hub_btc_job_list.
     ls_btc-jobcount = ls_co-jobcount.
     ls_btc-status   = ls_co-status.
     ls_btc-sdluname = ls_co-sdluname.
-    ls_btc-strtdate = ls_co-strtdate.
-    ls_btc-strttime = ls_co-strttime.
+    " Use actual start date when job has run; fall back to scheduled start date
+    IF ls_co-strtdate IS NOT INITIAL.
+      ls_btc-strtdate = ls_co-strtdate.
+      ls_btc-strttime = ls_co-strttime.
+    ELSE.
+      ls_btc-strtdate = ls_co-sdlstrtdt.
+      ls_btc-strttime = ls_co-sdlstrttm.
+    ENDIF.
     CASE ls_co-status.
       WHEN 'F'. ls_btc-status_txt = 'Finished' ##NO_TEXT.
-      WHEN 'A'. ls_btc-status_txt = 'Scheduled' ##NO_TEXT.
+      WHEN 'S'. ls_btc-status_txt = 'Scheduled' ##NO_TEXT.
+      WHEN 'A'. ls_btc-status_txt = 'Released' ##NO_TEXT.
       WHEN 'R'. ls_btc-status_txt = 'Running' ##NO_TEXT.
       WHEN 'P'. ls_btc-status_txt = 'Released' ##NO_TEXT.
       WHEN 'X'. ls_btc-status_txt = 'Canceled' ##NO_TEXT.
