@@ -23,8 +23,7 @@ TYPES: BEGIN OF ty_del_agg,
        END OF ty_del_agg.
 TYPES ty_del_agg_htab TYPE HASHED TABLE OF ty_del_agg WITH UNIQUE KEY table_name.
 
-DATA: ls_arec      TYPE ty_arch_rec,
-      lv_cnt       TYPE i VALUE 0,
+DATA: lv_cnt       TYPE i VALUE 0,
       lv_err       TYPE i VALUE 0,
       lt_del_agg   TYPE ty_del_agg_htab,
       lv_arch_h    TYPE syst-tabix,
@@ -32,8 +31,6 @@ DATA: ls_arec      TYPE ty_arch_rec,
       lv_arch_name TYPE heada-arkey,
       lv_doc       TYPE admi_run-document,
       gr_dyn       TYPE REF TO data,
-      lt_cfg_tabs  TYPE TABLE OF tabname,
-      lv_cfg_tab   TYPE tabname,
       ls_hub_admi  TYPE admi_run,
       lv_open_obj  TYPE arch_obj-object,
       lv_arch_key  TYPE admi_files-archiv_key,
@@ -480,6 +477,8 @@ FORM archive_adk_mark_deleted_row
 
   TRY.
     CALL FUNCTION 'ARCHIVE_DELETE_RECORD'
+      EXPORTING
+        archive_handle = pv_handle
       EXCEPTIONS
         OTHERS = 0.
   CATCH cx_sy_dyn_call_illegal_func.
@@ -925,7 +924,6 @@ FORM run_delete_legacy_json.
         lv_kv_loc     TYPE string,
         lv_kv_esc_loc TYPE string,
         lt_del_loc    TYPE ty_del_agg_htab,
-        ls_del_loc    TYPE ty_del_agg,
         lv_leg_h      TYPE syst-tabix,
         lv_leg_fb     TYPE abap_bool VALUE abap_false,
         lv_leg_del_n  TYPE i VALUE 0,
