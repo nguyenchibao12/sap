@@ -2,7 +2,7 @@
 *& Include Z_GSP18_SAP15_F01
 *& Subroutines + Class Implementation
 *&---------------------------------------------------------------------*
-INCLUDE z_gsp18_arch_dyn.
+INCLUDE z_gsp18_arch_dyn ##INCL_OK.
 
 "----------------------------------------------------------------------
 " Class Implementation (moved from TOP — TOP allows definitions only)
