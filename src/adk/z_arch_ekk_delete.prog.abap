@@ -8,7 +8,7 @@
 *&---------------------------------------------------------------------*
 REPORT z_arch_ekk_delete.
 
-INCLUDE z_gsp18_arch_dyn.
+INCLUDE z_gsp18_arch_dyn. ##INCL_OK
 
 TYPES: BEGIN OF ty_arch_rec,
          rec_type   TYPE c LENGTH 1,
@@ -23,23 +23,6 @@ TYPES: BEGIN OF ty_del_agg,
        END OF ty_del_agg.
 TYPES ty_del_agg_htab TYPE HASHED TABLE OF ty_del_agg WITH UNIQUE KEY table_name.
 
-DATA: lv_cnt       TYPE i VALUE 0,
-      lv_err       TYPE i VALUE 0,
-      lt_del_agg   TYPE ty_del_agg_htab,
-      lv_arch_h    TYPE syst-tabix,
-      lv_obj       TYPE arch_obj-object VALUE 'Z_ARCH_EKK',
-      lv_arch_name TYPE heada-arkey,
-      lv_doc       TYPE admi_run-document,
-      gr_dyn       TYPE REF TO data,
-      ls_hub_admi  TYPE admi_run,
-      lv_open_obj  TYPE arch_obj-object,
-      lv_arch_key  TYPE admi_files-archiv_key,
-      gv_del_doc_log TYPE admi_run-document,
-      lv_use_p_table TYPE abap_bool VALUE abap_true,
-      lv_prev_del_like TYPE string,
-      lv_prev_del_cnt  TYPE i,
-      lv_dbcnt         TYPE i.
-
 PARAMETERS: p_table TYPE tabname DEFAULT 'ZSP26_EKKO'.
 PARAMETERS: p_test  TYPE c AS CHECKBOX DEFAULT 'X'.
 PARAMETERS: p_json  TYPE c AS CHECKBOX DEFAULT ' '.
@@ -48,14 +31,7 @@ PARAMETERS: p_doc   TYPE admi_run-document.
 *----------------------------------------------------------------------*
 INITIALIZATION.
 *----------------------------------------------------------------------*
-  DATA lv_hub_tab TYPE tabname.
-  IMPORT arch_tabname = lv_hub_tab FROM MEMORY ID 'Z_GSP18_ARCH_TAB'.
-  IF sy-subrc = 0.
-    IF p_table IS INITIAL AND lv_hub_tab IS NOT INITIAL.
-      p_table = lv_hub_tab.
-    ENDIF.
-    FREE MEMORY ID 'Z_GSP18_ARCH_TAB'.
-  ENDIF.
+  PERFORM init_arch_ekk_delete.
 
 *----------------------------------------------------------------------*
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
@@ -65,6 +41,61 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_table.
 *----------------------------------------------------------------------*
 START-OF-SELECTION.
 *----------------------------------------------------------------------*
+  PERFORM run_arch_ekk_delete_main.
+
+*&---------------------------------------------------------------------*
+FORM init_arch_ekk_delete.
+  DATA lv_hub_tab TYPE tabname.
+  IMPORT arch_tabname = lv_hub_tab FROM MEMORY ID 'Z_GSP18_ARCH_TAB'.
+  IF sy-subrc = 0.
+    IF p_table IS INITIAL AND lv_hub_tab IS NOT INITIAL.
+      p_table = lv_hub_tab.
+    ENDIF.
+    FREE MEMORY ID 'Z_GSP18_ARCH_TAB'.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+FORM run_arch_ekk_delete_main.
+
+  FIELD-SYMBOLS <fs_doc_any> TYPE any.
+
+  DATA: lv_cnt             TYPE i VALUE 0,
+        lv_err             TYPE i VALUE 0,
+        lt_del_agg         TYPE ty_del_agg_htab,
+        lv_arch_h          TYPE syst-tabix,
+        lv_obj             TYPE arch_obj-object VALUE 'Z_ARCH_EKK',
+        lv_arch_name       TYPE heada-arkey,
+        lv_doc             TYPE admi_run-document,
+        ls_hub_admi        TYPE admi_run,
+        lv_open_obj        TYPE arch_obj-object,
+        lv_arch_key        TYPE admi_files-archiv_key,
+        gv_del_doc_log     TYPE admi_run-document,
+        lv_use_p_table     TYPE abap_bool VALUE abap_true,
+        lv_prev_del_like   TYPE string,
+        lv_prev_del_cnt    TYPE i,
+        lt_af_dd           TYPE TABLE OF dfies,
+        ls_af_dd           TYPE dfies,
+        lv_where_af        TYPE string,
+        lv_col_obj         TYPE fieldname,
+        lv_col_doc         TYPE fieldname,
+        lv_col_cli         TYPE fieldname,
+        lv_doc_esc         TYPE string,
+        lv_obj_esc         TYPE string,
+        lv_mandt_s         TYPE string,
+        lt_af_scan         TYPE TABLE OF admi_files,
+        ls_af_scan         TYPE admi_files,
+        lv_doc_in          TYPE string,
+        lv_doc_db          TYPE string,
+        lv_ok_hit          TYPE abap_bool,
+        lv_open_rc         TYPE sy-subrc,
+        lt_used            TYPE adk_classes,
+        ls_used_inf        LIKE LINE OF lt_used,
+        lv_tab_try         TYPE tabname,
+        lv_obj_h           TYPE syst-tabix,
+        lv_ro_ix           TYPE i VALUE 0,
+        lv_gno_fallback    TYPE abap_bool VALUE abap_false,
+        lv_gno_ix          TYPE i VALUE 0.
 
   CONDENSE p_table.
   TRANSLATE p_table TO UPPER CASE.
@@ -86,12 +117,6 @@ START-OF-SELECTION.
   IF ls_hub_admi-document IS NOT INITIAL.
     lv_use_p_table = abap_false.
     gv_del_doc_log = ls_hub_admi-document.
-    DATA: lt_af_dd   TYPE TABLE OF dfies,
-          ls_af_dd   TYPE dfies,
-          lv_where_af TYPE string,
-          lv_col_obj  TYPE fieldname,
-          lv_col_doc  TYPE fieldname,
-          lv_col_cli  TYPE fieldname.
 
     WRITE: / |Session { ls_hub_admi-document } (archive object { ls_hub_admi-object })| ##NO_TEXT.
     lv_open_obj = ls_hub_admi-object.
@@ -177,9 +202,6 @@ START-OF-SELECTION.
       RETURN.
     ENDIF.
 
-    DATA: lv_doc_esc TYPE string,
-          lv_obj_esc TYPE string,
-          lv_mandt_s TYPE string.
     lv_doc_esc = |{ ls_hub_admi-document }|.
     lv_obj_esc = |{ ls_hub_admi-object }|.
     lv_mandt_s = |{ sy-mandt }|.
@@ -202,12 +224,6 @@ START-OF-SELECTION.
       INTO @lv_arch_key.
     IF sy-subrc <> 0.
       " Soft fallback: some systems store document in a different format (ARCH_DOCID has suffix, or different preferred column).
-      DATA: lt_af_scan TYPE TABLE OF admi_files,
-            ls_af_scan TYPE admi_files,
-            lv_doc_in  TYPE string,
-            lv_doc_db  TYPE string,
-            lv_ok_hit  TYPE abap_bool.
-      FIELD-SYMBOLS: <fs_doc_any> TYPE any.
 
       lv_doc_in = ls_hub_admi-document.
       CONDENSE lv_doc_in.
@@ -282,11 +298,9 @@ START-OF-SELECTION.
   WRITE: /.
 
   IF p_json = 'X'.
-    PERFORM run_delete_legacy_json.
-    EXIT.
+    PERFORM run_delete_legacy_json USING gv_del_doc_log lv_prev_del_cnt.
+    RETURN.
   ENDIF.
-
-  DATA lv_open_rc TYPE sy-subrc.
 
   IF lv_arch_key IS NOT INITIAL.
     WRITE: / |Archive file key: { lv_arch_key }| ##NO_TEXT.
@@ -351,13 +365,6 @@ START-OF-SELECTION.
   ENDIF.
 
   " USED_CLASSES: log what is inside the archive file (generic ZSTR_ARCH_REC vs legacy table line type)
-  DATA: lt_used         TYPE adk_classes,
-        ls_used_inf     LIKE LINE OF lt_used,
-        lv_tab_try      TYPE tabname,
-        lv_obj_h        TYPE syst-tabix,
-        lv_ro_ix        TYPE i VALUE 0,
-        lv_gno_fallback TYPE abap_bool VALUE abap_false,
-        lv_gno_ix       TYPE i VALUE 0.
 
   CALL FUNCTION 'ARCHIVE_GET_INFORMATION'
     EXPORTING
@@ -420,7 +427,7 @@ START-OF-SELECTION.
 
     WRITE: / |Object batch { lv_ro_ix } (internal step { lv_obj_h })| ##NO_TEXT.
     PERFORM process_delete_adk_object USING lv_obj_h lt_used lv_use_p_table
-      CHANGING lv_cnt lv_err.
+      CHANGING lv_cnt lv_err lt_del_agg.
   ENDDO.
 
   IF lv_gno_fallback = abap_true.
@@ -447,7 +454,7 @@ START-OF-SELECTION.
       ENDIF.
       WRITE: / |Object { lv_gno_ix }: read OK| ##NO_TEXT.
       PERFORM process_delete_adk_object USING lv_arch_h lt_used lv_use_p_table
-        CHANGING lv_cnt lv_err.
+        CHANGING lv_cnt lv_err lt_del_agg.
     ENDDO.
   ENDIF.
 
@@ -458,7 +465,7 @@ START-OF-SELECTION.
       OTHERS         = 0.
 
   IF p_test = ' '.
-    PERFORM flush_arch_log_delete USING lt_del_agg lv_err.
+    PERFORM flush_arch_log_delete USING lt_del_agg lv_err gv_del_doc_log lv_prev_del_cnt.
   ENDIF.
 
   WRITE: /.
@@ -467,6 +474,8 @@ START-OF-SELECTION.
   IF p_test = 'X'.
     WRITE: / TEXT-013.
   ENDIF.
+
+ENDFORM.
 
 *&---------------------------------------------------------------------*
 *& Mark one DB row removed in ADK (FM varies by release).
@@ -520,7 +529,8 @@ FORM process_delete_adk_object
            VALUE(pt_used)     TYPE adk_classes
            VALUE(pv_use_ptab) TYPE abap_bool
   CHANGING cv_cnt TYPE i
-           cv_err TYPE i.
+           cv_err TYPE i
+           ct_del_agg TYPE ty_del_agg_htab.
 
   DATA: lv_got       TYPE abap_bool,
         lv_gt_rc     TYPE sy-subrc,
@@ -533,6 +543,7 @@ FORM process_delete_adk_object
         lv_kv_esc    TYPE string,
         lv_where_gen TYPE string,
         lv_del_rc    TYPE i,
+        lv_dbcnt     TYPE i,
         lv_tn_cmp    TYPE tabname,
         lv_tab_try   TYPE tabname,
         lt_cfg_loc   TYPE TABLE OF tabname,
@@ -643,7 +654,7 @@ FORM process_delete_adk_object
           PERFORM archive_adk_mark_deleted_row USING pv_handle CHANGING lv_skip_rec_fm.
           lv_zstr_db_del = lv_zstr_db_del + 1.
           cv_cnt = cv_cnt + 1.
-          PERFORM del_agg_bump_legacy USING lt_del_agg lv_del_tab.
+          PERFORM del_agg_bump_legacy USING ct_del_agg lv_del_tab.
         ELSEIF ( lv_del_rc = 0 OR lv_del_rc = 4 ) AND lv_dbcnt = 0.
           WRITE: / |  Skipped { lv_del_tab } ({ ls_arch_gen-key_vals }): row not in database (already removed).| ##NO_TEXT.
         ELSEIF lv_del_rc <> 8.
@@ -661,7 +672,7 @@ FORM process_delete_adk_object
 
   IF lv_got = abap_false.
     IF pv_use_ptab = abap_true AND p_table IS NOT INITIAL.
-      PERFORM process_one_arch_table USING pv_handle p_table p_test CHANGING cv_cnt cv_err lv_got.
+      PERFORM process_one_arch_table USING pv_handle p_table p_test CHANGING cv_cnt cv_err lv_got ct_del_agg.
     ENDIF.
 
     IF lv_got = abap_false.
@@ -669,7 +680,7 @@ FORM process_delete_adk_object
         PERFORM adk_used_row_to_tabname USING ls_pt_used CHANGING lv_tab_try.
         CHECK lv_tab_try IS NOT INITIAL.
         CHECK lv_tab_try <> 'ZSTR_ARCH_REC'.
-        PERFORM process_one_arch_table USING pv_handle lv_tab_try p_test CHANGING cv_cnt cv_err lv_got.
+        PERFORM process_one_arch_table USING pv_handle lv_tab_try p_test CHANGING cv_cnt cv_err lv_got ct_del_agg.
         IF lv_got = abap_true.
           EXIT.
         ENDIF.
@@ -680,7 +691,7 @@ FORM process_delete_adk_object
       SELECT table_name FROM zsp26_arch_cfg INTO TABLE lt_cfg_loc
         WHERE is_active = 'X'.
       LOOP AT lt_cfg_loc INTO lv_cfg_loc.
-        PERFORM process_one_arch_table USING pv_handle lv_cfg_loc p_test CHANGING cv_cnt cv_err lv_got.
+        PERFORM process_one_arch_table USING pv_handle lv_cfg_loc p_test CHANGING cv_cnt cv_err lv_got ct_del_agg.
         IF lv_got = abap_true.
           EXIT.
         ENDIF.
@@ -748,22 +759,24 @@ FORM process_one_arch_table
            VALUE(pv_test)   TYPE c
   CHANGING cv_cnt TYPE i
            cv_err TYPE i
-           cv_got TYPE abap_bool.
+           cv_got TYPE abap_bool
+           ct_del_agg TYPE ty_del_agg_htab.
 
   DATA: lv_lines TYPE i,
         lv_t     TYPE i,
-        lv_fb    TYPE abap_bool VALUE abap_false.
+        lv_fb    TYPE abap_bool VALUE abap_false,
+        lr_dyn   TYPE REF TO data.
 
   " FM ARCHIVE_GET_TABLE — TABLES only accepts STANDARD TABLE (ANY TABLE → SYNTAX_ERROR).
   FIELD-SYMBOLS <lt> TYPE STANDARD TABLE.
 
   cv_got = abap_false.
   TRY.
-      CREATE DATA gr_dyn TYPE STANDARD TABLE OF (pv_tab).
+      CREATE DATA lr_dyn TYPE STANDARD TABLE OF (pv_tab).
     CATCH cx_sy_create_data_error.
       RETURN.
   ENDTRY.
-  ASSIGN gr_dyn->* TO <lt>.
+  ASSIGN lr_dyn->* TO <lt>.
   CLEAR <lt>.
 
   TRY.
@@ -798,7 +811,7 @@ FORM process_one_arch_table
     IF sy-subrc = 0 OR sy-subrc = 4.
       lv_lines = lines( <lt> ).
       cv_cnt = cv_cnt + lv_lines.
-      PERFORM del_agg_add USING lt_del_agg pv_tab lv_lines.
+      PERFORM del_agg_add USING ct_del_agg pv_tab lv_lines.
       CLEAR lv_fb.
       DO lv_lines TIMES.
         PERFORM archive_adk_mark_deleted_row USING pv_handle CHANGING lv_fb.
@@ -840,7 +853,9 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM flush_arch_log_delete
   USING    ct_agg TYPE ty_del_agg_htab
-           VALUE(pv_err) TYPE i.
+           VALUE(pv_err) TYPE i
+           VALUE(pv_session_doc) TYPE admi_run-document
+           VALUE(pv_prev_dup_cnt) TYPE i.
 
   DATA: ls_log TYPE zsp26_arch_log,
         ls_a   TYPE ty_del_agg,
@@ -862,7 +877,7 @@ FORM flush_arch_log_delete
       ls_log-end_time   = lv_ts.
       ls_log-exec_user  = sy-uname.
       ls_log-exec_date  = sy-datum.
-      ls_log-message    = |ADK DELETE DOC={ gv_del_doc_log } (GET_TABLE): { ls_a-cnt } rows, tab { ls_a-table_name }. err { pv_err }| ##NO_TEXT.
+      ls_log-message    = |ADK DELETE DOC={ pv_session_doc } (GET_TABLE): { ls_a-cnt } rows, tab { ls_a-table_name }. err { pv_err }| ##NO_TEXT.
       INSERT zsp26_arch_log FROM ls_log.
       IF sy-subrc <> 0.
         WRITE: / |Warning: could not save application log line for { ls_a-table_name }.| ##NO_TEXT.
@@ -882,7 +897,7 @@ FORM flush_arch_log_delete
     ls_log-end_time   = lv_ts.
     ls_log-exec_user  = sy-uname.
     ls_log-exec_date  = sy-datum.
-    ls_log-message    = |ADK DELETE DOC={ gv_del_doc_log }: errors { pv_err } — 0 rows deleted, ROLLBACK issued.| ##NO_TEXT.
+    ls_log-message    = |ADK DELETE DOC={ pv_session_doc }: errors { pv_err } — 0 rows deleted, ROLLBACK issued.| ##NO_TEXT.
     INSERT zsp26_arch_log FROM ls_log.
     ROLLBACK WORK.
     RETURN.
@@ -900,12 +915,12 @@ FORM flush_arch_log_delete
     ls_log-end_time   = lv_ts.
     ls_log-exec_user  = sy-uname.
     ls_log-exec_date  = sy-datum.
-    IF lv_prev_del_cnt > 0.
-      ls_log-message = |ADK DELETE DOC={ gv_del_doc_log }: 0 rows — DB data already deleted (duplicate run).| ##NO_TEXT.
-      WRITE: / |Notice: no rows removed for session { gv_del_doc_log } (data was already removed).| ##NO_TEXT.
+    IF pv_prev_dup_cnt > 0.
+      ls_log-message = |ADK DELETE DOC={ pv_session_doc }: 0 rows — DB data already deleted (duplicate run).| ##NO_TEXT.
+      WRITE: / |Notice: no rows removed for session { pv_session_doc } (data was already removed).| ##NO_TEXT.
     ELSE.
-      ls_log-message = |ADK DELETE DOC={ gv_del_doc_log }: 0 rows — no archive objects found in session.| ##NO_TEXT.
-      WRITE: / |Notice: session { gv_del_doc_log } has no objects to process in the archive file.| ##NO_TEXT.
+      ls_log-message = |ADK DELETE DOC={ pv_session_doc }: 0 rows — no archive objects found in session.| ##NO_TEXT.
+      WRITE: / |Notice: session { pv_session_doc } has no objects to process in the archive file.| ##NO_TEXT.
     ENDIF.
     INSERT zsp26_arch_log FROM ls_log.
   ENDIF.
@@ -913,7 +928,9 @@ FORM flush_arch_log_delete
 ENDFORM.
 
 *&---------------------------------------------------------------------*
-FORM run_delete_legacy_json.
+FORM run_delete_legacy_json
+  USING    VALUE(pv_session_doc) TYPE admi_run-document
+           VALUE(pv_prev_dup_cnt) TYPE i.
   DATA: ls_arec_loc   TYPE ty_arch_rec,
         lv_where_loc  TYPE string,
         lv_cnt_loc    TYPE i VALUE 0,
@@ -1022,7 +1039,7 @@ FORM run_delete_legacy_json.
       OTHERS         = 0.
 
   IF p_test = ' '.
-    PERFORM flush_arch_log_delete USING lt_del_loc lv_err_loc.
+    PERFORM flush_arch_log_delete USING lt_del_loc lv_err_loc pv_session_doc pv_prev_dup_cnt.
   ENDIF.
 
   WRITE: / |=== Legacy format summary: processed { lv_cnt_loc }, issues { lv_err_loc } ===| ##NO_TEXT.
