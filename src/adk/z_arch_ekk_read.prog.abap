@@ -26,14 +26,20 @@ TYPES: BEGIN OF ty_disp,
 
 TYPES ty_tt_disp TYPE STANDARD TABLE OF ty_disp WITH DEFAULT KEY.
 
+" g_scr_r0: COMMENT /1(79) auto-declares — do not add DATA (same pattern as Z_ARCH_EKK_WRITE)
+
+SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME.
+SELECTION-SCREEN COMMENT /1(79) g_scr_r0.
 PARAMETERS: p_table TYPE tabname.
 PARAMETERS: p_rest  TYPE c       AS CHECKBOX DEFAULT ' '.
 PARAMETERS: p_json  TYPE c       AS CHECKBOX DEFAULT ' '.
 PARAMETERS: p_doc   TYPE admi_run-document.
+SELECTION-SCREEN END OF BLOCK b0.
 
 *----------------------------------------------------------------------*
 INITIALIZATION.
 *----------------------------------------------------------------------*
+  g_scr_r0 = TEXT-001.
   PERFORM arch_read_init_screen.
 
 *----------------------------------------------------------------------*
