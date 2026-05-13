@@ -6,8 +6,10 @@
 *& Module USER_COMMAND_0400 INPUT — select table → Continue → 0100
 *&---------------------------------------------------------------------*
 MODULE user_command_0400 INPUT.
-  DATA: lv_cmd_400    TYPE sy-ucomm,
-        lv_adm_0400_i TYPE abap_bool.
+  DATA lv_cmd_400 TYPE sy-ucomm ##NEEDED.
+  DATA lv_adm_0400_i TYPE abap_bool ##NEEDED.
+  DATA ls_cfg_400 TYPE zsp26_arch_cfg ##NEEDED.
+  DATA lv_ok_400 TYPE abap_bool ##NEEDED.
   lv_cmd_400 = ok_code.
   CLEAR ok_code.
 
@@ -25,8 +27,6 @@ MODULE user_command_0400 INPUT.
       IF gv_tabname IS INITIAL.
         MESSAGE TEXT-064 TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
-        DATA: ls_cfg_400 TYPE zsp26_arch_cfg,
-              lv_ok_400  TYPE abap_bool.
         PERFORM validate_table_against_cfg
           USING gv_tabname
           CHANGING ls_cfg_400 lv_ok_400.
@@ -56,8 +56,8 @@ ENDMODULE.
 *& Module USER_COMMAND_0100 INPUT
 *&---------------------------------------------------------------------*
 MODULE user_command_0100 INPUT.
-  DATA: lv_cmd      TYPE sy-ucomm,
-        lv_is_admin TYPE abap_bool.
+  DATA lv_cmd TYPE sy-ucomm ##NEEDED.
+  DATA lv_is_admin TYPE abap_bool ##NEEDED.
   lv_cmd = ok_code.
   CLEAR ok_code.
 
@@ -143,7 +143,7 @@ ENDMODULE.
 *& Module USER_COMMAND_0200 INPUT
 *&---------------------------------------------------------------------*
 MODULE user_command_0200 INPUT.
-  DATA: lv_cmd_200 TYPE sy-ucomm.
+  DATA lv_cmd_200 TYPE sy-ucomm ##NEEDED.
   lv_cmd_200 = ok_code.
   CLEAR ok_code.
 
@@ -180,12 +180,17 @@ ENDMODULE.
 *& Module CHECK_VARIANT_0300 INPUT
 *&---------------------------------------------------------------------*
 MODULE check_variant_0300 INPUT.
-  DATA: lv_rc_chk   TYPE sy-subrc,
-        lv_ans_chk  TYPE char1,
-        lv_vtech_c  TYPE variant,
-        lv_vok_c    TYPE abap_bool,
-        lv_ok_c     TYPE abap_bool,
-        lv_q_c      TYPE string.
+  DATA lv_rc_chk TYPE sy-subrc ##NEEDED.
+  DATA lv_ans_chk TYPE char1 ##NEEDED.
+  DATA lv_vtech_c TYPE variant ##NEEDED.
+  DATA lv_vok_c TYPE abap_bool ##NEEDED.
+  DATA lv_ok_c TYPE abap_bool ##NEEDED.
+  DATA lv_q_c TYPE string ##NEEDED.
+  DATA lv_vlog_chk TYPE string ##NEEDED.
+  DATA lt_vc_chk TYPE TABLE OF rsparams ##NEEDED.
+  FIELD-SYMBOLS <vc_chk> TYPE rsparams ##NEEDED.
+  DATA lv_vc_tab TYPE tabname ##NEEDED.
+  DATA lv_vc_cur TYPE tabname ##NEEDED.
 
   CHECK gv_variant IS NOT INITIAL.
   IF gv_tabname IS INITIAL.
@@ -193,7 +198,6 @@ MODULE check_variant_0300 INPUT.
     RETURN.
   ENDIF.
 
-  DATA lv_vlog_chk TYPE string.
   lv_vlog_chk = gv_variant.
   TRANSLATE lv_vlog_chk TO UPPER CASE.
   CONDENSE lv_vlog_chk NO-GAPS.
@@ -221,8 +225,6 @@ MODULE check_variant_0300 INPUT.
       r_c     = lv_rc_chk.
 
   IF lv_rc_chk = 0.
-    DATA: lt_vc_chk TYPE TABLE OF rsparams.
-    FIELD-SYMBOLS <vc_chk> TYPE rsparams.
     CALL FUNCTION 'RS_VARIANT_CONTENTS'
       EXPORTING
         report        = gv_prog_write
@@ -235,11 +237,9 @@ MODULE check_variant_0300 INPUT.
     IF sy-subrc = 0.
       READ TABLE lt_vc_chk ASSIGNING <vc_chk> WITH KEY selname = 'P_TABLE'.
       IF sy-subrc = 0 AND <vc_chk>-low IS NOT INITIAL.
-        DATA lv_vc_tab TYPE tabname.
         lv_vc_tab = <vc_chk>-low.
         CONDENSE lv_vc_tab.
         TRANSLATE lv_vc_tab TO UPPER CASE.
-        DATA lv_vc_cur TYPE tabname.
         lv_vc_cur = gv_tabname.
         CONDENSE lv_vc_cur.
         TRANSLATE lv_vc_cur TO UPPER CASE.
@@ -284,13 +284,13 @@ ENDMODULE.
 *& Module USER_COMMAND_0300 INPUT
 *&---------------------------------------------------------------------*
 MODULE user_command_0300 INPUT.
-  DATA: lv_rc_300    TYPE sy-subrc,
-        lv_ans_300   TYPE char1,
-        lv_ucomm     TYPE sy-ucomm,
-        lv_vtech_300 TYPE variant,
-        lv_vok_300   TYPE abap_bool,
-        lv_ok_300    TYPE abap_bool,
-        lv_q_300     TYPE string.
+  DATA lv_rc_300 TYPE sy-subrc ##NEEDED.
+  DATA lv_ans_300 TYPE char1 ##NEEDED.
+  DATA lv_ucomm TYPE sy-ucomm ##NEEDED.
+  DATA lv_vtech_300 TYPE variant ##NEEDED.
+  DATA lv_vok_300 TYPE abap_bool ##NEEDED.
+  DATA lv_ok_300 TYPE abap_bool ##NEEDED.
+  DATA lv_q_300 TYPE string ##NEEDED.
 
   lv_ucomm = ok_code.
   CLEAR ok_code.
@@ -374,16 +374,16 @@ MODULE f4_gv_variant INPUT.
          BEGIN OF ty_vf4,
            variant TYPE variant,
          END OF ty_vf4.
-  DATA: lt_vf4    TYPE TABLE OF ty_vf4,
-        lt_raw    TYPE TABLE OF ty_varid_name,
-        ls_vf4    TYPE ty_vf4,
-        lv_r      TYPE ty_varid_name,
-        lv_s      TYPE string,
-        lv_log    TYPE variant,
-        lv_ok     TYPE abap_bool,
-        lv_rep    TYPE programm,
-        lv_off    TYPE i,
-        lv_vtech  TYPE variant.
+  DATA lt_vf4 TYPE TABLE OF ty_vf4 ##NEEDED.
+  DATA lt_raw TYPE TABLE OF ty_varid_name ##NEEDED.
+  DATA ls_vf4 TYPE ty_vf4 ##NEEDED.
+  DATA lv_r TYPE ty_varid_name ##NEEDED.
+  DATA lv_s TYPE string ##NEEDED.
+  DATA lv_log TYPE variant ##NEEDED.
+  DATA lv_ok TYPE abap_bool ##NEEDED.
+  DATA lv_rep TYPE programm ##NEEDED.
+  DATA lv_off TYPE i ##NEEDED.
+  DATA lv_vtech TYPE variant ##NEEDED.
 
   IF sy-dynnr = '0600'.
     IF gv_prog_del IS INITIAL.
@@ -460,7 +460,7 @@ ENDMODULE.
 *& Module USER_COMMAND_0500 INPUT — ADK create archive file (session UI)
 *&---------------------------------------------------------------------*
 MODULE user_command_0500 INPUT.
-  DATA lv_u5 TYPE sy-ucomm.
+  DATA lv_u5 TYPE sy-ucomm ##NEEDED.
 
   lv_u5 = ok_code.
   CLEAR ok_code.
@@ -511,8 +511,13 @@ ENDMODULE.
 *& Module USER_COMMAND_0600 INPUT — ADK delete from DB (archive session)
 *&---------------------------------------------------------------------*
 MODULE user_command_0600 INPUT.
-  DATA: lv_rc_600  TYPE sy-subrc,
-        lv_u6      TYPE sy-ucomm.
+  DATA lv_rc_600 TYPE sy-subrc ##NEEDED.
+  DATA lv_u6 TYPE sy-ucomm ##NEEDED.
+  DATA lv_vtech_600 TYPE variant ##NEEDED.
+  DATA lv_vok_600 TYPE abap_bool ##NEEDED.
+  DATA lv_ok_600 TYPE abap_bool ##NEEDED.
+  DATA lv_ans_600 TYPE char1 ##NEEDED.
+  DATA lv_msg_600 TYPE string ##NEEDED.
 
   lv_u6 = ok_code.
   CLEAR ok_code.
@@ -534,9 +539,6 @@ MODULE user_command_0600 INPUT.
           RETURN.
         ENDIF.
 
-        DATA: lv_vtech_600 TYPE variant,
-              lv_vok_600   TYPE abap_bool,
-              lv_ok_600    TYPE abap_bool.
         PERFORM arch_build_write_var_tech
           USING gv_tabname gv_variant
           CHANGING lv_vtech_600 lv_vok_600.
@@ -561,8 +563,6 @@ MODULE user_command_0600 INPUT.
             AND RETURN.
           FREE MEMORY ID 'Z_GSP18_WR_SS'.
         ELSE.
-          DATA: lv_ans_600 TYPE char1,
-                lv_msg_600 TYPE string.
           lv_msg_600 = |Variant { lv_vtech_600 } does not exist for the Delete program. Create it?| ##NO_TEXT.
           CALL FUNCTION 'POPUP_TO_CONFIRM'
             EXPORTING
@@ -648,7 +648,7 @@ ENDMODULE.
 *& Module USER_COMMAND_0700 INPUT
 *&---------------------------------------------------------------------*
 MODULE user_command_0700 INPUT.
-  DATA: lv_c7 TYPE sy-ucomm.
+  DATA lv_c7 TYPE sy-ucomm ##NEEDED.
 
   lv_c7 = ok_code.
   CLEAR ok_code.
@@ -678,7 +678,7 @@ ENDMODULE.
 *& Module USER_COMMAND_0800 INPUT
 *&---------------------------------------------------------------------*
 MODULE user_command_0800 INPUT.
-  DATA: lv_c8 TYPE sy-ucomm.
+  DATA lv_c8 TYPE sy-ucomm ##NEEDED.
 
   lv_c8 = ok_code.
   CLEAR ok_code.
@@ -712,7 +712,7 @@ ENDMODULE.
 *& Module USER_COMMAND_0810 INPUT
 *&---------------------------------------------------------------------*
 MODULE user_command_0810 INPUT.
-  DATA: lv_c81 TYPE sy-ucomm.
+  DATA lv_c81 TYPE sy-ucomm ##NEEDED.
 
   lv_c81 = ok_code.
   CLEAR ok_code.

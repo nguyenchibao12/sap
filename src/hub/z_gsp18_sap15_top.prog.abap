@@ -8,7 +8,7 @@ CONSTANTS gc_btc_stdt_immediate TYPE tbtcstrt-startdttyp VALUE 'I'.
 "----------------------------------------------------------------------
 " OK-Code (shared across all screens)
 "----------------------------------------------------------------------
-DATA: ok_code TYPE sy-ucomm.
+DATA ok_code TYPE sy-ucomm ##NEEDED.
 
 "----------------------------------------------------------------------
 " Types — Preview Archive
@@ -50,71 +50,71 @@ TYPES: BEGIN OF ty_arch_stat,
 "----------------------------------------------------------------------
 
 " Screen 0100 — main input
-DATA: gv_tabname TYPE zsp26_de_tabname. " Matches DDIC screen 0400 (ROLLNAME) + standard F4 Search Help
+DATA gv_tabname TYPE zsp26_de_tabname ##NEEDED. " Matches DDIC screen 0400 (ROLLNAME) + standard F4 Search Help
 " Only allow entering hub 0100 after user clicks Continue from 0400 (prevents wrong TSTC DYPNO opening 0100 directly)
-DATA: gv_hub_allowed TYPE abap_bool VALUE abap_false.
-DATA: gv_admin_pick_table TYPE xfeld VALUE space. " Admin requested to stay on table-selection screen
+DATA gv_hub_allowed TYPE abap_bool VALUE abap_false ##NEEDED.
+DATA gv_admin_pick_table TYPE xfeld VALUE space ##NEEDED. " Admin requested to stay on table-selection screen
 
 " Archive operation globals
-DATA: gs_cfg      TYPE zsp26_arch_cfg,
-      gr_all      TYPE REF TO data,
-      gr_ready    TYPE REF TO data,
-      gv_rdy_cnt  TYPE i,
-      gv_skp_cnt  TYPE i.
+DATA gs_cfg TYPE zsp26_arch_cfg ##NEEDED.
+DATA gr_all TYPE REF TO data ##NEEDED.
+DATA gr_ready TYPE REF TO data ##NEEDED.
+DATA gv_rdy_cnt TYPE i ##NEEDED.
+DATA gv_skp_cnt TYPE i ##NEEDED.
 
-FIELD-SYMBOLS: <lt_all>   TYPE ANY TABLE,
-               <lt_ready> TYPE ANY TABLE.
+FIELD-SYMBOLS <lt_all> TYPE ANY TABLE ##NEEDED.
+FIELD-SYMBOLS <lt_ready> TYPE ANY TABLE ##NEEDED.
 
 " Restore globals
-DATA: gt_arch_rows TYPE TABLE OF ty_arch_row ##NEEDED,
-      gv_restored  TYPE i ##NEEDED,
-      gv_errors    TYPE i ##NEEDED.
+DATA gt_arch_rows TYPE TABLE OF ty_arch_row ##NEEDED.
+DATA gv_restored TYPE i ##NEEDED.
+DATA gv_errors TYPE i ##NEEDED.
 
 " Monitor globals
-DATA: gt_arch_stat TYPE TABLE OF ty_arch_stat,
-      go_alv_200   TYPE REF TO cl_gui_alv_grid,
-      go_cont_200  TYPE REF TO cl_gui_custom_container,
-      gt_fcat_200  TYPE lvc_t_fcat.
+DATA gt_arch_stat TYPE TABLE OF ty_arch_stat ##NEEDED.
+DATA go_alv_200 TYPE REF TO cl_gui_alv_grid ##NEEDED.
+DATA go_cont_200 TYPE REF TO cl_gui_custom_container ##NEEDED.
+DATA gt_fcat_200 TYPE lvc_t_fcat ##NEEDED.
 
 " Screen 0700 — maintain ZSP26_ARCH_ADMIN (admin only)
-DATA: gt_adm_list TYPE TABLE OF zsp26_arch_admin,
-      go_alv_700  TYPE REF TO cl_gui_alv_grid,
-      go_cont_700 TYPE REF TO cl_gui_custom_container,
-      gt_fcat_700 TYPE lvc_t_fcat,
-      gv_adm_pick TYPE syuname.
+DATA gt_adm_list TYPE TABLE OF zsp26_arch_admin ##NEEDED.
+DATA go_alv_700 TYPE REF TO cl_gui_alv_grid ##NEEDED.
+DATA go_cont_700 TYPE REF TO cl_gui_custom_container ##NEEDED.
+DATA gt_fcat_700 TYPE lvc_t_fcat ##NEEDED.
+DATA gv_adm_pick TYPE syuname ##NEEDED.
 
 " Screen 0800 — register new table into ZSP26_ARCH_CFG (from [Config])
-DATA: gv_reg_table  TYPE tabname,
-      gv_reg_datfld TYPE fieldname,
-      gv_reg_ret    TYPE char6,
-      gv_reg_desc   TYPE char80,
-      gv_reg_active TYPE char1.
+DATA gv_reg_table TYPE tabname ##NEEDED.
+DATA gv_reg_datfld TYPE fieldname ##NEEDED.
+DATA gv_reg_ret TYPE char6 ##NEEDED.
+DATA gv_reg_desc TYPE char80 ##NEEDED.
+DATA gv_reg_active TYPE char1 ##NEEDED.
 
 " Screen 0300 / 0500 — archive / job scheduler (variant, start, spool)
 " gv_object = archive object id (AOBJ) — e.g. Z_ARCH_EKK
 " gv_tabname = target DDIC table (preview/write/delete SQL) — complements the object above
-DATA: gv_object     TYPE arch_obj-object,
-      gv_variant    TYPE variant,
-      gv_var_tech   TYPE char40 ##NEEDED,
-      gv_prog_write TYPE programm,
-      gv_prog_del   TYPE programm,
-      gv_start_date TYPE char1,
-      gs_btc_start  TYPE tbtcstrt, " BP_START_DATE_EDITOR (Start Time — same as SM37)
-      gv_spool_set  TYPE char1,
-      gv_test_mode  TYPE xfeld VALUE 'X',
-      gv_det_log    TYPE char1 VALUE 'X'.
+DATA gv_object TYPE arch_obj-object ##NEEDED.
+DATA gv_variant TYPE variant ##NEEDED.
+DATA gv_var_tech TYPE char40 ##NEEDED.
+DATA gv_prog_write TYPE programm ##NEEDED.
+DATA gv_prog_del TYPE programm ##NEEDED.
+DATA gv_start_date TYPE char1 ##NEEDED.
+DATA gs_btc_start TYPE tbtcstrt ##NEEDED. " BP_START_DATE_EDITOR (Start Time — same as SM37)
+DATA gv_spool_set TYPE char1 ##NEEDED.
+DATA gv_test_mode TYPE xfeld VALUE 'X' ##NEEDED.
+DATA gv_det_log TYPE char1 VALUE 'X' ##NEEDED.
 
 " Screen 0500 / 0600 — status texts (write/delete steps)
-DATA: gv_disp_mandt    TYPE mandt,
-      gv_disp_uname    TYPE syuname,
-      gv_stat_arch_tx  TYPE char40,
-      gv_stat_start_tx TYPE char20,
-      gv_stat_spool_tx TYPE char20,
-      gv_scr600_head   TYPE char80,
-      gv_f4_sess       TYPE admi_run-document,
-      gv_purge_mode    TYPE xfeld VALUE space,
-      gv_del_sess_def  TYPE char1,
-      gs_del_admi      TYPE admi_run.
+DATA gv_disp_mandt TYPE mandt ##NEEDED.
+DATA gv_disp_uname TYPE syuname ##NEEDED.
+DATA gv_stat_arch_tx TYPE char40 ##NEEDED.
+DATA gv_stat_start_tx TYPE char20 ##NEEDED.
+DATA gv_stat_spool_tx TYPE char20 ##NEEDED.
+DATA gv_scr600_head TYPE char80 ##NEEDED.
+DATA gv_f4_sess TYPE admi_run-document ##NEEDED.
+DATA gv_purge_mode TYPE xfeld VALUE space ##NEEDED.
+DATA gv_del_sess_def TYPE char1 ##NEEDED.
+DATA gs_del_admi TYPE admi_run ##NEEDED.
 
 "----------------------------------------------------------------------
 " Monitor enhanced — type + globals (Phase 2/3/4)
@@ -142,8 +142,8 @@ TYPES: BEGIN OF ty_mon_disp,
          est_elig_mb TYPE p LENGTH 16 DECIMALS 2, "#9: elig * est_row_b / 1 MB (approx, not ADK file size)
        END OF ty_mon_disp.
 
-DATA: gt_mon_disp TYPE TABLE OF ty_mon_disp,
-      go_mon_alv  TYPE REF TO cl_salv_table.
+DATA gt_mon_disp TYPE TABLE OF ty_mon_disp ##NEEDED.
+DATA go_mon_alv TYPE REF TO cl_salv_table ##NEEDED.
 
 " Hub — Run log: background jobs ZARCH* + SALV handlers
 TYPES: BEGIN OF ty_btc_row,
@@ -160,8 +160,8 @@ TYPES: BEGIN OF ty_btc_row,
          table_name TYPE tabname,
        END OF ty_btc_row.
 
-DATA: gt_btc_rows TYPE TABLE OF ty_btc_row,
-      go_btc_alv  TYPE REF TO cl_salv_table.
+DATA gt_btc_rows TYPE TABLE OF ty_btc_row ##NEEDED.
+DATA go_btc_alv TYPE REF TO cl_salv_table ##NEEDED.
 
 TYPES: BEGIN OF ty_run_src_hub,
          document   TYPE admi_run-document,
@@ -183,9 +183,9 @@ TYPES: BEGIN OF ty_run_view_hub,
          doc_to_n      TYPE i,
        END OF ty_run_view_hub.
 
-DATA: gt_run_src_hub  TYPE TABLE OF ty_run_src_hub,
-      gt_run_view_hub TYPE TABLE OF ty_run_view_hub,
-      go_run_alv      TYPE REF TO cl_salv_table.
+DATA gt_run_src_hub TYPE TABLE OF ty_run_src_hub ##NEEDED.
+DATA gt_run_view_hub TYPE TABLE OF ty_run_view_hub ##NEEDED.
+DATA go_run_alv TYPE REF TO cl_salv_table ##NEEDED.
 
 "----------------------------------------------------------------------
 " Classes — Event handler for SALV custom buttons

@@ -2,7 +2,7 @@
 *& Include Z_GSP18_SAP15_O01
 *&---------------------------------------------------------------------*
 MODULE status_0400 OUTPUT.
-  DATA: lv_adm_0400 TYPE abap_bool.
+  DATA lv_adm_0400 TYPE abap_bool ##NEEDED.
 
   PERFORM is_arch_admin CHANGING lv_adm_0400.
   IF lv_adm_0400 = abap_true AND gv_admin_pick_table IS INITIAL.
@@ -16,7 +16,7 @@ MODULE status_0400 OUTPUT.
 ENDMODULE.
 
 MODULE status_0100 OUTPUT.
-  DATA: lv_adm_0100 TYPE abap_bool.
+  DATA lv_adm_0100 TYPE abap_bool ##NEEDED.
 
   IF gv_hub_allowed <> abap_true.
     SET SCREEN 0400.
@@ -78,7 +78,7 @@ ENDMODULE.
 *& Module STATUS_0700 OUTPUT — manage ZSP26_ARCH_ADMIN
 *&---------------------------------------------------------------------*
 MODULE status_0700 OUTPUT.
-  DATA: lv_adm_700 TYPE abap_bool.
+  DATA lv_adm_700 TYPE abap_bool ##NEEDED.
 
   PERFORM is_arch_admin CHANGING lv_adm_700.
   IF lv_adm_700 = abap_false.
@@ -123,8 +123,8 @@ ENDMODULE.
 *& Module STATUS_0300 OUTPUT
 *&---------------------------------------------------------------------*
 MODULE status_0300 OUTPUT.
-  DATA: lt_excl_300 TYPE TABLE OF sy-ucomm,
-        lv_excl_300 TYPE sy-ucomm.
+  DATA lt_excl_300 TYPE TABLE OF sy-ucomm ##NEEDED.
+  DATA lv_excl_300 TYPE sy-ucomm ##NEEDED.
 
   " Edit Variant screen: disable Execute/F8 and hide Preview action
   lv_excl_300 = 'ONLI'.       APPEND lv_excl_300 TO lt_excl_300.
