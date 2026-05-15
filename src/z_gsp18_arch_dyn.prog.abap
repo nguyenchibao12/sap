@@ -39,8 +39,10 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 *& Validate archive target table against ZSP26_ARCH_CFG + DDIC
 *& 1 Row exists, IS_ACTIVE, DATA_FIELD non-initial, retention > 0
-*& 2 Table exists in active DDIC (DD02V) — catches SE11 deactivate/delete
-*& 3 DATA_FIELD is a DATE column in current DDIC
+*& 2 Table exists in active DDIC (DD02V) — catches deleted / not in catalog
+*& 3 DDIF field list readable (may be stale after failed activation)
+*& 3b Minimal Open SQL on table — catches "nametab cannot be generated" while DFIES still ok
+*& 4 DATA_FIELD is a DATE column in current DDIC
 *& Fails: cv_ok = false and cv_reason_text = user-facing explanation
 *& If iv_clear_if_ddic_bad: on missing/unreadable DDIC, clear
 *& IS_ACTIVE on ZSP26_ARCH_CFG for that table (no row delete) + COMMIT
@@ -52,13 +54,15 @@ FORM validate_table_against_cfg
            cv_ok             TYPE abap_bool
            cv_reason_text    TYPE string.
 
-  DATA: lt_df       TYPE TABLE OF dfies,
-        ls_df       TYPE dfies,
-        lt_cfg_pick TYPE STANDARD TABLE OF zsp26_arch_cfg WITH EMPTY KEY,
-        lv_tn       TYPE tabname,
-        lv_df       TYPE fieldname,
-        lv_dd_tab   TYPE tabname,
-        lv_synced   TYPE abap_bool.
+  DATA: lt_df          TYPE TABLE OF dfies,
+        ls_df          TYPE dfies,
+        lt_cfg_pick    TYPE STANDARD TABLE OF zsp26_arch_cfg WITH EMPTY KEY,
+        lv_tn          TYPE tabname,
+        lv_df          TYPE fieldname,
+        lv_dd_tab      TYPE tabname,
+        lv_synced      TYPE abap_bool,
+        lv_probe_cnt   TYPE i,
+        lx_dyn_osql    TYPE REF TO cx_sy_dynamic_osql_error.
 
   CLEAR: ps_cfg, cv_ok, cv_reason_text.
   cv_ok = abap_false.
@@ -131,6 +135,23 @@ FORM validate_table_against_cfg
     ENDIF.
     RETURN.
   ENDIF.
+
+  " After a failed SE11 activation, DDIF can still return an old DFIES snapshot while the nametab is missing
+  " ("Nametab for table ... cannot be generated"). Prove runtime usability with a minimal Open SQL.
+  CLEAR lv_probe_cnt.
+  TRY.
+      SELECT COUNT(*) FROM (lv_tn) INTO @lv_probe_cnt ##WARN_OK.
+    CATCH cx_sy_dynamic_osql_error INTO lx_dyn_osql.
+      CLEAR lv_synced.
+      IF iv_clear_if_ddic_bad = abap_true.
+        PERFORM deact_active_cfg_for_table USING lv_tn CHANGING lv_synced.
+      ENDIF.
+      cv_reason_text = |Table { lv_tn } is not usable at runtime ({ lx_dyn_osql->get_text( ) }). Often: activation failed or nametab not generated — fix SE11 errors, then activate.| ##NO_TEXT.
+      IF lv_synced = abap_true.
+        cv_reason_text &&= | IS_ACTIVE was cleared on ZSP26_ARCH_CFG for this table.| ##NO_TEXT.
+      ENDIF.
+      RETURN.
+  ENDTRY.
 
   READ TABLE lt_df INTO ls_df WITH KEY fieldname = ps_cfg-data_field.
   IF sy-subrc <> 0.
