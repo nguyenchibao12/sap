@@ -695,6 +695,9 @@ MODULE user_command_0800 INPUT.
       LEAVE SCREEN.
     WHEN 'BT_REG_SAVE'.
       PERFORM do_reg_validate_and_save.
+      " Reach here only on validation failure — success path calls LEAVE TO SCREEN 0 inside the form.
+      SET SCREEN 0800.
+      LEAVE SCREEN.
 
     " CANC = dynpro Cancel button (FCODE CANC) → handle like Exit: skip field conversion checks
     WHEN 'BT_REG_CANCEL' OR 'BACK' OR 'EXIT' OR 'CANC'.
