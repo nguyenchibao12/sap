@@ -3531,26 +3531,6 @@ FORM do_config.
     RETURN.
   ENDIF.
 
-  " Do not open the config SALV until broken active rows are fixed (empty date field etc.).
-  DATA: lv_bad_cnt TYPE i,
-        lv_bad_txt TYPE string.
-  FIELD-SYMBOLS <bc> LIKE LINE OF lt_cfg.
-  LOOP AT lt_cfg ASSIGNING <bc>.
-    IF <bc>-is_active = 'X' AND ( <bc>-data_field IS INITIAL OR <bc>-retention <= 0 ).
-      lv_bad_cnt = lv_bad_cnt + 1.
-      IF strlen( lv_bad_txt ) < 240.
-        IF lv_bad_txt IS NOT INITIAL.
-          lv_bad_txt = lv_bad_txt && |, |.
-        ENDIF.
-        lv_bad_txt = lv_bad_txt && <bc>-table_name.
-      ENDIF.
-    ENDIF.
-  ENDLOOP.
-  IF lv_bad_cnt > 0.
-    MESSAGE |Cannot open archive config list: { lv_bad_cnt } active row(s) have empty DATE field or retention 0. Correct ZSP26_ARCH_CFG first (tables: { lv_bad_txt }).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
-    RETURN.
-  ENDIF.
-
   TRY.
     cl_salv_table=>factory(
       IMPORTING r_salv_table = lo_alv
@@ -3769,13 +3749,11 @@ FORM do_reg_validate_and_save.
 
   IF lv_tab IS INITIAL.
     SET CURSOR FIELD 'GV_REG_TABLE'.
-    MESSAGE |Enter table name.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
-    RETURN.
+    MESSAGE |Enter table name.| TYPE 'E' ##NO_TEXT.
   ENDIF.
   IF lv_fld IS INITIAL.
     SET CURSOR FIELD 'GV_REG_DATFLD'.
-    MESSAGE |Enter date field name.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
-    RETURN.
+    MESSAGE |Enter date field name.| TYPE 'E' ##NO_TEXT.
   ENDIF.
 
   " SAP-style names: letters, digits, underscore only (before DDIC round-trip).

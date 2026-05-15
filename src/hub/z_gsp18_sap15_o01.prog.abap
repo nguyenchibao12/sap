@@ -3,20 +3,6 @@
 *&---------------------------------------------------------------------*
 MODULE status_0400 OUTPUT.
   DATA lv_adm_0400 TYPE abap_bool ##NEEDED.
-  DATA: ls_cfg0400 TYPE zsp26_arch_cfg,
-        lv_ok0400  TYPE abap_bool,
-        lv_rs0400  TYPE string.
-
-  PERFORM zsp26_sync_cfg_active_vs_ddic.
-
-  IF gv_tabname IS NOT INITIAL.
-    PERFORM validate_table_against_cfg
-      USING gv_tabname abap_false
-      CHANGING ls_cfg0400 lv_ok0400 lv_rs0400.
-    IF lv_ok0400 = abap_false.
-      CLEAR gv_tabname.
-    ENDIF.
-  ENDIF.
 
   PERFORM is_arch_admin CHANGING lv_adm_0400.
   IF lv_adm_0400 = abap_true AND gv_admin_pick_table IS INITIAL.
@@ -31,20 +17,6 @@ ENDMODULE.
 
 MODULE status_0100 OUTPUT.
   DATA lv_adm_0100 TYPE abap_bool ##NEEDED.
-  DATA: ls_cfg_chk TYPE zsp26_arch_cfg,
-        lv_cfg_ok  TYPE abap_bool,
-        lv_cfg_rs  TYPE string.
-
-  PERFORM zsp26_sync_cfg_active_vs_ddic.
-
-  IF gv_tabname IS NOT INITIAL.
-    PERFORM validate_table_against_cfg
-      USING gv_tabname abap_false
-      CHANGING ls_cfg_chk lv_cfg_ok lv_cfg_rs.
-    IF lv_cfg_ok = abap_false.
-      CLEAR gv_tabname.
-    ENDIF.
-  ENDIF.
 
   IF gv_hub_allowed <> abap_true.
     SET SCREEN 0400.
@@ -309,11 +281,44 @@ ENDMODULE.
 *& Screen 0800 — register table into ZSP26_ARCH_CFG
 *&---------------------------------------------------------------------*
 MODULE status_0800 OUTPUT.
-  " New registrations are always created as active; value is not user-editable.
+  DATA ls_exist TYPE zsp26_arch_cfg.
+  DATA lv_already TYPE abap_bool.
+
+  " New registrations are always active; field is output-only (no INPUT_FLD in screen).
   gv_reg_active = 'X'.
   IF gv_reg_ret IS INITIAL OR gv_reg_ret CO space.
     gv_reg_ret = '365'.
   ENDIF.
+
+  " Auto-fill from existing config when table is already registered as active.
+  CLEAR lv_already.
+  IF gv_reg_table IS NOT INITIAL.
+    SELECT SINGLE * FROM zsp26_arch_cfg
+      INTO @ls_exist
+      WHERE table_name = @gv_reg_table
+        AND is_active  = 'X'.
+    IF sy-subrc = 0.
+      lv_already = abap_true.
+      IF gv_reg_datfld IS INITIAL.
+        gv_reg_datfld = ls_exist-data_field.
+      ENDIF.
+      IF gv_reg_ret IS INITIAL OR gv_reg_ret = '365'.
+        gv_reg_ret = CONV char6( ls_exist-retention ).
+      ENDIF.
+      IF gv_reg_desc IS INITIAL.
+        gv_reg_desc = ls_exist-description.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+
+  " Lock GV_REG_TABLE when table is already active — prevent re-registration.
+  LOOP AT SCREEN.
+    IF screen-name = 'GV_REG_TABLE' AND lv_already = abap_true.
+      screen-input = 0.
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
+
   SET PF-STATUS 'STATUS_300'.
   SET TITLEBAR 'TITLE_300' ##TITL_UNDEF.
 ENDMODULE.
