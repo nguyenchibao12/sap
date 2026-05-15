@@ -3749,11 +3749,13 @@ FORM do_reg_validate_and_save.
 
   IF lv_tab IS INITIAL.
     SET CURSOR FIELD 'GV_REG_TABLE'.
-    MESSAGE |Enter table name.| TYPE 'E' ##NO_TEXT.
+    MESSAGE |Enter table name.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    RETURN.
   ENDIF.
   IF lv_fld IS INITIAL.
     SET CURSOR FIELD 'GV_REG_DATFLD'.
-    MESSAGE |Enter date field name.| TYPE 'E' ##NO_TEXT.
+    MESSAGE |Enter date field name.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    RETURN.
   ENDIF.
 
   " SAP-style names: letters, digits, underscore only (before DDIC round-trip).

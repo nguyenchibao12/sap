@@ -135,8 +135,11 @@ FORM validate_table_against_cfg
     RETURN.
   ENDIF.
 
-  " After a failed SE11 activation, DDIF_FIELDINFO_GET can still return DFIES while the active nametab is missing
-  " ("Nametab for table ... cannot be generated"). DDIF_NAMETAB_GET reads the runtime object; NOT_FOUND = unusable.
+  " DDIF_NAMETAB_GET: detects missing nametab (never activated).
+  " After a FAILED SE11 re-activation the OLD nametab may still be valid,
+  " so DDIF_NAMETAB_GET alone is not enough. Do a cheap dynamic SELECT
+  " (UP TO 0 ROWS) as the definitive runtime check — CX_SY_DYNAMIC_OSQL_ERROR
+  " fires when the Open SQL runtime rejects the table (broken nametab).
   CLEAR lt_x031l.
   CALL FUNCTION 'DDIF_NAMETAB_GET'
     EXPORTING
@@ -158,6 +161,22 @@ FORM validate_table_against_cfg
     ENDIF.
     RETURN.
   ENDIF.
+
+  " Runtime probe: SELECT UP TO 0 ROWS triggers CX_SY_DYNAMIC_OSQL_ERROR
+  " when the nametab exists but is stale after a failed SE11 activation.
+  TRY.
+    SELECT COUNT(*) FROM (lv_tn) INTO @DATA(lv_probe) ##NO_TEXT ##WARN_OK.
+  CATCH cx_sy_dynamic_osql_error cx_sy_open_sql_db.
+    CLEAR lv_synced.
+    IF iv_clear_if_ddic_bad = abap_true.
+      PERFORM deact_active_cfg_for_table USING lv_tn CHANGING lv_synced.
+    ENDIF.
+    cv_reason_text = |Table { lv_tn } is not accessible at runtime (stale nametab after failed SE11 activation). Fix SE11 errors, activate, then re-enable in [Manage].| ##NO_TEXT.
+    IF lv_synced = abap_true.
+      cv_reason_text &&= | IS_ACTIVE was cleared on ZSP26_ARCH_CFG.| ##NO_TEXT.
+    ENDIF.
+    RETURN.
+  ENDTRY.
 
   READ TABLE lt_df INTO ls_df WITH KEY fieldname = ps_cfg-data_field.
   IF sy-subrc <> 0.
