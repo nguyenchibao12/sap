@@ -147,6 +147,33 @@ FORM validate_table_against_cfg
 ENDFORM.
 
 *&---------------------------------------------------------------------*
+*& Sync ZSP26_ARCH_CFG.IS_ACTIVE vs active DDIC (SE11 deactivate/delete)
+*& For every row still marked active in DB: re-run validate with clear.
+*& Call from hub PBO, monitor/config entry, F4, ADK selection-screen init.
+*&---------------------------------------------------------------------*
+FORM zsp26_sync_cfg_active_vs_ddic.
+
+  DATA: lt_tn    TYPE STANDARD TABLE OF tabname WITH DEFAULT KEY,
+        lv_tn    TYPE tabname,
+        ls_dummy TYPE zsp26_arch_cfg,
+        lv_ok    TYPE abap_bool,
+        lv_rs    TYPE string.
+
+  SELECT DISTINCT table_name FROM zsp26_arch_cfg
+    INTO TABLE @lt_tn
+    WHERE is_active = 'X'.
+  IF lt_tn IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_tn INTO lv_tn.
+    PERFORM validate_table_against_cfg
+      USING lv_tn abap_true
+      CHANGING ls_dummy lv_ok lv_rs.
+  ENDLOOP.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
 *& Build Open SQL WHERE from ZSP26_ARCH_CFG (retention / date window)
 *& Date field = DATA_FIELD; upper bound = P_DHIGH or sy-datum - RETENTION
 *&---------------------------------------------------------------------*
@@ -512,6 +539,8 @@ FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.
         ls_sht     TYPE ty_sht_f4,
         lt_cfg     TYPE STANDARD TABLE OF ty_sht_f4 WITH DEFAULT KEY,
         ls_cfg     TYPE ty_sht_f4.
+
+  PERFORM zsp26_sync_cfg_active_vs_ddic.
 
   " Step 1: Read tables with active config from ZSP26_ARCH_CFG
   SELECT table_name, description

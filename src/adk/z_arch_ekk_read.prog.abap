@@ -39,6 +39,7 @@ SELECTION-SCREEN END OF BLOCK b0.
 *----------------------------------------------------------------------*
 INITIALIZATION.
 *----------------------------------------------------------------------*
+  PERFORM zsp26_sync_cfg_active_vs_ddic.
   g_scr_r0 = TEXT-001.
   PERFORM arch_read_init_screen.
 

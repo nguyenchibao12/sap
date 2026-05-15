@@ -3,6 +3,20 @@
 *&---------------------------------------------------------------------*
 MODULE status_0400 OUTPUT.
   DATA lv_adm_0400 TYPE abap_bool ##NEEDED.
+  DATA: ls_cfg0400 TYPE zsp26_arch_cfg,
+        lv_ok0400  TYPE abap_bool,
+        lv_rs0400  TYPE string.
+
+  PERFORM zsp26_sync_cfg_active_vs_ddic.
+
+  IF gv_tabname IS NOT INITIAL.
+    PERFORM validate_table_against_cfg
+      USING gv_tabname abap_false
+      CHANGING ls_cfg0400 lv_ok0400 lv_rs0400.
+    IF lv_ok0400 = abap_false.
+      CLEAR gv_tabname.
+    ENDIF.
+  ENDIF.
 
   PERFORM is_arch_admin CHANGING lv_adm_0400.
   IF lv_adm_0400 = abap_true AND gv_admin_pick_table IS INITIAL.
@@ -17,6 +31,20 @@ ENDMODULE.
 
 MODULE status_0100 OUTPUT.
   DATA lv_adm_0100 TYPE abap_bool ##NEEDED.
+  DATA: ls_cfg_chk TYPE zsp26_arch_cfg,
+        lv_cfg_ok  TYPE abap_bool,
+        lv_cfg_rs  TYPE string.
+
+  PERFORM zsp26_sync_cfg_active_vs_ddic.
+
+  IF gv_tabname IS NOT INITIAL.
+    PERFORM validate_table_against_cfg
+      USING gv_tabname abap_false
+      CHANGING ls_cfg_chk lv_cfg_ok lv_cfg_rs.
+    IF lv_cfg_ok = abap_false.
+      CLEAR gv_tabname.
+    ENDIF.
+  ENDIF.
 
   IF gv_hub_allowed <> abap_true.
     SET SCREEN 0400.

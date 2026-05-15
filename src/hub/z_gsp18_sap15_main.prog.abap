@@ -10,6 +10,9 @@ INCLUDE Z_GSP18_SAP15_F01.  " Subroutines
 INCLUDE Z_GSP18_SAP15_O01.  " PBO Modules
 INCLUDE Z_GSP18_SAP15_I01.  " PAI Modules
 
+LOAD-OF-PROGRAM.
+  PERFORM zsp26_sync_cfg_active_vs_ddic.
+
 START-OF-SELECTION.
   PERFORM hub_start_entry.
 

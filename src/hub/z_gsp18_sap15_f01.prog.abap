@@ -1824,6 +1824,8 @@ FORM do_monitor.
   CLEAR gt_mon_disp.
   lv_cutoff = sy-datum - 30.          " compute once; sy-datum-30 is integer, not date
 
+  PERFORM zsp26_sync_cfg_active_vs_ddic.
+
   " ── Phase 1: Aggregate config per table — avoid duplicate rows ───────
   TYPES: BEGIN OF ty_cfg_sum,
            table_name TYPE tabname,
@@ -3510,22 +3512,43 @@ ENDFORM.
 *& FORM DO_CONFIG — ZSP26_ARCH_CFG + [Register New Table] → screen 0800
 *&---------------------------------------------------------------------*
 FORM do_config.
-  DATA: lt_cfg   TYPE TABLE OF zsp26_arch_cfg,
-        lo_alv   TYPE REF TO cl_salv_table,
-        lo_cols  TYPE REF TO cl_salv_columns_table,
-        lo_col   TYPE REF TO cl_salv_column_table,
-        lo_funcs TYPE REF TO cl_salv_functions,
-        lo_disp  TYPE REF TO cl_salv_display_settings.
+  DATA: lt_cfg        TYPE TABLE OF zsp26_arch_cfg,
+        lo_alv        TYPE REF TO cl_salv_table,
+        lo_cols       TYPE REF TO cl_salv_columns_table,
+        lo_col        TYPE REF TO cl_salv_column_table,
+        lo_funcs      TYPE REF TO cl_salv_functions,
+        lo_disp       TYPE REF TO cl_salv_display_settings.
 
   " Popup 0810: many GUI themes (especially newer ones) hide SALV add_function buttons —
   " always provide 2 explicit dynpro buttons before opening the SALV list.
   CALL SCREEN 0810 STARTING AT 18 8 ENDING AT 78 22.
 
+  PERFORM zsp26_sync_cfg_active_vs_ddic.
   SELECT * FROM zsp26_arch_cfg INTO TABLE lt_cfg ORDER BY table_name.
 
   IF lt_cfg IS INITIAL.
-    MESSAGE TEXT-118 TYPE 'S'
-            DISPLAY LIKE 'W'.
+    MESSAGE TEXT-118 TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  " Do not open the config SALV until broken active rows are fixed (empty date field etc.).
+  DATA: lv_bad_cnt TYPE i,
+        lv_bad_txt TYPE string.
+  FIELD-SYMBOLS <bc> LIKE LINE OF lt_cfg.
+  LOOP AT lt_cfg ASSIGNING <bc>.
+    IF <bc>-is_active = 'X' AND ( <bc>-data_field IS INITIAL OR <bc>-retention <= 0 ).
+      lv_bad_cnt = lv_bad_cnt + 1.
+      IF strlen( lv_bad_txt ) < 240.
+        IF lv_bad_txt IS NOT INITIAL.
+          lv_bad_txt = lv_bad_txt && |, |.
+        ENDIF.
+        lv_bad_txt = lv_bad_txt && <bc>-table_name.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+  IF lv_bad_cnt > 0.
+    MESSAGE |Cannot open archive config list: { lv_bad_cnt } active row(s) have empty DATE field or retention 0. Correct ZSP26_ARCH_CFG first (tables: { lv_bad_txt }).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    RETURN.
   ENDIF.
 
   TRY.
@@ -4160,6 +4183,8 @@ FORM f4_gv_tabname_dynp.
         lv_ok      TYPE abap_bool,
         lv_rs      TYPE string,
         ls_sht     TYPE ty_sht_f4.
+
+  PERFORM zsp26_sync_cfg_active_vs_ddic.
 
   SELECT * FROM zsp26_arch_cfg
     WHERE is_active = 'X'

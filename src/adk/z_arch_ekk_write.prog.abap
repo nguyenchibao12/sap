@@ -43,6 +43,7 @@ SELECTION-SCREEN END OF LINE.
 *----------------------------------------------------------------------*
 INITIALIZATION.
 *----------------------------------------------------------------------*
+  PERFORM zsp26_sync_cfg_active_vs_ddic.
   PERFORM init_arch_ekk_write.
 
 *&---------------------------------------------------------------------*
@@ -124,6 +125,7 @@ FORM at_sel_screen_arch_write.
             lv_pick_rs TYPE string.
 
       CLEAR: lt_cfg, lt_cfgraw.
+      PERFORM zsp26_sync_cfg_active_vs_ddic.
       SELECT * FROM zsp26_arch_cfg INTO TABLE @lt_cfgraw WHERE is_active = 'X'.
 
       LOOP AT lt_cfgraw INTO ls_cfgraw.
