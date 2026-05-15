@@ -25,8 +25,8 @@ FORM deact_active_cfg_for_table
   ENDIF.
 
   UPDATE zsp26_arch_cfg
-    SET is_active  = @lv_inactive
-        changed_by = @sy-uname
+    SET is_active  = @lv_inactive,
+        changed_by = @sy-uname,
         changed_on = @sy-datum
     WHERE table_name = @lv_tn
       AND is_active  = 'X'.

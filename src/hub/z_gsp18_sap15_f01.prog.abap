@@ -4162,8 +4162,8 @@ FORM f4_gv_tabname_dynp.
         ls_sht     TYPE ty_sht_f4.
 
   SELECT * FROM zsp26_arch_cfg
-    INTO TABLE @lt_cfg_raw
     WHERE is_active = 'X'
+    INTO TABLE @lt_cfg_raw
     UP TO 999 ROWS.
   SORT lt_cfg_raw BY table_name.
   DELETE ADJACENT DUPLICATES FROM lt_cfg_raw COMPARING table_name.
