@@ -6,9 +6,9 @@
 
 *&---------------------------------------------------------------------*
 *& Clear app IS_ACTIVE for table when DDIC is gone / unreadable (no delete)
-*& Used when iv_clear_app_active_if_ddic_bad = true on validate failure
+*& Used when iv_clear_if_ddic_bad = true on validate failure
 *&---------------------------------------------------------------------*
-FORM deactivate_active_cfg_rows_for_table
+FORM deact_active_cfg_for_table
   USING    VALUE(pv_table) TYPE tabname
   CHANGING cv_rows_updated TYPE abap_bool.
 
@@ -42,12 +42,12 @@ ENDFORM.
 *& 2 Table exists in active DDIC (DD02V) — catches SE11 deactivate/delete
 *& 3 DATA_FIELD is a DATE column in current DDIC
 *& Fails: cv_ok = false and cv_reason_text = user-facing explanation
-*& If iv_clear_app_active_if_ddic_bad: on missing/unreadable DDIC, clear
+*& If iv_clear_if_ddic_bad: on missing/unreadable DDIC, clear
 *& IS_ACTIVE on ZSP26_ARCH_CFG for that table (no row delete) + COMMIT
 *&---------------------------------------------------------------------*
 FORM validate_table_against_cfg
   USING    VALUE(pv_table) TYPE tabname
-           VALUE(iv_clear_app_active_if_ddic_bad) TYPE abap_bool
+           VALUE(iv_clear_if_ddic_bad) TYPE abap_bool
   CHANGING ps_cfg            TYPE zsp26_arch_cfg
            cv_ok             TYPE abap_bool
            cv_reason_text    TYPE string.
@@ -104,8 +104,8 @@ FORM validate_table_against_cfg
     WHERE tabname = @lv_tn.
   IF sy-subrc <> 0.
     CLEAR lv_synced.
-    IF iv_clear_app_active_if_ddic_bad = abap_true.
-      PERFORM deactivate_active_cfg_rows_for_table USING lv_tn CHANGING lv_synced.
+    IF iv_clear_if_ddic_bad = abap_true.
+      PERFORM deact_active_cfg_for_table USING lv_tn CHANGING lv_synced.
     ENDIF.
     cv_reason_text = |Table { lv_tn } is not in the active DDIC catalog (deleted, or inactive / not activated in SE11).| ##NO_TEXT.
     IF lv_synced = abap_true.
@@ -122,8 +122,8 @@ FORM validate_table_against_cfg
     EXCEPTIONS OTHERS    = 7.
   IF sy-subrc <> 0 OR lt_df IS INITIAL.
     CLEAR lv_synced.
-    IF iv_clear_app_active_if_ddic_bad = abap_true.
-      PERFORM deactivate_active_cfg_rows_for_table USING lv_tn CHANGING lv_synced.
+    IF iv_clear_if_ddic_bad = abap_true.
+      PERFORM deact_active_cfg_for_table USING lv_tn CHANGING lv_synced.
     ENDIF.
     cv_reason_text = |Table { lv_tn }: DDIC field list could not be read (dictionary inactive or error). Check SE11 activation.| ##NO_TEXT.
     IF lv_synced = abap_true.
