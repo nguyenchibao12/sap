@@ -195,11 +195,16 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 FORM do_archive_write.
   " 1. Validate table against ZSP26_ARCH_CFG + DDIC
-  DATA: lv_cfg_ok TYPE abap_bool.
+  DATA: lv_cfg_ok TYPE abap_bool,
+        lv_valmsg TYPE string.
   PERFORM validate_table_against_cfg
-    USING gv_tabname CHANGING gs_cfg lv_cfg_ok.
+    USING gv_tabname abap_true CHANGING gs_cfg lv_cfg_ok lv_valmsg.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Table '{ gv_tabname }' is invalid: no active ZSP26_ARCH_CFG row or DATA_FIELD not found in DDIC.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    IF lv_valmsg IS NOT INITIAL.
+      MESSAGE lv_valmsg TYPE 'S' DISPLAY LIKE 'E'.
+    ELSE.
+      MESSAGE |Table '{ gv_tabname }' is invalid: no active ZSP26_ARCH_CFG row or DATA_FIELD not found in DDIC.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    ENDIF.
     RETURN.
   ENDIF.
 
@@ -1022,7 +1027,8 @@ FORM do_show_eligible_data.
         lo_col       TYPE REF TO cl_salv_column_table,
         lo_disp      TYPE REF TO cl_salv_display_settings,
         lv_pop_ln    TYPE i,
-        lv_pop_lc    TYPE i.
+        lv_pop_lc    TYPE i,
+        lv_purge_valmsg TYPE string.
 
   FIELD-SYMBOLS: <lt_src> TYPE ANY TABLE,
                  <row>    TYPE any,
@@ -1035,9 +1041,13 @@ FORM do_show_eligible_data.
   ENDIF.
 
   PERFORM validate_table_against_cfg
-    USING gv_tabname CHANGING ls_cfg lv_cfg_ok.
+    USING gv_tabname abap_true CHANGING ls_cfg lv_cfg_ok lv_purge_valmsg.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    IF lv_purge_valmsg IS NOT INITIAL.
+      MESSAGE lv_purge_valmsg TYPE 'S' DISPLAY LIKE 'E'.
+    ELSE.
+      MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    ENDIF.
     RETURN.
   ENDIF.
 
@@ -1216,6 +1226,7 @@ ENDFORM.
 FORM do_purge_only_direct.
   DATA: ls_cfg       TYPE zsp26_arch_cfg,
         lv_cfg_ok    TYPE abap_bool,
+        lv_valmsg    TYPE string,
         lv_where     TYPE string,
         lv_where_all TYPE string,
         lt_df        TYPE TABLE OF dfies,
@@ -1252,9 +1263,13 @@ FORM do_purge_only_direct.
   ENDIF.
 
   PERFORM validate_table_against_cfg
-    USING gv_tabname CHANGING ls_cfg lv_cfg_ok.
+    USING gv_tabname abap_true CHANGING ls_cfg lv_cfg_ok lv_valmsg.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    IF lv_valmsg IS NOT INITIAL.
+      MESSAGE lv_valmsg TYPE 'S' DISPLAY LIKE 'E'.
+    ELSE.
+      MESSAGE |Purge-only: table { gv_tabname } has no valid active config (DATE field/retention).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    ENDIF.
     RETURN.
   ENDIF.
 
@@ -1797,6 +1812,7 @@ FORM do_monitor.
         lv_cutoff    TYPE d,             " cutoff date for WARNING check (sy-datum - 30)
         ls_cfg_full  TYPE zsp26_arch_cfg,
         lv_cfg_ok    TYPE abap_bool,
+        lv_mon_vmsg  TYPE string,
         lv_where     TYPE string,
         lv_where_all TYPE string,
         lv_elig      TYPE i,
@@ -1848,7 +1864,7 @@ FORM do_monitor.
            ls_cfg_full, lv_where, lv_where_all, lv_elig, lt_df_mon, lv_row_b, lv_mb_num.
     lv_cfg_ok = abap_false.
     PERFORM validate_table_against_cfg
-      USING ls_cfg-table_name CHANGING ls_cfg_full lv_cfg_ok.
+      USING ls_cfg-table_name abap_true CHANGING ls_cfg_full lv_cfg_ok lv_mon_vmsg.
     IF lv_cfg_ok = abap_true AND ls_disp-live_recs >= 0.
       PERFORM build_where_from_arch_cfg
         USING ls_cfg_full '00000000' '00000000'
@@ -1938,7 +1954,10 @@ FORM do_monitor.
     ENDSELECT.
 
     " ── Phase 2c/3: Status text + traffic light (INCLUDE icon in main)
-    IF ls_disp-live_recs < 0.
+    IF lv_cfg_ok = abap_false.
+      ls_disp-status_txt  = 'CFG/DDIC'.
+      ls_disp-status_icon = icon_led_red.
+    ELSEIF ls_disp-live_recs < 0.
       ls_disp-status_txt  = 'ERROR'.
       ls_disp-status_icon = icon_led_red.
     ELSEIF ls_disp-arch_runs = 0 AND ls_disp-is_active = 'X'.
@@ -3725,32 +3744,56 @@ FORM do_reg_validate_and_save.
   CONDENSE: lv_tab NO-GAPS, lv_fld NO-GAPS.
   TRANSLATE: lv_tab TO UPPER CASE, lv_fld TO UPPER CASE.
 
-  IF lv_tab IS INITIAL OR lv_fld IS INITIAL.
-    MESSAGE TEXT-056 TYPE 'S' DISPLAY LIKE 'E'.
+  IF lv_tab IS INITIAL.
+    SET CURSOR FIELD 'GV_REG_TABLE'.
+    MESSAGE |Enter table name.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    RETURN.
+  ENDIF.
+  IF lv_fld IS INITIAL.
+    SET CURSOR FIELD 'GV_REG_DATFLD'.
+    MESSAGE |Enter date field name.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    RETURN.
+  ENDIF.
+
+  " SAP-style names: letters, digits, underscore only (before DDIC round-trip).
+  IF lv_tab CN 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'.
+    SET CURSOR FIELD 'GV_REG_TABLE'.
+    MESSAGE |Table name has invalid characters (only A-Z, 0-9, _).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    RETURN.
+  ENDIF.
+  IF lv_fld CN 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'.
+    SET CURSOR FIELD 'GV_REG_DATFLD'.
+    MESSAGE |Date field name has invalid characters (only A-Z, 0-9, _).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
   lv_ret_raw = gv_reg_ret.
   CONDENSE lv_ret_raw NO-GAPS.
   IF lv_ret_raw IS INITIAL OR NOT lv_ret_raw CO '0123456789'.
+    SET CURSOR FIELD 'GV_REG_RET'.
     MESSAGE TEXT-080 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   lv_ret_days = CONV i( lv_ret_raw ).
   IF lv_ret_days <= 0 OR lv_ret_days > 9999.
+    SET CURSOR FIELD 'GV_REG_RET'.
     MESSAGE TEXT-079 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
+
+  CONDENSE gv_reg_desc NO-GAPS.
 
   SELECT SINGLE tabname, tabclass FROM dd02v
     INTO (@ls_dd02-tabname, @ls_dd02-tabclass) ##WARN_OK
     WHERE tabname = @lv_tab.
 
   IF sy-subrc <> 0.
+    SET CURSOR FIELD 'GV_REG_TABLE'.
     MESSAGE |Table { lv_tab } does not exist in DDIC or is not activated.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
   IF ls_dd02-tabclass <> 'TRANSP'.
+    SET CURSOR FIELD 'GV_REG_TABLE'.
     MESSAGE |Table { lv_tab } is not TRANSP (type: { ls_dd02-tabclass }).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
@@ -3761,6 +3804,7 @@ FORM do_reg_validate_and_save.
     EXCEPTIONS OTHERS    = 1.
 
   IF sy-subrc <> 0.
+    SET CURSOR FIELD 'GV_REG_TABLE'.
     MESSAGE |Failed to read field list for { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
@@ -3769,6 +3813,7 @@ FORM do_reg_validate_and_save.
     lv_has_mandt = abap_true. EXIT.
   ENDLOOP.
   IF lv_has_mandt = abap_false.
+    SET CURSOR FIELD 'GV_REG_TABLE'.
     MESSAGE TEXT-090 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
@@ -3778,16 +3823,19 @@ FORM do_reg_validate_and_save.
     lv_has_key = abap_true. EXIT.
   ENDLOOP.
   IF lv_has_key = abap_false.
+    SET CURSOR FIELD 'GV_REG_TABLE'.
     MESSAGE TEXT-050 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   READ TABLE lt_fields INTO ls_field WITH KEY fieldname = lv_fld.
   IF sy-subrc <> 0.
+    SET CURSOR FIELD 'GV_REG_DATFLD'.
     MESSAGE |Field { lv_fld } does not exist in table { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
   IF ls_field-inttype <> 'D'.
+    SET CURSOR FIELD 'GV_REG_DATFLD'.
     MESSAGE |Field { lv_fld } is not of type DATE (inttype { ls_field-inttype }).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
@@ -3827,7 +3875,7 @@ FORM do_reg_validate_and_save.
   ls_cfg-description = gv_reg_desc.
   ls_cfg-retention   = CONV zsp26_de_retdays( lv_ret_days ).
   ls_cfg-data_field  = lv_fld.
-  ls_cfg-is_active   = gv_reg_active.
+  ls_cfg-is_active   = 'X'.
   ls_cfg-created_by  = sy-uname.
   ls_cfg-created_on  = sy-datum.
 
@@ -4105,20 +4153,39 @@ FORM f4_gv_tabname_dynp.
            description TYPE char80,
            is_active   TYPE zsp26_de_xflag,
          END OF ty_sht_f4.
-  DATA lt_sht TYPE STANDARD TABLE OF ty_sht_f4 WITH DEFAULT KEY.
+  DATA: lt_sht     TYPE STANDARD TABLE OF ty_sht_f4 WITH DEFAULT KEY,
+        lt_cfg_raw TYPE STANDARD TABLE OF zsp26_arch_cfg WITH DEFAULT KEY,
+        ls_cfg_row TYPE zsp26_arch_cfg,
+        ls_cfg_ok  TYPE zsp26_arch_cfg,
+        lv_ok      TYPE abap_bool,
+        lv_rs      TYPE string,
+        ls_sht     TYPE ty_sht_f4.
 
-  SELECT table_name, description, is_active
-    FROM zsp26_arch_cfg
+  SELECT * FROM zsp26_arch_cfg
+    INTO TABLE @lt_cfg_raw
     WHERE is_active = 'X'
-    INTO CORRESPONDING FIELDS OF TABLE @lt_sht
     UP TO 999 ROWS.
+  SORT lt_cfg_raw BY table_name.
+  DELETE ADJACENT DUPLICATES FROM lt_cfg_raw COMPARING table_name.
+
+  LOOP AT lt_cfg_raw INTO ls_cfg_row.
+    PERFORM validate_table_against_cfg
+      USING ls_cfg_row-table_name abap_false
+      CHANGING ls_cfg_ok lv_ok lv_rs.
+    IF lv_ok = abap_false.
+      CONTINUE.
+    ENDIF.
+    CLEAR ls_sht.
+    ls_sht-table_name  = ls_cfg_ok-table_name.
+    ls_sht-description = ls_cfg_ok-description.
+    ls_sht-is_active   = ls_cfg_ok-is_active.
+    APPEND ls_sht TO lt_sht.
+  ENDLOOP.
+
   IF lt_sht IS INITIAL.
-    SELECT table_name, description, is_active
-      FROM zsp26_arch_cfg
-      INTO CORRESPONDING FIELDS OF TABLE @lt_sht
-      UP TO 999 ROWS.
+    MESSAGE |No archive-ready tables: each row needs active config, non-empty DATE field, retention > 0, and an active DDIC table (SE11).| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
+    RETURN.
   ENDIF.
-  SORT lt_sht BY table_name.
 
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING

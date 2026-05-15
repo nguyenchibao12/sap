@@ -240,6 +240,11 @@ START-OF-SELECTION.
     STOP.
   ENDIF.
 
+  IF p_active CN ' X'.
+    WRITE: / |Invalid Active flag: use checkbox (X = active, off = inactive). Current value is not allowed.|.
+    STOP.
+  ENDIF.
+
   WRITE: / '--- Validation PASSED - inserting config... ---'.
 
   " ---------------------------------------------------------------

@@ -5,24 +5,18 @@
 *&---------------------------------------------------------------------*
 
 *&---------------------------------------------------------------------*
-*& Validate archive target table against ZSP26_ARCH_CFG + DDIC
-*& 1 Row exists, IS_ACTIVE, DATA_FIELD non-initial
-*& 2 Table exists in DDIC and DATA_FIELD is a real column
+*& Clear app IS_ACTIVE for table when DDIC is gone / unreadable (no delete)
+*& Used when iv_clear_app_active_if_ddic_bad = true on validate failure
 *&---------------------------------------------------------------------*
-FORM validate_table_against_cfg
+FORM deactivate_active_cfg_rows_for_table
   USING    VALUE(pv_table) TYPE tabname
-  CHANGING ps_cfg          TYPE zsp26_arch_cfg
-           cv_ok           TYPE abap_bool.
+  CHANGING cv_rows_updated TYPE abap_bool.
 
-  DATA: lt_df       TYPE TABLE OF dfies,
-        ls_df       TYPE dfies,
-        lt_cfg_pick TYPE STANDARD TABLE OF zsp26_arch_cfg WITH EMPTY KEY,
-        lv_tn       TYPE tabname,
-        lv_df       TYPE fieldname.
+  DATA: lv_tn       TYPE tabname,
+        lv_inactive TYPE zsp26_de_xflag.
 
-  CLEAR: ps_cfg, cv_ok.
-  cv_ok = abap_false.
-
+  CLEAR cv_rows_updated.
+  CLEAR lv_inactive.
   lv_tn = pv_table.
   CONDENSE lv_tn.
   TRANSLATE lv_tn TO UPPER CASE.
@@ -30,21 +24,72 @@ FORM validate_table_against_cfg
     RETURN.
   ENDIF.
 
+  UPDATE zsp26_arch_cfg
+    SET is_active  = @lv_inactive
+        changed_by = @sy-uname
+        changed_on = @sy-datum
+    WHERE table_name = @lv_tn
+      AND is_active  = 'X'.
+  IF sy-subrc = 0 AND sy-dbcnt > 0.
+    cv_rows_updated = abap_true.
+    COMMIT WORK.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Validate archive target table against ZSP26_ARCH_CFG + DDIC
+*& 1 Row exists, IS_ACTIVE, DATA_FIELD non-initial, retention > 0
+*& 2 Table exists in active DDIC (DD02V) — catches SE11 deactivate/delete
+*& 3 DATA_FIELD is a DATE column in current DDIC
+*& Fails: cv_ok = false and cv_reason_text = user-facing explanation
+*& If iv_clear_app_active_if_ddic_bad: on missing/unreadable DDIC, clear
+*& IS_ACTIVE on ZSP26_ARCH_CFG for that table (no row delete) + COMMIT
+*&---------------------------------------------------------------------*
+FORM validate_table_against_cfg
+  USING    VALUE(pv_table) TYPE tabname
+           VALUE(iv_clear_app_active_if_ddic_bad) TYPE abap_bool
+  CHANGING ps_cfg            TYPE zsp26_arch_cfg
+           cv_ok             TYPE abap_bool
+           cv_reason_text    TYPE string.
+
+  DATA: lt_df       TYPE TABLE OF dfies,
+        ls_df       TYPE dfies,
+        lt_cfg_pick TYPE STANDARD TABLE OF zsp26_arch_cfg WITH EMPTY KEY,
+        lv_tn       TYPE tabname,
+        lv_df       TYPE fieldname,
+        lv_dd_tab   TYPE tabname,
+        lv_synced   TYPE abap_bool.
+
+  CLEAR: ps_cfg, cv_ok, cv_reason_text.
+  cv_ok = abap_false.
+
+  lv_tn = pv_table.
+  CONDENSE lv_tn.
+  TRANSLATE lv_tn TO UPPER CASE.
+  IF lv_tn IS INITIAL.
+    cv_reason_text = |Enter a table name.| ##NO_TEXT.
+    RETURN.
+  ENDIF.
+
   SELECT * FROM zsp26_arch_cfg
     INTO TABLE @lt_cfg_pick
     WHERE table_name = @lv_tn AND is_active = 'X'.
   IF lt_cfg_pick IS INITIAL.
+    cv_reason_text = |Table { lv_tn } has no active archive configuration (ZSP26_ARCH_CFG with IS_ACTIVE = X). Use F4 or [Manage] to register.| ##NO_TEXT.
     RETURN.
   ENDIF.
   SORT lt_cfg_pick BY changed_on DESCENDING created_on DESCENDING config_id.
   READ TABLE lt_cfg_pick INTO ps_cfg INDEX 1.
   IF sy-subrc <> 0.
+    cv_reason_text = |Table { lv_tn }: could not read archive configuration.| ##NO_TEXT.
     RETURN.
   ENDIF.
   IF ps_cfg-data_field IS INITIAL.
+    cv_reason_text = |Table { lv_tn }: configuration has no date field (DATA_FIELD is empty in ZSP26_ARCH_CFG). Fix the config before using this table.| ##NO_TEXT.
     RETURN.
   ENDIF.
   IF ps_cfg-retention <= 0.
+    cv_reason_text = |Table { lv_tn }: retention (days) in ZSP26_ARCH_CFG must be greater than zero.| ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -53,23 +98,52 @@ FORM validate_table_against_cfg
   TRANSLATE lv_df TO UPPER CASE.
   ps_cfg-data_field = lv_df.
 
+  CLEAR lv_dd_tab.
+  SELECT SINGLE tabname FROM dd02v
+    INTO @lv_dd_tab
+    WHERE tabname = @lv_tn.
+  IF sy-subrc <> 0.
+    CLEAR lv_synced.
+    IF iv_clear_app_active_if_ddic_bad = abap_true.
+      PERFORM deactivate_active_cfg_rows_for_table USING lv_tn CHANGING lv_synced.
+    ENDIF.
+    cv_reason_text = |Table { lv_tn } is not in the active DDIC catalog (deleted, or inactive / not activated in SE11).| ##NO_TEXT.
+    IF lv_synced = abap_true.
+      cv_reason_text &&= | IS_ACTIVE was cleared on ZSP26_ARCH_CFG for this table so it no longer shows as active; fix or activate the table in SE11, then set active again in [Manage].| ##NO_TEXT.
+    ELSE.
+      cv_reason_text &&= | Update or deactivate the archive configuration row.| ##NO_TEXT.
+    ENDIF.
+    RETURN.
+  ENDIF.
+
   CALL FUNCTION 'DDIF_FIELDINFO_GET'
     EXPORTING  tabname   = lv_tn
     TABLES     dfies_tab = lt_df
     EXCEPTIONS OTHERS    = 7.
   IF sy-subrc <> 0 OR lt_df IS INITIAL.
+    CLEAR lv_synced.
+    IF iv_clear_app_active_if_ddic_bad = abap_true.
+      PERFORM deactivate_active_cfg_rows_for_table USING lv_tn CHANGING lv_synced.
+    ENDIF.
+    cv_reason_text = |Table { lv_tn }: DDIC field list could not be read (dictionary inactive or error). Check SE11 activation.| ##NO_TEXT.
+    IF lv_synced = abap_true.
+      cv_reason_text &&= | IS_ACTIVE was cleared on ZSP26_ARCH_CFG for this table.| ##NO_TEXT.
+    ENDIF.
     RETURN.
   ENDIF.
 
   READ TABLE lt_df INTO ls_df WITH KEY fieldname = ps_cfg-data_field.
   IF sy-subrc <> 0.
+    cv_reason_text = |Date field { ps_cfg-data_field } is not a column of { lv_tn } in active DDIC (structure may have changed).| ##NO_TEXT.
     RETURN.
   ENDIF.
   IF ls_df-inttype <> 'D'.
+    cv_reason_text = |Field { ps_cfg-data_field } on { lv_tn } is not DATE type (DDIC inttype { ls_df-inttype }). Update DATA_FIELD in ZSP26_ARCH_CFG.| ##NO_TEXT.
     RETURN.
   ENDIF.
 
   cv_ok = abap_true.
+  CLEAR cv_reason_text.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

@@ -10,6 +10,7 @@ MODULE user_command_0400 INPUT.
   DATA lv_adm_0400_i TYPE abap_bool ##NEEDED.
   DATA ls_cfg_400 TYPE zsp26_arch_cfg ##NEEDED.
   DATA lv_ok_400 TYPE abap_bool ##NEEDED.
+  DATA lv_fail_400 TYPE string ##NEEDED.
   lv_cmd_400 = ok_code.
   CLEAR ok_code.
 
@@ -28,10 +29,15 @@ MODULE user_command_0400 INPUT.
         MESSAGE TEXT-064 TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         PERFORM validate_table_against_cfg
-          USING gv_tabname
-          CHANGING ls_cfg_400 lv_ok_400.
+          USING gv_tabname abap_true
+          CHANGING ls_cfg_400 lv_ok_400 lv_fail_400.
         IF lv_ok_400 = abap_false.
-          MESSAGE |Table '{ gv_tabname }' is not configured for archiving. Please use F4 to select a valid table.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+          SET CURSOR FIELD 'GV_TABNAME'.
+          IF lv_fail_400 IS NOT INITIAL.
+            MESSAGE lv_fail_400 TYPE 'S' DISPLAY LIKE 'E'.
+          ELSE.
+            MESSAGE |Table '{ gv_tabname }' is not configured for archiving. Please use F4 to select a valid table.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+          ENDIF.
         ELSE.
           gv_hub_allowed = abap_true.
           IF lv_adm_0400_i = abap_true.

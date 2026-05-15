@@ -281,9 +281,8 @@ ENDMODULE.
 *& Screen 0800 — register table into ZSP26_ARCH_CFG
 *&---------------------------------------------------------------------*
 MODULE status_0800 OUTPUT.
-  IF gv_reg_active IS INITIAL.
-    gv_reg_active = 'X'.
-  ENDIF.
+  " New registrations are always created as active; value is not user-editable.
+  gv_reg_active = 'X'.
   IF gv_reg_ret IS INITIAL OR gv_reg_ret CO space.
     gv_reg_ret = '365'.
   ENDIF.

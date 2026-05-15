@@ -103,6 +103,7 @@ FORM at_sel_screen_arch_write.
   DATA: gs_cfg          TYPE zsp26_arch_cfg,
         gr_src          TYPE REF TO data,
         lv_cfg_ok       TYPE abap_bool,
+        lv_val_rs       TYPE string,
         lv_sql_elig_cnt TYPE i,
         lv_tbl_tot      TYPE i.
   FIELD-SYMBOLS <lt_src> TYPE STANDARD TABLE.
@@ -117,30 +118,39 @@ FORM at_sel_screen_arch_write.
             lv_wh     TYPE string,
             lv_wh_full TYPE string,
             lv_cnt2   TYPE i,
-            lv_co_pop TYPE d.
+            lv_co_pop TYPE d,
+            ls_pick_cfg TYPE zsp26_arch_cfg,
+            lv_pick_ok TYPE abap_bool,
+            lv_pick_rs TYPE string.
 
       CLEAR: lt_cfg, lt_cfgraw.
       SELECT * FROM zsp26_arch_cfg INTO TABLE @lt_cfgraw WHERE is_active = 'X'.
 
       LOOP AT lt_cfgraw INTO ls_cfgraw.
+        PERFORM validate_table_against_cfg
+          USING ls_cfgraw-table_name abap_false
+          CHANGING ls_pick_cfg lv_pick_ok lv_pick_rs.
+        IF lv_pick_ok = abap_false.
+          CONTINUE.
+        ENDIF.
         CLEAR ls_cfg.
-        ls_cfg-table_name  = ls_cfgraw-table_name.
-        ls_cfg-data_field  = ls_cfgraw-data_field.
-        ls_cfg-retention   = ls_cfgraw-retention.
-        ls_cfg-is_active   = ls_cfgraw-is_active.
+        ls_cfg-table_name  = ls_pick_cfg-table_name.
+        ls_cfg-data_field  = ls_pick_cfg-data_field.
+        ls_cfg-retention   = ls_pick_cfg-retention.
+        ls_cfg-is_active   = ls_pick_cfg-is_active.
         lv_co_pop = COND #( WHEN s_date-high IS NOT INITIAL THEN s_date-high
-                            ELSE sy-datum - ls_cfgraw-retention ).
+                            ELSE sy-datum - ls_pick_cfg-retention ).
         ls_cfg-cutoff_date = lv_co_pop.
 
         CLEAR: lv_cnt2, lv_wh, lv_wh_full.
         PERFORM build_where_from_arch_cfg
-          USING ls_cfgraw s_date-low lv_co_pop
+          USING ls_pick_cfg s_date-low lv_co_pop
           CHANGING lv_wh.
         lv_wh_full = lv_wh.
         PERFORM append_rules_eq_to_where
-          USING ls_cfgraw-config_id ls_cfgraw-table_name
+          USING ls_pick_cfg-config_id ls_pick_cfg-table_name
           CHANGING lv_wh_full.
-        SELECT COUNT(*) FROM (ls_cfgraw-table_name) INTO @lv_cnt2
+        SELECT COUNT(*) FROM (ls_pick_cfg-table_name) INTO @lv_cnt2
           WHERE (lv_wh_full).
         ls_cfg-eligible = lv_cnt2.
 
@@ -203,9 +213,13 @@ FORM at_sel_screen_arch_write.
 
     WHEN 'SHOW_DATA'.
       PERFORM validate_table_against_cfg
-        USING p_table CHANGING gs_cfg lv_cfg_ok.
+        USING p_table abap_true CHANGING gs_cfg lv_cfg_ok lv_val_rs.
       IF lv_cfg_ok = abap_false.
-        MESSAGE |Table '{ p_table }' is not active in archive configuration or is unknown to the dictionary.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+        IF lv_val_rs IS NOT INITIAL.
+          MESSAGE lv_val_rs TYPE 'S' DISPLAY LIKE 'E'.
+        ELSE.
+          MESSAGE |Table '{ p_table }' is not active in archive configuration or is unknown to the dictionary.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+        ENDIF.
         RETURN.
       ENDIF.
 
@@ -304,6 +318,7 @@ FORM run_arch_ekk_write_main.
         lv_where        TYPE string,
         lv_where0       TYPE string,
         lv_c0           TYPE i,
+        lv_val_rs       TYPE string,
         ls_dd_wa        TYPE dfies,
         ls_arch_rec     TYPE zstr_arch_rec,
         lv_keyvals      TYPE char255,
@@ -321,9 +336,13 @@ FORM run_arch_ekk_write_main.
   CLEAR: lv_cnt, lv_err.
 
   PERFORM validate_table_against_cfg
-    USING p_table CHANGING gs_cfg lv_cfg_ok.
+    USING p_table abap_true CHANGING gs_cfg lv_cfg_ok lv_val_rs.
   IF lv_cfg_ok = abap_false.
-    MESSAGE |Table '{ p_table }' cannot be archived: missing active configuration or date field not in the dictionary.| TYPE 'A' ##NO_TEXT.
+    IF lv_val_rs IS NOT INITIAL.
+      MESSAGE lv_val_rs TYPE 'A' ##NO_TEXT.
+    ELSE.
+      MESSAGE |Table '{ p_table }' cannot be archived: missing active configuration or date field not in the dictionary.| TYPE 'A' ##NO_TEXT.
+    ENDIF.
   ENDIF.
 
   lv_tpl_df = gs_cfg-data_field.
