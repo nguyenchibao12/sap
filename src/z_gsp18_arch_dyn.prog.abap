@@ -125,7 +125,7 @@ FORM validate_table_against_cfg
   SELECT SINGLE as4local FROM dd02l
     INTO @DATA(lv_m_pending)
     WHERE tabname = @lv_tn
-      AND as4local = 'M'.
+      AND as4local <> 'A'.
   IF sy-subrc = 0.
     CLEAR lv_synced.
     IF iv_clear_if_ddic_bad = abap_true.

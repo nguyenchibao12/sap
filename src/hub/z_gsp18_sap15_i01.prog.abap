@@ -735,7 +735,6 @@ MODULE user_command_0810 INPUT.
       gv_reg_ret    = '365'.
       gv_reg_active = 'X'.
       CALL SCREEN 0800 STARTING AT 12 6 ENDING AT 88 20.
-      LEAVE TO SCREEN 0.
 
     WHEN 'BT_CFG_LIST' OR 'BACK' OR 'EXIT' OR 'CANC'.
       LEAVE TO SCREEN 0.

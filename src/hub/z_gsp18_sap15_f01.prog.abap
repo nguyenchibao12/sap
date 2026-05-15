@@ -3749,24 +3749,24 @@ FORM do_reg_validate_and_save.
 
   IF lv_tab IS INITIAL.
     SET CURSOR FIELD 'GV_REG_TABLE'.
-    MESSAGE |Enter table name.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |Enter table name.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
   IF lv_fld IS INITIAL.
     SET CURSOR FIELD 'GV_REG_DATFLD'.
-    MESSAGE |Enter date field name.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |Enter date field name.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
   " SAP-style names: letters, digits, underscore only (before DDIC round-trip).
   IF lv_tab CN 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'.
     SET CURSOR FIELD 'GV_REG_TABLE'.
-    MESSAGE |Table name has invalid characters (only A-Z, 0-9, _).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |Table name has invalid characters (only A-Z, 0-9, _).| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
   IF lv_fld CN 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'.
     SET CURSOR FIELD 'GV_REG_DATFLD'.
-    MESSAGE |Date field name has invalid characters (only A-Z, 0-9, _).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |Date field name has invalid characters (only A-Z, 0-9, _).| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
