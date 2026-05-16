@@ -3748,25 +3748,25 @@ FORM do_reg_validate_and_save.
   TRANSLATE: lv_tab TO UPPER CASE, lv_fld TO UPPER CASE.
 
   IF lv_tab IS INITIAL.
+    MESSAGE |[Table Name] is required – enter the Z* transparent table to register (e.g. ZSP26_EKKO).| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     SET CURSOR FIELD 'GV_REG_TABLE'.
-    MESSAGE |Enter table name.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
   IF lv_fld IS INITIAL.
+    MESSAGE |[Date Field] is required – enter the DATE-type field used as the archiving cutoff (e.g. ERDAT).| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     SET CURSOR FIELD 'GV_REG_DATFLD'.
-    MESSAGE |Enter date field name.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
   " SAP-style names: letters, digits, underscore only (before DDIC round-trip).
   IF lv_tab CN 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'.
+    MESSAGE |[Table Name] "{ lv_tab }" contains invalid characters – only A–Z, 0–9 and _ are allowed.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     SET CURSOR FIELD 'GV_REG_TABLE'.
-    MESSAGE |Table name has invalid characters (only A-Z, 0-9, _).| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
   IF lv_fld CN 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'.
+    MESSAGE |[Date Field] "{ lv_fld }" contains invalid characters – only A–Z, 0–9 and _ are allowed.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     SET CURSOR FIELD 'GV_REG_DATFLD'.
-    MESSAGE |Date field name has invalid characters (only A-Z, 0-9, _).| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 

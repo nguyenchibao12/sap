@@ -119,25 +119,6 @@ FORM validate_table_against_cfg
     RETURN.
   ENDIF.
 
-  " DD02L AS4LOCAL='M' means the table was saved in SE11 but not yet activated
-  " (or the last activation attempt failed and left the M version).
-  " The old A-version nametab still works, but the table definition is out of sync.
-  SELECT SINGLE as4local FROM dd02l
-    INTO @DATA(lv_m_pending)
-    WHERE tabname = @lv_tn
-      AND as4local <> 'A'.
-  IF sy-subrc = 0.
-    CLEAR lv_synced.
-    IF iv_clear_if_ddic_bad = abap_true.
-      PERFORM deact_active_cfg_for_table USING lv_tn CHANGING lv_synced.
-    ENDIF.
-    cv_reason_text = |Table { lv_tn } has unactivated SE11 changes (saved but not activated, or last activation failed). Fix errors in SE11 and re-activate the table.| ##NO_TEXT.
-    IF lv_synced = abap_true.
-      cv_reason_text &&= | IS_ACTIVE was cleared on ZSP26_ARCH_CFG for this table.| ##NO_TEXT.
-    ENDIF.
-    RETURN.
-  ENDIF.
-
   CALL FUNCTION 'DDIF_FIELDINFO_GET'
     EXPORTING  tabname   = lv_tn
     TABLES     dfies_tab = lt_df
