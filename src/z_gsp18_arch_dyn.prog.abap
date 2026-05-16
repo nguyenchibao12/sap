@@ -276,7 +276,7 @@ FORM zsp26_restore_cfg_if_ddic_ok.
         AND is_active  = ''
         AND data_field <> ''
         AND retention  > 0
-      ORDER BY changed_on DESCENDING created_on DESCENDING.
+      ORDER BY changed_on DESCENDING.
     ENDSELECT.
     IF sy-subrc <> 0. CONTINUE. ENDIF.
 
