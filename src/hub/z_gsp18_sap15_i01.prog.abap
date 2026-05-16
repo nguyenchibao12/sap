@@ -693,7 +693,7 @@ MODULE user_command_0800 INPUT.
     WHEN 'BT_REFRESH'.
       SET SCREEN 0800.
       LEAVE SCREEN.
-    WHEN 'BT_REG_SAVE'.
+    WHEN 'BT_REG_SAVE' OR '' OR 'ONLI'.
       PERFORM do_reg_validate_and_save.
       " Reach here only on validation failure — success path calls LEAVE TO SCREEN 0 inside the form.
       SET SCREEN 0800.
@@ -703,6 +703,9 @@ MODULE user_command_0800 INPUT.
     WHEN 'BT_REG_CANCEL' OR 'BACK' OR 'EXIT' OR 'CANC'.
       CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_ret, gv_reg_desc, gv_reg_active.
       LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+      SET SCREEN 0800.
+      LEAVE SCREEN.
   ENDCASE.
 ENDMODULE.
 

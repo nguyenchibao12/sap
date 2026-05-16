@@ -231,8 +231,7 @@ FORM zsp26_restore_cfg_if_ddic_ok.
         lv_it     TYPE tabname,
         ls_best   TYPE zsp26_arch_cfg,
         lt_fld_r  TYPE TABLE OF dfies,
-        ls_fld_r  TYPE dfies,
-        lt_nt_r   TYPE TABLE OF x031l.
+        ls_fld_r  TYPE dfies.
 
   " Candidate tables: have a cleared config with valid data_field + retention,
   " but no currently active row.
@@ -254,15 +253,7 @@ FORM zsp26_restore_cfg_if_ddic_ok.
     SELECT SINGLE tabname FROM dd02v INTO @DATA(lv_d2v) WHERE tabname = @lv_it.
     IF sy-subrc <> 0. CONTINUE. ENDIF.
 
-    " DDIC check 2: active runtime nametab
-    CLEAR lt_nt_r.
-    CALL FUNCTION 'DDIF_NAMETAB_GET'
-      EXPORTING tabname = lv_it  status = 'A'
-      TABLES    x031l_tab = lt_nt_r
-      EXCEPTIONS OTHERS = 1.
-    IF sy-subrc <> 0 OR lt_nt_r IS INITIAL. CONTINUE. ENDIF.
-
-    " DDIC check 3: runtime SELECT probe
+    " DDIC check 2: runtime SELECT probe — definitive check that nametab is usable
     TRY.
       SELECT COUNT(*) FROM (lv_it) INTO @DATA(lv_pr) ##WARN_OK.
     CATCH cx_sy_dynamic_osql_error cx_sy_open_sql_db.
