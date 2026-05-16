@@ -271,12 +271,12 @@ FORM zsp26_restore_cfg_if_ddic_ok.
 
     " Pick best cleared config row (most recently changed with valid fields)
     SELECT * FROM zsp26_arch_cfg INTO @ls_best
+      UP TO 1 ROWS
       WHERE table_name = @lv_it
         AND is_active  = ''
         AND data_field <> ''
         AND retention  > 0
-      ORDER BY changed_on DESCENDING created_on DESCENDING
-      UP TO 1 ROWS.
+      ORDER BY changed_on DESCENDING created_on DESCENDING.
     ENDSELECT.
     IF sy-subrc <> 0. CONTINUE. ENDIF.
 
