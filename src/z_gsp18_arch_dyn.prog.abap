@@ -216,16 +216,20 @@ FORM zsp26_sync_cfg_active_vs_ddic.
       CHANGING ls_dummy lv_ok lv_rs.
   ENDLOOP.
 
-  " Phase 2: auto-restore IS_ACTIVE for tables whose flag was cleared by sync
-  " but are now properly active in DDIC again (e.g. after SE11 fix + activation).
-  PERFORM zsp26_restore_cfg_if_ddic_ok.
+  " Phase 2: auto-restore IS_ACTIVE for tables whose flag was cleared by a
+  " previous sync run. Pass lt_tn so Phase 2 skips tables Phase 1 just
+  " evaluated — prevents immediate re-restore within the same sync call.
+  PERFORM zsp26_restore_cfg_if_ddic_ok USING lt_tn.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
 *& Restore IS_ACTIVE='X' for the best cleared config row whose table
-*& is now fully active in DDIC (dd02v + nametab + runtime SELECT pass).
+*& is now fully active in DDIC (dd02v + runtime SELECT pass).
+*& it_p1_checked: tables Phase 1 just checked — skip these to avoid
+*& restoring what Phase 1 cleared in the same sync run.
 *&---------------------------------------------------------------------*
-FORM zsp26_restore_cfg_if_ddic_ok.
+FORM zsp26_restore_cfg_if_ddic_ok
+  USING it_p1_checked TYPE STANDARD TABLE.
 
   DATA: lt_inact  TYPE STANDARD TABLE OF tabname WITH DEFAULT KEY,
         lv_it     TYPE tabname,
@@ -243,6 +247,11 @@ FORM zsp26_restore_cfg_if_ddic_ok.
   CHECK lt_inact IS NOT INITIAL.
 
   LOOP AT lt_inact INTO lv_it.
+
+    " Skip if Phase 1 already evaluated this table in the current sync run
+    " (prevents restoring what Phase 1 just cleared).
+    READ TABLE it_p1_checked WITH KEY table_line = lv_it TRANSPORTING NO FIELDS.
+    IF sy-subrc = 0. CONTINUE. ENDIF.
 
     " Skip if an active row already exists (manually re-registered etc.)
     SELECT COUNT(*) FROM zsp26_arch_cfg INTO @DATA(lv_act)
