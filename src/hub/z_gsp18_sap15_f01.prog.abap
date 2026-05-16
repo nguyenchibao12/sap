@@ -3882,6 +3882,9 @@ FORM do_reg_validate_and_save.
   ls_cfg-created_by  = sy-uname.
   ls_cfg-created_on  = sy-datum.
 
+  " Remove stale inactive rows for this table before inserting the new active one.
+  DELETE FROM zsp26_arch_cfg WHERE table_name = @lv_tab AND is_active = ''.
+
   INSERT zsp26_arch_cfg FROM ls_cfg.
   IF sy-subrc = 0.
     COMMIT WORK.

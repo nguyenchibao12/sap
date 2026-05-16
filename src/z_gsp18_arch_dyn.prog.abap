@@ -205,17 +205,97 @@ FORM zsp26_sync_cfg_active_vs_ddic.
         lv_ok    TYPE abap_bool,
         lv_rs    TYPE string.
 
+  " Phase 1: check every active row — clear IS_ACTIVE if DDIC is broken.
   SELECT DISTINCT table_name FROM zsp26_arch_cfg
     INTO TABLE @lt_tn
     WHERE is_active = 'X'.
-  IF lt_tn IS INITIAL.
-    RETURN.
-  ENDIF.
 
   LOOP AT lt_tn INTO lv_tn.
     PERFORM validate_table_against_cfg
       USING lv_tn abap_true
       CHANGING ls_dummy lv_ok lv_rs.
+  ENDLOOP.
+
+  " Phase 2: auto-restore IS_ACTIVE for tables whose flag was cleared by sync
+  " but are now properly active in DDIC again (e.g. after SE11 fix + activation).
+  PERFORM zsp26_restore_cfg_if_ddic_ok.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Restore IS_ACTIVE='X' for the best cleared config row whose table
+*& is now fully active in DDIC (dd02v + nametab + runtime SELECT pass).
+*&---------------------------------------------------------------------*
+FORM zsp26_restore_cfg_if_ddic_ok.
+
+  DATA: lt_inact  TYPE STANDARD TABLE OF tabname WITH DEFAULT KEY,
+        lv_it     TYPE tabname,
+        ls_best   TYPE zsp26_arch_cfg,
+        lt_fld_r  TYPE TABLE OF dfies,
+        ls_fld_r  TYPE dfies,
+        lt_nt_r   TYPE TABLE OF x031l.
+
+  " Candidate tables: have a cleared config with valid data_field + retention,
+  " but no currently active row.
+  SELECT DISTINCT table_name FROM zsp26_arch_cfg
+    INTO TABLE @lt_inact
+    WHERE is_active  = ''
+      AND data_field <> ''
+      AND retention  > 0.
+  CHECK lt_inact IS NOT INITIAL.
+
+  LOOP AT lt_inact INTO lv_it.
+
+    " Skip if an active row already exists (manually re-registered etc.)
+    SELECT COUNT(*) FROM zsp26_arch_cfg INTO @DATA(lv_act)
+      WHERE table_name = @lv_it AND is_active = 'X'.
+    IF lv_act > 0. CONTINUE. ENDIF.
+
+    " DDIC check 1: active catalog entry
+    SELECT SINGLE tabname FROM dd02v INTO @DATA(lv_d2v) WHERE tabname = @lv_it.
+    IF sy-subrc <> 0. CONTINUE. ENDIF.
+
+    " DDIC check 2: active runtime nametab
+    CLEAR lt_nt_r.
+    CALL FUNCTION 'DDIF_NAMETAB_GET'
+      EXPORTING tabname = lv_it  status = 'A'
+      TABLES    x031l_tab = lt_nt_r
+      EXCEPTIONS OTHERS = 1.
+    IF sy-subrc <> 0 OR lt_nt_r IS INITIAL. CONTINUE. ENDIF.
+
+    " DDIC check 3: runtime SELECT probe
+    TRY.
+      SELECT COUNT(*) FROM (lv_it) INTO @DATA(lv_pr) ##WARN_OK.
+    CATCH cx_sy_dynamic_osql_error cx_sy_open_sql_db.
+      CONTINUE.
+    ENDTRY.
+
+    " Pick best cleared config row (most recently changed with valid fields)
+    SELECT SINGLE * FROM zsp26_arch_cfg INTO @ls_best
+      WHERE table_name = @lv_it
+        AND is_active  = ''
+        AND data_field <> ''
+        AND retention  > 0
+      ORDER BY changed_on DESCENDING created_on DESCENDING.
+    IF sy-subrc <> 0. CONTINUE. ENDIF.
+
+    " Verify data_field is still a DATE column in current DDIC
+    CLEAR lt_fld_r.
+    CALL FUNCTION 'DDIF_FIELDINFO_GET'
+      EXPORTING tabname   = lv_it
+      TABLES    dfies_tab = lt_fld_r
+      EXCEPTIONS OTHERS   = 1.
+    IF sy-subrc <> 0 OR lt_fld_r IS INITIAL. CONTINUE. ENDIF.
+    READ TABLE lt_fld_r INTO ls_fld_r WITH KEY fieldname = ls_best-data_field.
+    IF sy-subrc <> 0 OR ls_fld_r-inttype <> 'D'. CONTINUE. ENDIF.
+
+    " All checks pass — restore IS_ACTIVE for this config row.
+    UPDATE zsp26_arch_cfg
+      SET is_active  = 'X'
+          changed_by = @sy-uname
+          changed_on = @sy-datum
+      WHERE config_id = @ls_best-config_id.
+    IF sy-subrc = 0. COMMIT WORK. ENDIF.
+
   ENDLOOP.
 ENDFORM.
 
