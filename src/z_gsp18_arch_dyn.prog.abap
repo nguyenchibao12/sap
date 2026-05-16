@@ -121,16 +121,37 @@ FORM validate_table_against_cfg
     RETURN.
   ENDIF.
 
-  " Detect pending/failed SE11 changes: 'M' (modified) entry in DD02L is newer
-  " than 'A' (active) entry → table has changes not yet successfully activated.
-  " Old nametab remains valid at runtime, so SELECT probe alone cannot catch this.
+  " Detect pending/failed SE11 changes — two complementary checks:
+  " Check A: DD02L timestamp — 'M' entry newer than 'A' entry.
+  " Check B: DD03L field count — 'M' and 'A' definitions have different number
+  "          of fields (catches field additions/removals after failed activation).
+  " BYPASSING BUFFER forces fresh DB read, avoiding stale application buffer.
   CLEAR: ls_dd02l_a, ls_dd02l_m.
-  SELECT SINGLE * FROM dd02l INTO @ls_dd02l_a WHERE tabname = @lv_tn AND as4local = 'A'.
-  SELECT SINGLE * FROM dd02l INTO @ls_dd02l_m WHERE tabname = @lv_tn AND as4local = 'M'.
-  IF ls_dd02l_m-tabname IS NOT INITIAL
-    AND ( ls_dd02l_m-as4date > ls_dd02l_a-as4date
-          OR ( ls_dd02l_m-as4date = ls_dd02l_a-as4date
-               AND ls_dd02l_m-as4time > ls_dd02l_a-as4time ) ).
+  SELECT SINGLE * FROM dd02l BYPASSING BUFFER INTO @ls_dd02l_a
+    WHERE tabname = @lv_tn AND as4local = 'A'.
+  SELECT SINGLE * FROM dd02l BYPASSING BUFFER INTO @ls_dd02l_m
+    WHERE tabname = @lv_tn AND as4local = 'M'.
+
+  DATA(lv_has_pending) = abap_false.
+  IF ls_dd02l_m-tabname IS NOT INITIAL.
+    " Check A: timestamp
+    IF ls_dd02l_m-as4date > ls_dd02l_a-as4date
+       OR ( ls_dd02l_m-as4date = ls_dd02l_a-as4date
+            AND ls_dd02l_m-as4time > ls_dd02l_a-as4time ).
+      lv_has_pending = abap_true.
+    ENDIF.
+    " Check B: field count in DD03L
+    IF lv_has_pending = abap_false.
+      SELECT COUNT(*) FROM dd03l BYPASSING BUFFER INTO @DATA(lv_m_fcount)
+        WHERE tabname = @lv_tn AND as4local = 'M'.
+      SELECT COUNT(*) FROM dd03l BYPASSING BUFFER INTO @DATA(lv_a_fcount)
+        WHERE tabname = @lv_tn AND as4local = 'A'.
+      IF lv_m_fcount <> lv_a_fcount.
+        lv_has_pending = abap_true.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+  IF lv_has_pending = abap_true.
     CLEAR lv_synced.
     IF iv_clear_if_ddic_bad = abap_true.
       PERFORM deact_active_cfg_for_table USING lv_tn CHANGING lv_synced.
