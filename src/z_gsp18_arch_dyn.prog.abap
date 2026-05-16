@@ -62,10 +62,8 @@ FORM validate_table_against_cfg
         lv_dd_tab      TYPE tabname,
         lv_synced      TYPE abap_bool,
         lt_x031l       TYPE TABLE OF x031l,
-        lv_a_date      TYPE dats,
-        lv_a_time      TYPE tims,
-        lv_m_date      TYPE dats,
-        lv_m_time      TYPE tims.
+        ls_dd02l_a     TYPE dd02l,
+        ls_dd02l_m     TYPE dd02l.
 
   CLEAR: ps_cfg, cv_ok, cv_reason_text.
   cv_ok = abap_false.
@@ -123,23 +121,21 @@ FORM validate_table_against_cfg
     RETURN.
   ENDIF.
 
-  " Detect pending/failed SE11 changes: if the 'M' (modified) DD02L entry is
-  " newer than the 'A' (active) entry, the table has unsaved/failed activation.
-  " Old nametab remains valid at runtime so SELECT probe alone cannot catch this.
-  SELECT SINGLE as4date, as4time FROM dd02l
-    INTO (@lv_a_date, @lv_a_time)
-    WHERE tabname = @lv_tn AND as4local = 'A'.
-  SELECT SINGLE as4date, as4time FROM dd02l
-    INTO (@lv_m_date, @lv_m_time)
-    WHERE tabname = @lv_tn AND as4local = 'M'.
-  IF sy-subrc = 0
-    AND ( lv_m_date > lv_a_date
-          OR ( lv_m_date = lv_a_date AND lv_m_time > lv_a_time ) ).
+  " Detect pending/failed SE11 changes: 'M' (modified) entry in DD02L is newer
+  " than 'A' (active) entry → table has changes not yet successfully activated.
+  " Old nametab remains valid at runtime, so SELECT probe alone cannot catch this.
+  CLEAR: ls_dd02l_a, ls_dd02l_m.
+  SELECT SINGLE * FROM dd02l INTO @ls_dd02l_a WHERE tabname = @lv_tn AND as4local = 'A'.
+  SELECT SINGLE * FROM dd02l INTO @ls_dd02l_m WHERE tabname = @lv_tn AND as4local = 'M'.
+  IF ls_dd02l_m-tabname IS NOT INITIAL
+    AND ( ls_dd02l_m-as4date > ls_dd02l_a-as4date
+          OR ( ls_dd02l_m-as4date = ls_dd02l_a-as4date
+               AND ls_dd02l_m-as4time > ls_dd02l_a-as4time ) ).
     CLEAR lv_synced.
     IF iv_clear_if_ddic_bad = abap_true.
       PERFORM deact_active_cfg_for_table USING lv_tn CHANGING lv_synced.
     ENDIF.
-    cv_reason_text = |Table { lv_tn } has SE11 changes that are not yet activated (or activation failed). Fix errors and activate in SE11.| ##NO_TEXT.
+    cv_reason_text = |Table { lv_tn } has SE11 changes not yet activated (or activation failed). Fix errors and activate in SE11.| ##NO_TEXT.
     IF lv_synced = abap_true.
       cv_reason_text &&= | IS_ACTIVE was cleared on ZSP26_ARCH_CFG.| ##NO_TEXT.
     ENDIF.
