@@ -270,12 +270,14 @@ FORM zsp26_restore_cfg_if_ddic_ok.
     ENDTRY.
 
     " Pick best cleared config row (most recently changed with valid fields)
-    SELECT SINGLE * FROM zsp26_arch_cfg INTO @ls_best
+    SELECT * FROM zsp26_arch_cfg INTO @ls_best
       WHERE table_name = @lv_it
         AND is_active  = ''
         AND data_field <> ''
         AND retention  > 0
-      ORDER BY changed_on DESCENDING created_on DESCENDING.
+      ORDER BY changed_on DESCENDING created_on DESCENDING
+      UP TO 1 ROWS.
+    ENDSELECT.
     IF sy-subrc <> 0. CONTINUE. ENDIF.
 
     " Verify data_field is still a DATE column in current DDIC
@@ -290,8 +292,8 @@ FORM zsp26_restore_cfg_if_ddic_ok.
 
     " All checks pass — restore IS_ACTIVE for this config row.
     UPDATE zsp26_arch_cfg
-      SET is_active  = 'X'
-          changed_by = @sy-uname
+      SET is_active  = 'X',
+          changed_by = @sy-uname,
           changed_on = @sy-datum
       WHERE config_id = @ls_best-config_id.
     IF sy-subrc = 0. COMMIT WORK. ENDIF.
