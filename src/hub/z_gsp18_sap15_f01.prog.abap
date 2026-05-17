@@ -4027,7 +4027,6 @@ FORM display_alv.
     EXCEPTIONS OTHERS  = 1.
   IF sy-subrc <> 0. RETURN. ENDIF.
 
-  go_alv_200->set_toolbar_interactive( ).
   SET HANDLER lcl_alv200_handler=>on_toolbar      FOR go_alv_200.
   SET HANDLER lcl_alv200_handler=>on_user_command FOR go_alv_200.
 
