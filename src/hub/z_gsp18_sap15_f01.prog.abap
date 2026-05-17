@@ -3764,6 +3764,11 @@ FORM do_reg_validate_and_save.
     SET CURSOR FIELD 'GV_REG_TABLE'.
     RETURN.
   ENDIF.
+  IF lv_tab(1) <> 'Z'.
+    SET CURSOR FIELD 'GV_REG_TABLE'.
+    MESSAGE |Table { lv_tab } does not start with 'Z'. Only customer Z* tables are supported for archiving.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    RETURN.
+  ENDIF.
   IF lv_fld CN 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'.
     MESSAGE |[Date Field] "{ lv_fld }" contains invalid characters – only A–Z, 0–9 and _ are allowed.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     SET CURSOR FIELD 'GV_REG_DATFLD'.
@@ -3798,6 +3803,14 @@ FORM do_reg_validate_and_save.
   IF ls_dd02-tabclass <> 'TRANSP'.
     SET CURSOR FIELD 'GV_REG_TABLE'.
     MESSAGE |Table { lv_tab } is not TRANSP (type: { ls_dd02-tabclass }).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE tabname FROM dd02l BYPASSING BUFFER INTO @DATA(lv_dd02l_inact_reg)
+    WHERE tabname = @lv_tab AND as4local <> 'A'.
+  IF sy-subrc = 0.
+    SET CURSOR FIELD 'GV_REG_TABLE'.
+    MESSAGE |Table { lv_tab } has SE11 changes not yet activated (or failed activation). Fix in SE11 and activate before registering.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3881,6 +3894,8 @@ FORM do_reg_validate_and_save.
   ls_cfg-is_active   = 'X'.
   ls_cfg-created_by  = sy-uname.
   ls_cfg-created_on  = sy-datum.
+  ls_cfg-changed_by  = sy-uname.
+  ls_cfg-changed_on  = sy-datum.
 
   " Remove stale inactive rows for this table before inserting the new active one.
   DELETE FROM zsp26_arch_cfg WHERE table_name = @lv_tab AND is_active = ''.
