@@ -3759,7 +3759,8 @@ FORM do_reg_validate_and_save.
   ENDIF.
 
   " SAP-style names: letters, digits, underscore only (before DDIC round-trip).
-  IF lv_tab CN 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'.
+  FIND FIRST OCCURRENCE OF REGEX '[^A-Z0-9_]' IN lv_tab.
+  IF sy-subrc = 0.
     MESSAGE |[Table Name] "{ lv_tab }" contains invalid characters – only A–Z, 0–9 and _ are allowed.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     SET CURSOR FIELD 'GV_REG_TABLE'.
     RETURN.
@@ -3769,7 +3770,8 @@ FORM do_reg_validate_and_save.
     MESSAGE |Table { lv_tab } does not start with 'Z'. Only customer Z* tables are supported for archiving.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
-  IF lv_fld CN 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'.
+  FIND FIRST OCCURRENCE OF REGEX '[^A-Z0-9_]' IN lv_fld.
+  IF sy-subrc = 0.
     MESSAGE |[Date Field] "{ lv_fld }" contains invalid characters – only A–Z, 0–9 and _ are allowed.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     SET CURSOR FIELD 'GV_REG_DATFLD'.
     RETURN.
