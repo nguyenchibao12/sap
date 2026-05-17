@@ -234,12 +234,9 @@ CLASS lcl_cfg_handler DEFINITION.
       IMPORTING e_salv_function.
 ENDCLASS.
 
-" Screen 0200 ALV Grid — toolbar Refresh button
+" Screen 0200 ALV Grid — Refresh button via user_command
 CLASS lcl_alv200_handler DEFINITION.
   PUBLIC SECTION.
-    CLASS-METHODS on_toolbar
-      FOR EVENT toolbar OF cl_gui_alv_grid
-      IMPORTING e_object e_interactive ##NEEDED.
     CLASS-METHODS on_user_command
       FOR EVENT user_command OF cl_gui_alv_grid
       IMPORTING e_ucomm.

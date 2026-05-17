@@ -35,19 +35,6 @@ CLASS lcl_cfg_handler IMPLEMENTATION.
 ENDCLASS.
 
 CLASS lcl_alv200_handler IMPLEMENTATION.
-  METHOD on_toolbar.
-    DATA ls_btn TYPE stb_button.
-    ls_btn-butn_type = 3.                   " separator
-    APPEND ls_btn TO e_object->mt_toolbar.
-    CLEAR ls_btn.
-    ls_btn-function  = 'ALV200_RF'.
-    ls_btn-icon      = icon_refresh.
-    ls_btn-quickinfo = 'Refresh config list' ##NO_TEXT.
-    ls_btn-text      = 'Refresh'            ##NO_TEXT.
-    ls_btn-butn_type = 0.
-    APPEND ls_btn TO e_object->mt_toolbar.
-  ENDMETHOD.
-
   METHOD on_user_command.
     CHECK e_ucomm = 'ALV200_RF'.
     PERFORM get_data.
@@ -4027,12 +4014,26 @@ FORM display_alv.
     EXCEPTIONS OTHERS  = 1.
   IF sy-subrc <> 0. RETURN. ENDIF.
 
-  SET HANDLER lcl_alv200_handler=>on_toolbar      FOR go_alv_200.
   SET HANDLER lcl_alv200_handler=>on_user_command FOR go_alv_200.
 
   CALL METHOD go_alv_200->set_table_for_first_display
     CHANGING it_outtab       = gt_arch_stat
              it_fieldcatalog = gt_fcat_200.
+
+  " Add Refresh button directly to the toolbar object (works in SAP GUI for HTML)
+  DATA lo_tb200 TYPE REF TO cl_gui_toolbar.
+  go_alv_200->get_toolbar_object( IMPORTING e_object = lo_tb200 ).
+  IF lo_tb200 IS BOUND.
+    TRY.
+      lo_tb200->add_button(
+        EXPORTING fcode     = 'ALV200_RF'
+                  icon      = icon_refresh
+                  butn_type = 0
+                  quickinfo = 'Refresh config list' ##NO_TEXT
+                  text      = 'Refresh'             ##NO_TEXT ).
+    CATCH cx_root ##NO_HANDLER.
+    ENDTRY.
+  ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
