@@ -3772,7 +3772,7 @@ FORM do_reg_validate_and_save.
   ENDIF.
   IF lv_tab(1) <> 'Z'.
     SET CURSOR FIELD 'GV_REG_TABLE'.
-    MESSAGE |Table { lv_tab } does not start with 'Z'. Only customer Z* tables are supported for archiving.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |Table { lv_tab } does not start with 'Z'. Only customer Z* tables are supported for archiving.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
   FIND FIRST OCCURRENCE OF REGEX '[^A-Z0-9_]' IN lv_fld_str.
@@ -3786,13 +3786,13 @@ FORM do_reg_validate_and_save.
   CONDENSE lv_ret_raw NO-GAPS.
   IF lv_ret_raw IS INITIAL OR NOT lv_ret_raw CO '0123456789'.
     SET CURSOR FIELD 'GV_REG_RET'.
-    MESSAGE TEXT-080 TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-080 TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
   lv_ret_days = CONV i( lv_ret_raw ).
   IF lv_ret_days <= 0 OR lv_ret_days > 9999.
     SET CURSOR FIELD 'GV_REG_RET'.
-    MESSAGE TEXT-079 TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-079 TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3804,12 +3804,12 @@ FORM do_reg_validate_and_save.
 
   IF sy-subrc <> 0.
     SET CURSOR FIELD 'GV_REG_TABLE'.
-    MESSAGE |Table { lv_tab } does not exist in DDIC or is not activated.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |Table { lv_tab } does not exist in DDIC or is not activated.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
   IF ls_dd02-tabclass <> 'TRANSP'.
     SET CURSOR FIELD 'GV_REG_TABLE'.
-    MESSAGE |Table { lv_tab } is not TRANSP (type: { ls_dd02-tabclass }).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |Table { lv_tab } is not TRANSP (type: { ls_dd02-tabclass }).| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3817,7 +3817,7 @@ FORM do_reg_validate_and_save.
     WHERE tabname = @lv_tab AND as4local <> 'A'.
   IF sy-subrc = 0.
     SET CURSOR FIELD 'GV_REG_TABLE'.
-    MESSAGE |Table { lv_tab } has SE11 changes not yet activated (or failed activation). Fix in SE11 and activate before registering.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |Table { lv_tab } has SE11 changes not yet activated (or failed activation). Fix in SE11 and activate before registering.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3828,7 +3828,7 @@ FORM do_reg_validate_and_save.
 
   IF sy-subrc <> 0.
     SET CURSOR FIELD 'GV_REG_TABLE'.
-    MESSAGE |Failed to read field list for { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |Failed to read field list for { lv_tab }.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3837,7 +3837,7 @@ FORM do_reg_validate_and_save.
   ENDLOOP.
   IF lv_has_mandt = abap_false.
     SET CURSOR FIELD 'GV_REG_TABLE'.
-    MESSAGE TEXT-090 TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-090 TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
@@ -3847,19 +3847,19 @@ FORM do_reg_validate_and_save.
   ENDLOOP.
   IF lv_has_key = abap_false.
     SET CURSOR FIELD 'GV_REG_TABLE'.
-    MESSAGE TEXT-050 TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-050 TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   READ TABLE lt_fields INTO ls_field WITH KEY fieldname = lv_fld.
   IF sy-subrc <> 0.
     SET CURSOR FIELD 'GV_REG_DATFLD'.
-    MESSAGE |Field { lv_fld } does not exist in table { lv_tab }.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |Field { lv_fld } does not exist in table { lv_tab }.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
   IF ls_field-inttype <> 'D'.
     SET CURSOR FIELD 'GV_REG_DATFLD'.
-    MESSAGE |Field { lv_fld } is not of type DATE (inttype { ls_field-inttype }).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |Field { lv_fld } is not of type DATE (inttype { ls_field-inttype }).| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3888,7 +3888,7 @@ FORM do_reg_validate_and_save.
   TRY.
     lv_uuid = cl_system_uuid=>create_uuid_x16_static( ).
   CATCH cx_uuid_error.
-    MESSAGE TEXT-096 TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE TEXT-096 TYPE 'I' DISPLAY LIKE 'E'.
     RETURN.
   ENDTRY.
 
@@ -3916,7 +3916,7 @@ FORM do_reg_validate_and_save.
     gv_reg_active = 'X'.
     LEAVE TO SCREEN 0.
   ELSE.
-    MESSAGE |INSERT ZSP26_ARCH_CFG failed (sy-subrc={ sy-subrc }).| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |INSERT ZSP26_ARCH_CFG failed (sy-subrc={ sy-subrc }).| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
   ENDIF.
 ENDFORM.
 
