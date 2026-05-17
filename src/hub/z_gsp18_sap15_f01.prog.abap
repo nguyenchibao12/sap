@@ -3739,6 +3739,8 @@ FORM do_reg_validate_and_save.
         lv_ans       TYPE char1,
         lv_tab       TYPE tabname,
         lv_fld       TYPE fieldname,
+        lv_tab_str   TYPE string,
+        lv_fld_str   TYPE string,
         lv_ret_days  TYPE i,
         lv_ret_raw   TYPE string.
 
@@ -3746,6 +3748,9 @@ FORM do_reg_validate_and_save.
   lv_fld = gv_reg_datfld.
   CONDENSE: lv_tab NO-GAPS, lv_fld NO-GAPS.
   TRANSLATE: lv_tab TO UPPER CASE, lv_fld TO UPPER CASE.
+  " Assign to STRING — CHAR→STRING assignment strips trailing blanks automatically.
+  lv_tab_str = lv_tab.
+  lv_fld_str = lv_fld.
 
   IF lv_tab IS INITIAL.
     MESSAGE |[Table Name] is required – enter the Z* transparent table to register (e.g. ZSP26_EKKO).| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
@@ -3759,8 +3764,7 @@ FORM do_reg_validate_and_save.
   ENDIF.
 
   " SAP-style names: letters, digits, underscore only (before DDIC round-trip).
-  " CONV string() strips CHAR trailing blanks so FIND REGEX does not false-fire on padding.
-  FIND FIRST OCCURRENCE OF REGEX '[^A-Z0-9_]' IN CONV string( lv_tab ).
+  FIND FIRST OCCURRENCE OF REGEX '[^A-Z0-9_]' IN lv_tab_str.
   IF sy-subrc = 0.
     MESSAGE |[Table Name] "{ lv_tab }" contains invalid characters – only A–Z, 0–9 and _ are allowed.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     SET CURSOR FIELD 'GV_REG_TABLE'.
@@ -3771,7 +3775,7 @@ FORM do_reg_validate_and_save.
     MESSAGE |Table { lv_tab } does not start with 'Z'. Only customer Z* tables are supported for archiving.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
-  FIND FIRST OCCURRENCE OF REGEX '[^A-Z0-9_]' IN CONV string( lv_fld ).
+  FIND FIRST OCCURRENCE OF REGEX '[^A-Z0-9_]' IN lv_fld_str.
   IF sy-subrc = 0.
     MESSAGE |[Date Field] "{ lv_fld }" contains invalid characters – only A–Z, 0–9 and _ are allowed.| TYPE 'I' DISPLAY LIKE 'E' ##NO_TEXT.
     SET CURSOR FIELD 'GV_REG_DATFLD'.
