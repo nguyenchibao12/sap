@@ -120,12 +120,12 @@ FORM validate_table_against_cfg
   ENDIF.
 
   " Detect pending/failed SE11 activation:
-  " SAP keeps the 'M' (modified/inactive) entry in DD02L as long as the object
-  " has unsaved or unactivated changes. On successful activation 'M' is deleted.
-  " Checking for 'M' existence is therefore the definitive signal — no timestamp
-  " comparison needed (timestamps can be equal or out of order in edge cases).
-  SELECT SINGLE tabname FROM dd02l BYPASSING BUFFER INTO @DATA(lv_dd02l_m)
-    WHERE tabname = @lv_tn AND as4local = 'M'.
+  " SAP keeps a non-'A' entry in DD02L while an object has unactivated changes.
+  " The value is 'M' (Modified) on some systems and 'N' (New) on others.
+  " Checking for any entry with as4local <> 'A' is the definitive signal.
+  " On successful activation only the 'A' entry remains.
+  SELECT SINGLE tabname FROM dd02l BYPASSING BUFFER INTO @DATA(lv_dd02l_inact)
+    WHERE tabname = @lv_tn AND as4local <> 'A'.
   IF sy-subrc = 0.
     CLEAR lv_synced.
     IF iv_clear_if_ddic_bad = abap_true.
@@ -281,9 +281,9 @@ FORM zsp26_restore_cfg_if_ddic_ok
     SELECT SINGLE tabname FROM dd02v INTO @DATA(lv_d2v) WHERE tabname = @lv_it.
     IF sy-subrc <> 0. CONTINUE. ENDIF.
 
-    " DDIC check 2: skip if table still has pending/failed SE11 activation ('M' in DD02L)
-    SELECT SINGLE tabname FROM dd02l BYPASSING BUFFER INTO @DATA(lv_dd02l_m_r)
-      WHERE tabname = @lv_it AND as4local = 'M'.
+    " DDIC check 2: skip if table has any pending/failed SE11 activation (non-'A' in DD02L)
+    SELECT SINGLE tabname FROM dd02l BYPASSING BUFFER INTO @DATA(lv_dd02l_inact_r)
+      WHERE tabname = @lv_it AND as4local <> 'A'.
     IF sy-subrc = 0. CONTINUE. ENDIF.
 
     " DDIC check 3: runtime SELECT probe — definitive check that nametab is usable
