@@ -63,7 +63,7 @@ MODULE status_0200 OUTPUT.
     IF gt_cfg_data IS INITIAL.
       SELECT DISTINCT table_name, description, retention, data_field, is_active
         FROM zsp26_arch_cfg
-        INTO CORRESPONDING FIELDS OF TABLE gt_cfg_data
+        INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data
         ORDER BY table_name.
     ENDIF.
   ELSE.

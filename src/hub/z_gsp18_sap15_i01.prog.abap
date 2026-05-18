@@ -171,7 +171,7 @@ MODULE user_command_0200 INPUT.
       IF gv_s200_mode = 'CFG'.
         SELECT DISTINCT table_name, description, retention, data_field, is_active
           FROM zsp26_arch_cfg
-          INTO CORRESPONDING FIELDS OF TABLE gt_cfg_data
+          INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data
           ORDER BY table_name.
         IF go_alv_200 IS BOUND.
           go_alv_200->refresh_table_display( ).
