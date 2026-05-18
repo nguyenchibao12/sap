@@ -3525,74 +3525,71 @@ ENDFORM.
 *& FORM DO_CONFIG — ZSP26_ARCH_CFG + [Register New Table] → screen 0800
 *&---------------------------------------------------------------------*
 FORM do_config.
-  DATA: lo_alv        TYPE REF TO cl_salv_table,
-        lo_cols       TYPE REF TO cl_salv_columns_table,
-        lo_col        TYPE REF TO cl_salv_column_table,
-        lo_funcs      TYPE REF TO cl_salv_functions,
-        lo_disp       TYPE REF TO cl_salv_display_settings,
-        lv_cfg_hdr    TYPE string.
+  " Show 0810 popup first (Register or View List)
+  CLEAR gv_cfg_action.
+  CALL SCREEN 0810 STARTING AT 18 8 ENDING AT 78 22.
+  IF gv_cfg_action = 'R'.
+    " User clicked Refresh/View → open screen 0200 in Config mode
+    gv_s200_mode = 'CFG'.
+    CLEAR: go_cont_200, go_alv_200, gt_cfg_data.
+    SET SCREEN 0200.
+    LEAVE SCREEN.
+  ENDIF.
+ENDFORM.
 
-  " Loop: 0810 popup (Refresh=show list, Back=exit) → SALV → back to 0810
-  DO.
-    CLEAR gv_cfg_action.
-    CALL SCREEN 0810 STARTING AT 18 8 ENDING AT 78 22.
-    IF gv_cfg_action <> 'R'.
-      EXIT.  " Back/Exit pressed on 0810 — leave config
-    ENDIF.
+*&---------------------------------------------------------------------*
+*& FORM BUILD_FIELDCAT_CFG — columns for Config ALV (screen 0200 CFG mode)
+*&---------------------------------------------------------------------*
+FORM build_fieldcat_cfg.
+  DATA: ls_fc TYPE lvc_s_fcat.
+  CLEAR gt_fcat_200.
 
-    PERFORM zsp26_sync_cfg_active_vs_ddic.
-    SELECT * FROM zsp26_arch_cfg INTO TABLE gt_cfg_data ORDER BY table_name.
+  DEFINE m_col.
+    CLEAR ls_fc.
+    ls_fc-fieldname = &1.
+    ls_fc-coltext   = &2 ##NO_TEXT.
+    ls_fc-outputlen = &3.
+    APPEND ls_fc TO gt_fcat_200.
+  END-OF-DEFINITION.
 
-    IF gt_cfg_data IS INITIAL.
-      MESSAGE TEXT-118 TYPE 'S' DISPLAY LIKE 'W'.
-      CONTINUE.  " go back to 0810
-    ENDIF.
+  m_col 'TABLE_NAME'  'Archive Table'   22.
+  m_col 'DESCRIPTION' 'Description'     32.
+  m_col 'RETENTION'   'Retention Days'  14.
+  m_col 'DATA_FIELD'  'Date Field'      14.
+  m_col 'IS_ACTIVE'   'Active'           8.
+ENDFORM.
 
-    CLEAR go_cfg_salv.
-    TRY.
-      cl_salv_table=>factory(
-        IMPORTING r_salv_table = lo_alv
-        CHANGING  t_table      = gt_cfg_data ).
-      go_cfg_salv = lo_alv.
+*&---------------------------------------------------------------------*
+*& FORM DISPLAY_CFG_ALV — CL_GUI_ALV_GRID for Config list on screen 0200
+*&---------------------------------------------------------------------*
+FORM display_cfg_alv.
+  IF go_cont_200 IS BOUND AND go_alv_200 IS BOUND.
+    RETURN.  " already initialised — BT_REFRESH uses refresh_table_display directly
+  ENDIF.
 
-      lo_funcs = lo_alv->get_functions( ).
-      TRY.
-        lo_funcs->add_function(
-          name     = 'REG_TAB'
-          icon     = '@0Y@'
-          text     = 'Register' ##NO_TEXT
-          tooltip  = 'Register a new Z table' ##NO_TEXT
-          position = if_salv_c_function_position=>left_of_salv_functions ).
-      CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported ##NO_HANDLER.
-      ENDTRY.
-      lo_funcs->set_all( abap_true ).
+  IF go_cont_200 IS BOUND.
+    go_cont_200->free( ).
+    CLEAR: go_cont_200, go_alv_200.
+  ENDIF.
 
-      SET HANDLER lcl_cfg_handler=>on_func FOR lo_alv->get_event( ).
+  CREATE OBJECT go_cont_200
+    EXPORTING container_name = 'ALV_CONTAINER'
+    EXCEPTIONS OTHERS        = 1.
+  IF sy-subrc <> 0.
+    MESSAGE TEXT-104 TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
 
-      lo_cols = lo_alv->get_columns( ).
-      lo_cols->set_optimize( abap_true ).
+  CREATE OBJECT go_alv_200
+    EXPORTING i_parent = go_cont_200
+    EXCEPTIONS OTHERS  = 1.
+  IF sy-subrc <> 0. RETURN. ENDIF.
 
-      TRY.
-        lo_col ?= lo_cols->get_column( 'CONFIG_ID' ).   lo_col->set_visible( abap_false ).
-        lo_col ?= lo_cols->get_column( 'MANDT' ).        lo_col->set_visible( abap_false ).
-        lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).   lo_col->set_long_text( TEXT-046 ).
-        lo_col ?= lo_cols->get_column( 'DESCRIPTION' ).  lo_col->set_long_text( TEXT-016 ).
-        lo_col ?= lo_cols->get_column( 'RETENTION' ).    lo_col->set_long_text( TEXT-032 ).
-        lo_col ?= lo_cols->get_column( 'DATA_FIELD' ).   lo_col->set_long_text( TEXT-013 ).
-        lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).    lo_col->set_long_text( TEXT-003 ).
-      CATCH cx_salv_not_found ##NO_HANDLER.
-      ENDTRY.
+  PERFORM build_fieldcat_cfg.
 
-      lo_disp = lo_alv->get_display_settings( ).
-      lv_cfg_hdr = |ARCHIVE CONFIG — { lines( gt_cfg_data ) } table(s) — Back → return to menu| ##NO_TEXT.
-      lo_disp->set_list_header( CONV #( lv_cfg_hdr ) ).
-
-      lo_alv->display( ).  " blocking — returns when user presses Back on SALV
-
-    CATCH cx_salv_msg INTO DATA(lx).
-      MESSAGE lx->get_text( ) TYPE 'E'.
-    ENDTRY.
-  ENDDO.
+  CALL METHOD go_alv_200->set_table_for_first_display
+    CHANGING it_outtab       = gt_cfg_data
+             it_fieldcatalog = gt_fcat_200.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

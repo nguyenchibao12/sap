@@ -57,13 +57,18 @@ MODULE status_0100 OUTPUT.
 ENDMODULE.
 
 MODULE status_0200 OUTPUT.
-  " STATUS_200 does not exist in CUA — reuse STATUS_100
   SET PF-STATUS 'STATUS_100'.
   SET TITLEBAR 'TITLE_100' ##TITL_UNDEF.
-  " Load and build field catalog if no data yet
-  IF gt_arch_stat IS INITIAL.
-    PERFORM get_data.
-    PERFORM build_fieldcat.
+  IF gv_s200_mode = 'CFG'.
+    IF gt_cfg_data IS INITIAL.
+      PERFORM zsp26_sync_cfg_active_vs_ddic.
+      SELECT * FROM zsp26_arch_cfg INTO TABLE gt_cfg_data ORDER BY table_name.
+    ENDIF.
+  ELSE.
+    IF gt_arch_stat IS INITIAL.
+      PERFORM get_data.
+      PERFORM build_fieldcat.
+    ENDIF.
   ENDIF.
 ENDMODULE.
 
@@ -71,7 +76,11 @@ ENDMODULE.
 *& Module DISPLAY_ALV_0200 OUTPUT
 *&---------------------------------------------------------------------*
 MODULE display_alv_0200 OUTPUT.
-  PERFORM display_alv.
+  IF gv_s200_mode = 'CFG'.
+    PERFORM display_cfg_alv.
+  ELSE.
+    PERFORM display_alv.
+  ENDIF.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*

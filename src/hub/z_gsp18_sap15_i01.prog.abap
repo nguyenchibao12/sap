@@ -159,14 +159,27 @@ MODULE user_command_0200 INPUT.
         go_cont_200->free( ).
         CLEAR: go_cont_200, go_alv_200.
       ENDIF.
-      CLEAR gt_arch_stat.
+      IF gv_s200_mode = 'CFG'.
+        CLEAR gt_cfg_data.
+        gv_s200_mode = 'MON'.
+      ELSE.
+        CLEAR gt_arch_stat.
+      ENDIF.
       SET SCREEN 0100. LEAVE SCREEN.
 
     WHEN 'BT_REFRESH'.
-      CLEAR: gt_arch_stat, go_cont_200, go_alv_200.
-      PERFORM get_data.
-      PERFORM build_fieldcat.
-      PERFORM display_alv.
+      IF gv_s200_mode = 'CFG'.
+        PERFORM zsp26_sync_cfg_active_vs_ddic.
+        SELECT * FROM zsp26_arch_cfg INTO TABLE gt_cfg_data ORDER BY table_name.
+        IF go_alv_200 IS BOUND.
+          go_alv_200->refresh_table_display( ).
+        ENDIF.
+      ELSE.
+        CLEAR: gt_arch_stat, go_cont_200, go_alv_200.
+        PERFORM get_data.
+        PERFORM build_fieldcat.
+        PERFORM display_alv.
+      ENDIF.
   ENDCASE.
 ENDMODULE.
 
