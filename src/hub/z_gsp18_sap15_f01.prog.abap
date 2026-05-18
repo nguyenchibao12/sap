@@ -3579,7 +3579,7 @@ FORM do_config.
     TRY.
       lo_funcs->add_function(
         name     = 'CFG_RF'
-        icon     = icon_refresh
+        icon     = '@49@'
         text     = 'Refresh' ##NO_TEXT
         tooltip  = 'Reload config list from database' ##NO_TEXT
         position = if_salv_c_function_position=>left_of_salv_functions ).
@@ -3610,7 +3610,7 @@ FORM do_config.
 
     lo_disp = lo_alv->get_display_settings( ).
     DATA lv_cfg_hdr TYPE string.
-    lv_cfg_hdr = |ARCHIVE CONFIG — { lines( lt_cfg ) } rows / Register: use popup or toolbar [Register] if available.| ##NO_TEXT.
+    lv_cfg_hdr = |ARCHIVE CONFIG — { lines( gt_cfg_data ) } rows / Register: use popup or toolbar [Register] if available.| ##NO_TEXT.
     lo_disp->set_list_header( CONV #( lv_cfg_hdr ) ).
 
     lo_alv->display( ).
