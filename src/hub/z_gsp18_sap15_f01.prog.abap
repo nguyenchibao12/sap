@@ -24,13 +24,23 @@ ENDCLASS.
 
 CLASS lcl_cfg_handler IMPLEMENTATION.
   METHOD on_func.
-    CHECK e_salv_function = 'REG_TAB'.
-
-    CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
-    gv_reg_ret    = '365'.
-    gv_reg_active = 'X'.
-
-    CALL SCREEN 0800 STARTING AT 12 6 ENDING AT 88 20.
+    CASE e_salv_function.
+      WHEN 'REG_TAB'.
+        CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
+        gv_reg_ret    = '365'.
+        gv_reg_active = 'X'.
+        CALL SCREEN 0800 STARTING AT 12 6 ENDING AT 88 20.
+        " Auto-refresh after registration returns
+        SELECT * FROM zsp26_arch_cfg INTO TABLE gt_cfg_data ORDER BY table_name.
+        IF go_cfg_salv IS BOUND.
+          go_cfg_salv->refresh( ).
+        ENDIF.
+      WHEN 'CFG_RF'.
+        SELECT * FROM zsp26_arch_cfg INTO TABLE gt_cfg_data ORDER BY table_name.
+        IF go_cfg_salv IS BOUND.
+          go_cfg_salv->refresh( ).
+        ENDIF.
+    ENDCASE.
   ENDMETHOD.
 ENDCLASS.
 
@@ -3523,8 +3533,7 @@ ENDFORM.
 *& FORM DO_CONFIG — ZSP26_ARCH_CFG + [Register New Table] → screen 0800
 *&---------------------------------------------------------------------*
 FORM do_config.
-  DATA: lt_cfg        TYPE TABLE OF zsp26_arch_cfg,
-        lo_alv        TYPE REF TO cl_salv_table,
+  DATA: lo_alv        TYPE REF TO cl_salv_table,
         lo_cols       TYPE REF TO cl_salv_columns_table,
         lo_col        TYPE REF TO cl_salv_column_table,
         lo_funcs      TYPE REF TO cl_salv_functions,
@@ -3535,9 +3544,9 @@ FORM do_config.
   CALL SCREEN 0810 STARTING AT 18 8 ENDING AT 78 22.
 
   PERFORM zsp26_sync_cfg_active_vs_ddic.
-  SELECT * FROM zsp26_arch_cfg INTO TABLE lt_cfg ORDER BY table_name.
+  SELECT * FROM zsp26_arch_cfg INTO TABLE gt_cfg_data ORDER BY table_name.
 
-  IF lt_cfg IS INITIAL.
+  IF gt_cfg_data IS INITIAL.
     MESSAGE TEXT-118 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
@@ -3545,7 +3554,8 @@ FORM do_config.
   TRY.
     cl_salv_table=>factory(
       IMPORTING r_salv_table = lo_alv
-      CHANGING  t_table      = lt_cfg ).
+      CHANGING  t_table      = gt_cfg_data ).
+    go_cfg_salv = lo_alv.
 
     lo_funcs = lo_alv->get_functions( ).
     TRY.
@@ -3565,6 +3575,15 @@ FORM do_config.
           position = if_salv_c_function_position=>right_of_salv_functions ).
       CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported ##NO_HANDLER.
       ENDTRY.
+    ENDTRY.
+    TRY.
+      lo_funcs->add_function(
+        name     = 'CFG_RF'
+        icon     = icon_refresh
+        text     = 'Refresh' ##NO_TEXT
+        tooltip  = 'Reload config list from database' ##NO_TEXT
+        position = if_salv_c_function_position=>left_of_salv_functions ).
+    CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported ##NO_HANDLER.
     ENDTRY.
     lo_funcs->set_all( abap_true ).
 
