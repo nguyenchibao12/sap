@@ -3560,6 +3560,10 @@ FORM build_fieldcat_cfg.
   m_col 'RETENTION'   'Retention Days'  14.
   m_col 'DATA_FIELD'  'Date Field'      14.
   m_col 'IS_ACTIVE'   'Active'           8.
+  m_col 'CREATED_BY'  'Created By'      12.
+  m_col 'CREATED_ON'  'Created On'      12.
+  m_col 'CHANGED_BY'  'Changed By'      12.
+  m_col 'CHANGED_ON'  'Changed On'      12.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

@@ -61,7 +61,8 @@ MODULE status_0200 OUTPUT.
   SET TITLEBAR 'TITLE_100' ##TITL_UNDEF.
   IF gv_s200_mode = 'CFG'.
     IF gt_cfg_data IS INITIAL.
-      SELECT DISTINCT table_name, description, retention, data_field, is_active
+      SELECT DISTINCT table_name, description, retention, data_field, is_active,
+                      created_by, created_on, changed_by, changed_on
         FROM zsp26_arch_cfg
         WHERE is_active = 'X' OR is_active = ' '
         INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data.
@@ -322,14 +323,6 @@ MODULE status_0800 OUTPUT.
       ENDIF.
     ENDIF.
   ENDIF.
-
-  " Lock GV_REG_TABLE when table is already active — prevent re-registration.
-  LOOP AT SCREEN.
-    IF screen-name = 'GV_REG_TABLE' AND lv_already = abap_true.
-      screen-input = 0.
-      MODIFY SCREEN.
-    ENDIF.
-  ENDLOOP.
 
   SET PF-STATUS 'STATUS_300'.
   SET TITLEBAR 'TITLE_300' ##TITL_UNDEF.

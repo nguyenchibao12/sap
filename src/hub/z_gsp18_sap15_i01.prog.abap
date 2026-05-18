@@ -170,7 +170,8 @@ MODULE user_command_0200 INPUT.
     WHEN 'BT_REFRESH'.
       IF gv_s200_mode = 'CFG'.
         PERFORM zsp26_sync_cfg_active_vs_ddic.
-        SELECT DISTINCT table_name, description, retention, data_field, is_active
+        SELECT DISTINCT table_name, description, retention, data_field, is_active,
+                        created_by, created_on, changed_by, changed_on
           FROM zsp26_arch_cfg
           WHERE is_active = 'X' OR is_active = ' '
           INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data.
