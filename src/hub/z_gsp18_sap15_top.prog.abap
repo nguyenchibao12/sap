@@ -234,4 +234,12 @@ CLASS lcl_cfg_handler DEFINITION.
       IMPORTING e_salv_function.
 ENDCLASS.
 
+" Screen 0200 — handle BT_REFRESH via ALV user_command (ALV intercepts keys before PAI)
+CLASS lcl_alv200_handler DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS on_user_command
+      FOR EVENT user_command OF cl_gui_alv_grid
+      IMPORTING e_ucomm.
+ENDCLASS.
+
 "  lcl_handler + lcl_mon_handler + lcl_btc_handler + lcl_run_handler + lcl_cfg_handler in F01

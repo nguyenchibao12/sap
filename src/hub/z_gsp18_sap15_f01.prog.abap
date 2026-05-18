@@ -34,6 +34,16 @@ CLASS lcl_cfg_handler IMPLEMENTATION.
   ENDMETHOD.
 ENDCLASS.
 
+CLASS lcl_alv200_handler IMPLEMENTATION.
+  METHOD on_user_command.
+    CHECK e_ucomm = 'BT_REFRESH'.
+    PERFORM get_data.
+    IF go_alv_200 IS BOUND.
+      go_alv_200->refresh_table_display( ).
+    ENDIF.
+  ENDMETHOD.
+ENDCLASS.
+
 
 *&---------------------------------------------------------------------*
 *& Phase 4 — Monitor drill-down: Detail Log button handler
@@ -4004,6 +4014,8 @@ FORM display_alv.
     EXPORTING i_parent = go_cont_200
     EXCEPTIONS OTHERS  = 1.
   IF sy-subrc <> 0. RETURN. ENDIF.
+
+  SET HANDLER lcl_alv200_handler=>on_user_command FOR go_alv_200.
 
   CALL METHOD go_alv_200->set_table_for_first_display
     CHANGING it_outtab       = gt_arch_stat
