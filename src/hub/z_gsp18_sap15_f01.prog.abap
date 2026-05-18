@@ -3531,6 +3531,9 @@ FORM do_config.
   IF gv_cfg_action = 'R'.
     " User clicked Refresh/View → open screen 0200 in Config mode
     gv_s200_mode = 'CFG'.
+    IF go_cont_200 IS BOUND.
+      go_cont_200->free( ).
+    ENDIF.
     CLEAR: go_cont_200, go_alv_200, gt_cfg_data.
     SET SCREEN 0200.
     LEAVE SCREEN.
@@ -3593,6 +3596,12 @@ FORM display_cfg_alv.
     EXPORTING is_layout       = ls_layout
     CHANGING  it_outtab       = gt_cfg_data
               it_fieldcatalog = gt_fcat_200.
+
+  IF lines( gt_cfg_data ) > 0.
+    go_alv_200->set_current_cell_via_id(
+      is_row_id    = VALUE lvc_s_row( index = 1 )
+      is_column_id = VALUE lvc_s_col( fieldname = 'TABLE_NAME' ) ).
+  ENDIF.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
