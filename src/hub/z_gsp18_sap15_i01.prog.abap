@@ -170,15 +170,18 @@ MODULE user_command_0200 INPUT.
     WHEN 'BT_REFRESH'.
       IF gv_s200_mode = 'CFG'.
         PERFORM zsp26_sync_cfg_active_vs_ddic.
+        CLEAR gt_cfg_data.
         SELECT DISTINCT table_name, description, retention, data_field, is_active,
                         created_by, created_on, changed_by, changed_on
           FROM zsp26_arch_cfg
           WHERE is_active = 'X' OR is_active = ' '
           INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data.
         SORT gt_cfg_data BY table_name.
-        IF go_alv_200 IS BOUND.
-          go_alv_200->refresh_table_display( ).
+        IF go_cont_200 IS BOUND.
+          go_cont_200->free( ).
         ENDIF.
+        CLEAR: go_cont_200, go_alv_200.
+        PERFORM display_cfg_alv.
       ELSE.
         CLEAR: gt_arch_stat, go_cont_200, go_alv_200.
         PERFORM get_data.
