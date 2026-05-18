@@ -3587,9 +3587,12 @@ FORM display_cfg_alv.
 
   PERFORM build_fieldcat_cfg.
 
+  DATA(ls_layout) = VALUE lvc_s_layo( zebra = 'X' col_opt = 'X' ).
+
   CALL METHOD go_alv_200->set_table_for_first_display
-    CHANGING it_outtab       = gt_cfg_data
-             it_fieldcatalog = gt_fcat_200.
+    EXPORTING is_layout       = ls_layout
+    CHANGING  it_outtab       = gt_cfg_data
+              it_fieldcatalog = gt_fcat_200.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

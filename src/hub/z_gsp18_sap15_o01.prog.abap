@@ -61,8 +61,10 @@ MODULE status_0200 OUTPUT.
   SET TITLEBAR 'TITLE_100' ##TITL_UNDEF.
   IF gv_s200_mode = 'CFG'.
     IF gt_cfg_data IS INITIAL.
-      PERFORM zsp26_sync_cfg_active_vs_ddic.
-      SELECT * FROM zsp26_arch_cfg INTO TABLE gt_cfg_data ORDER BY table_name.
+      SELECT DISTINCT table_name, description, retention, data_field, is_active
+        FROM zsp26_arch_cfg
+        INTO CORRESPONDING FIELDS OF TABLE gt_cfg_data
+        ORDER BY table_name.
     ENDIF.
   ELSE.
     IF gt_arch_stat IS INITIAL.
