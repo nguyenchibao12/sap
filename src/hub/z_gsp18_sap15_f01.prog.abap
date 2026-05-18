@@ -3684,26 +3684,44 @@ FORM f4_reg_datfld.
            fieldname TYPE fieldname,
            ddtext    TYPE as4text,
          END OF ty_fld_f4.
-  DATA: lt_flds TYPE TABLE OF ty_fld_f4,
-        ls_fld  TYPE ty_fld_f4,
-        lt_dd2  TYPE TABLE OF dfies,
-        ls_dd2  TYPE dfies,
-        lt_ret2 TYPE TABLE OF ddshretval,
-        ls_ret2 TYPE ddshretval,
-        lv_win(40) TYPE c.
+  DATA: lt_flds    TYPE TABLE OF ty_fld_f4,
+        ls_fld     TYPE ty_fld_f4,
+        lt_dd2     TYPE TABLE OF dfies,
+        ls_dd2     TYPE dfies,
+        lt_ret2    TYPE TABLE OF ddshretval,
+        ls_ret2    TYPE ddshretval,
+        lv_win(40) TYPE c,
+        lt_dynp    TYPE TABLE OF dynpread,
+        ls_dynp    TYPE dynpread,
+        lv_tab     TYPE tabname.
 
-  IF gv_reg_table IS INITIAL.
+  " Read GV_REG_TABLE from screen directly — global var not yet updated during POV.
+  ls_dynp-fieldname = 'GV_REG_TABLE'.
+  APPEND ls_dynp TO lt_dynp.
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING dyname     = sy-repid
+              dynumb     = sy-dynnr
+    TABLES    dynpfields = lt_dynp
+    EXCEPTIONS OTHERS    = 1.
+  READ TABLE lt_dynp INTO ls_dynp INDEX 1.
+  IF sy-subrc = 0.
+    lv_tab = ls_dynp-fieldval.
+    CONDENSE lv_tab NO-GAPS.
+    TRANSLATE lv_tab TO UPPER CASE.
+  ENDIF.
+
+  IF lv_tab IS INITIAL.
     MESSAGE TEXT-055 TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
   CALL FUNCTION 'DDIF_FIELDINFO_GET'
-    EXPORTING  tabname   = gv_reg_table
+    EXPORTING  tabname   = lv_tab
     TABLES     dfies_tab = lt_dd2
     EXCEPTIONS OTHERS    = 1.
 
   IF sy-subrc <> 0.
-    MESSAGE |Failed to read table structure for { gv_reg_table } from DDIC.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |Failed to read table structure for { lv_tab } from DDIC.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
@@ -3716,7 +3734,7 @@ FORM f4_reg_datfld.
   ENDLOOP.
 
   IF lt_flds IS INITIAL.
-    MESSAGE |Table { gv_reg_table } has no DATE-type field.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
+    MESSAGE |Table { lv_tab } has no DATE-type field.| TYPE 'S' DISPLAY LIKE 'E' ##NO_TEXT.
     RETURN.
   ENDIF.
 
