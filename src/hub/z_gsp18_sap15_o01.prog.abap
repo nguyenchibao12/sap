@@ -64,8 +64,8 @@ MODULE status_0200 OUTPUT.
       SELECT DISTINCT table_name, description, retention, data_field, is_active
         FROM zsp26_arch_cfg
         WHERE is_active = 'X' OR is_active = ' '
-        INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data
-        ORDER BY table_name.
+        INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data.
+      SORT gt_cfg_data BY table_name.
     ENDIF.
   ELSE.
     IF gt_arch_stat IS INITIAL.
