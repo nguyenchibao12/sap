@@ -71,8 +71,9 @@ DATA gv_restored TYPE i ##NEEDED.
 DATA gv_errors TYPE i ##NEEDED.
 
 " Config list SALV globals (needed so lcl_cfg_handler can refresh after registration)
-DATA gt_cfg_data TYPE TABLE OF zsp26_arch_cfg ##NEEDED.
-DATA go_cfg_salv TYPE REF TO cl_salv_table    ##NEEDED.
+DATA gt_cfg_data    TYPE TABLE OF zsp26_arch_cfg ##NEEDED.
+DATA go_cfg_salv    TYPE REF TO cl_salv_table    ##NEEDED.
+DATA gv_cfg_action  TYPE char1                   ##NEEDED. " 'R'=show/refresh list; ''=exit
 
 " Monitor globals
 DATA gt_arch_stat TYPE TABLE OF ty_arch_stat ##NEEDED.

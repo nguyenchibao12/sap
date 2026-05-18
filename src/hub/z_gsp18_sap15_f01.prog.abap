@@ -24,23 +24,15 @@ ENDCLASS.
 
 CLASS lcl_cfg_handler IMPLEMENTATION.
   METHOD on_func.
-    CASE e_salv_function.
-      WHEN 'REG_TAB'.
-        CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
-        gv_reg_ret    = '365'.
-        gv_reg_active = 'X'.
-        CALL SCREEN 0800 STARTING AT 12 6 ENDING AT 88 20.
-        " Auto-refresh after registration returns
-        SELECT * FROM zsp26_arch_cfg INTO TABLE gt_cfg_data ORDER BY table_name.
-        IF go_cfg_salv IS BOUND.
-          go_cfg_salv->refresh( ).
-        ENDIF.
-      WHEN 'CFG_RF'.
-        SELECT * FROM zsp26_arch_cfg INTO TABLE gt_cfg_data ORDER BY table_name.
-        IF go_cfg_salv IS BOUND.
-          go_cfg_salv->refresh( ).
-        ENDIF.
-    ENDCASE.
+    CHECK e_salv_function = 'REG_TAB'.
+    CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
+    gv_reg_ret    = '365'.
+    gv_reg_active = 'X'.
+    CALL SCREEN 0800 STARTING AT 12 6 ENDING AT 88 20.
+    SELECT * FROM zsp26_arch_cfg INTO TABLE gt_cfg_data ORDER BY table_name.
+    IF go_cfg_salv IS BOUND.
+      go_cfg_salv->refresh( ).
+    ENDIF.
   ENDMETHOD.
 ENDCLASS.
 
@@ -3537,87 +3529,70 @@ FORM do_config.
         lo_cols       TYPE REF TO cl_salv_columns_table,
         lo_col        TYPE REF TO cl_salv_column_table,
         lo_funcs      TYPE REF TO cl_salv_functions,
-        lo_disp       TYPE REF TO cl_salv_display_settings.
+        lo_disp       TYPE REF TO cl_salv_display_settings,
+        lv_cfg_hdr    TYPE string.
 
-  " Popup 0810: many GUI themes (especially newer ones) hide SALV add_function buttons —
-  " always provide 2 explicit dynpro buttons before opening the SALV list.
-  CALL SCREEN 0810 STARTING AT 18 8 ENDING AT 78 22.
+  " Loop: 0810 popup (Refresh=show list, Back=exit) → SALV → back to 0810
+  DO.
+    CLEAR gv_cfg_action.
+    CALL SCREEN 0810 STARTING AT 18 8 ENDING AT 78 22.
+    IF gv_cfg_action <> 'R'.
+      EXIT.  " Back/Exit pressed on 0810 — leave config
+    ENDIF.
 
-  PERFORM zsp26_sync_cfg_active_vs_ddic.
-  SELECT * FROM zsp26_arch_cfg INTO TABLE gt_cfg_data ORDER BY table_name.
+    PERFORM zsp26_sync_cfg_active_vs_ddic.
+    SELECT * FROM zsp26_arch_cfg INTO TABLE gt_cfg_data ORDER BY table_name.
 
-  IF gt_cfg_data IS INITIAL.
-    MESSAGE TEXT-118 TYPE 'S' DISPLAY LIKE 'W'.
-    RETURN.
-  ENDIF.
+    IF gt_cfg_data IS INITIAL.
+      MESSAGE TEXT-118 TYPE 'S' DISPLAY LIKE 'W'.
+      CONTINUE.  " go back to 0810
+    ENDIF.
 
-  TRY.
-    cl_salv_table=>factory(
-      IMPORTING r_salv_table = lo_alv
-      CHANGING  t_table      = gt_cfg_data ).
-    go_cfg_salv = lo_alv.
-
-    lo_funcs = lo_alv->get_functions( ).
+    CLEAR go_cfg_salv.
     TRY.
-      lo_funcs->add_function(
-        name     = 'REG_TAB'
-        icon     = '@0Y@'
-        text     = 'Register' ##NO_TEXT
-        tooltip  = 'Register a Z table (add if GUI shows; main: previous popup)' ##NO_TEXT
-        position = if_salv_c_function_position=>left_of_salv_functions ).
-    CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported.
+      cl_salv_table=>factory(
+        IMPORTING r_salv_table = lo_alv
+        CHANGING  t_table      = gt_cfg_data ).
+      go_cfg_salv = lo_alv.
+
+      lo_funcs = lo_alv->get_functions( ).
       TRY.
         lo_funcs->add_function(
           name     = 'REG_TAB'
           icon     = '@0Y@'
           text     = 'Register' ##NO_TEXT
           tooltip  = 'Register a new Z table' ##NO_TEXT
-          position = if_salv_c_function_position=>right_of_salv_functions ).
+          position = if_salv_c_function_position=>left_of_salv_functions ).
       CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported ##NO_HANDLER.
       ENDTRY.
+      lo_funcs->set_all( abap_true ).
+
+      SET HANDLER lcl_cfg_handler=>on_func FOR lo_alv->get_event( ).
+
+      lo_cols = lo_alv->get_columns( ).
+      lo_cols->set_optimize( abap_true ).
+
+      TRY.
+        lo_col ?= lo_cols->get_column( 'CONFIG_ID' ).   lo_col->set_visible( abap_false ).
+        lo_col ?= lo_cols->get_column( 'MANDT' ).        lo_col->set_visible( abap_false ).
+        lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).   lo_col->set_long_text( TEXT-046 ).
+        lo_col ?= lo_cols->get_column( 'DESCRIPTION' ).  lo_col->set_long_text( TEXT-016 ).
+        lo_col ?= lo_cols->get_column( 'RETENTION' ).    lo_col->set_long_text( TEXT-032 ).
+        lo_col ?= lo_cols->get_column( 'DATA_FIELD' ).   lo_col->set_long_text( TEXT-013 ).
+        lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).    lo_col->set_long_text( TEXT-003 ).
+      CATCH cx_salv_not_found ##NO_HANDLER.
+      ENDTRY.
+
+      lo_disp = lo_alv->get_display_settings( ).
+      lv_cfg_hdr = |ARCHIVE CONFIG — { lines( gt_cfg_data ) } table(s) — Back → return to menu| ##NO_TEXT.
+      lo_disp->set_list_header( CONV #( lv_cfg_hdr ) ).
+
+      lo_alv->display( ).  " blocking — returns when user presses Back on SALV
+
+    CATCH cx_salv_msg INTO DATA(lx).
+      MESSAGE lx->get_text( ) TYPE 'E'.
     ENDTRY.
-    TRY.
-      lo_funcs->add_function(
-        name     = 'CFG_RF'
-        icon     = '@49@'
-        text     = 'Refresh' ##NO_TEXT
-        tooltip  = 'Reload config list from database' ##NO_TEXT
-        position = if_salv_c_function_position=>left_of_salv_functions ).
-    CATCH cx_salv_existing cx_salv_wrong_call cx_salv_method_not_supported ##NO_HANDLER.
-    ENDTRY.
-    lo_funcs->set_all( abap_true ).
-
-    SET HANDLER lcl_cfg_handler=>on_func FOR lo_alv->get_event( ).
-
-    lo_cols = lo_alv->get_columns( ).
-    lo_cols->set_optimize( abap_true ).
-
-    TRY.
-      lo_col ?= lo_cols->get_column( 'CONFIG_ID' ).   lo_col->set_visible( abap_false ).
-      lo_col ?= lo_cols->get_column( 'MANDT' ).        lo_col->set_visible( abap_false ).
-      lo_col ?= lo_cols->get_column( 'TABLE_NAME' ).
-      lo_col->set_long_text( TEXT-046 ).
-      lo_col ?= lo_cols->get_column( 'DESCRIPTION' ).
-      lo_col->set_long_text( TEXT-016 ).
-      lo_col ?= lo_cols->get_column( 'RETENTION' ).
-      lo_col->set_long_text( TEXT-032 ).
-      lo_col ?= lo_cols->get_column( 'DATA_FIELD' ).
-      lo_col->set_long_text( TEXT-013 ).
-      lo_col ?= lo_cols->get_column( 'IS_ACTIVE' ).
-      lo_col->set_long_text( TEXT-003 ).
-    CATCH cx_salv_not_found ##NO_HANDLER.
-    ENDTRY.
-
-    lo_disp = lo_alv->get_display_settings( ).
-    DATA lv_cfg_hdr TYPE string.
-    lv_cfg_hdr = |ARCHIVE CONFIG — { lines( gt_cfg_data ) } rows / Register: use popup or toolbar [Register] if available.| ##NO_TEXT.
-    lo_disp->set_list_header( CONV #( lv_cfg_hdr ) ).
-
-    lo_alv->display( ).
-
-  CATCH cx_salv_msg INTO DATA(lx).
-    MESSAGE lx->get_text( ) TYPE 'E'.
-  ENDTRY.
+  ENDDO.
 ENDFORM.
 
 *&---------------------------------------------------------------------*

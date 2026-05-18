@@ -730,20 +730,18 @@ MODULE user_command_0810 INPUT.
   CLEAR ok_code.
 
   CASE lv_c81.
-    WHEN 'BT_REFRESH'.
-      SET SCREEN 0810.
-      LEAVE SCREEN.
+    WHEN 'BT_REFRESH' OR 'BT_CFG_LIST'.
+      gv_cfg_action = 'R'.
+      LEAVE TO SCREEN 0.
     WHEN 'BT_CFG_REG'.
       CLEAR: gv_reg_table, gv_reg_datfld, gv_reg_desc.
       gv_reg_ret    = '365'.
       gv_reg_active = 'X'.
       CALL SCREEN 0800 STARTING AT 12 6 ENDING AT 88 20.
-      SET SCREEN 0810.
-      LEAVE SCREEN.
-
-    WHEN 'BT_CFG_LIST'.
+      gv_cfg_action = 'R'.
       LEAVE TO SCREEN 0.
     WHEN 'BACK' OR 'EXIT' OR 'CANC'.
+      CLEAR gv_cfg_action.
       LEAVE TO SCREEN 0.
     WHEN OTHERS.
       SET SCREEN 0810.
