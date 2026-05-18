@@ -29,16 +29,19 @@ CLASS lcl_cfg_handler IMPLEMENTATION.
     gv_reg_ret    = '365'.
     gv_reg_active = 'X'.
     CALL SCREEN 0800 STARTING AT 12 6 ENDING AT 88 20.
-    SELECT * FROM zsp26_arch_cfg INTO TABLE gt_cfg_data ORDER BY table_name.
-    IF go_cfg_salv IS BOUND.
-      go_cfg_salv->refresh( ).
-    ENDIF.
+    SELECT DISTINCT table_name, description, retention, data_field, is_active,
+                    created_by, created_on, changed_by, changed_on
+      FROM zsp26_arch_cfg
+      WHERE is_active = 'X' OR is_active = ' '
+      INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data.
+    SORT gt_cfg_data BY table_name.
   ENDMETHOD.
 ENDCLASS.
 
 CLASS lcl_alv200_handler IMPLEMENTATION.
   METHOD on_user_command.
-    CHECK e_ucomm = 'BT_REFRESH'.
+    " This handler fires only in MON mode; CFG-mode BT_REFRESH is handled by PAI user_command_0200.
+    CHECK e_ucomm = 'BT_REFRESH' AND gv_s200_mode = 'MON'.
     PERFORM get_data.
     IF go_alv_200 IS BOUND.
       go_alv_200->refresh_table_display( ).
@@ -1777,14 +1780,6 @@ FORM do_restore_preview.
 ENDFORM.
 
 
-*&---------------------------------------------------------------------*
-*& FORM DO_MONITOR — Storage Analysis & Monitoring (Feature 3)
-*& Scans all active configs → counts live+archive stats → ARCH_STAT
-*&---------------------------------------------------------------------*
-*&---------------------------------------------------------------------*
-*& FORM DO_MONITOR — Storage Analysis & Monitoring (Enhanced)
-*&   Phase 1: Fix duplicates  — GROUP BY table_name
-*&   Phase 2: Extra columns   — arch_recs, del_recs, pct_saved,
 *&---------------------------------------------------------------------*
 *& FORM DO_MONITOR_MENU — popup to choose Dashboard or Archive Inventory
 *&---------------------------------------------------------------------*

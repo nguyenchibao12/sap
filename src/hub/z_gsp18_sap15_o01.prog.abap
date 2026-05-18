@@ -210,7 +210,7 @@ MODULE init_fields_0600 OUTPUT.
   gv_disp_mandt  = sy-mandt.
   gv_disp_uname  = sy-uname.
 
-  gv_scr600_head = |Archive for { gv_object }| ##NO_TEXT.
+  gv_scr600_head = |Archive for { gv_tabname }| ##NO_TEXT.
 
   IF gv_purge_mode = 'X'.
     gv_stat_arch_tx = 'N/A (Purge-only)' ##NO_TEXT.
