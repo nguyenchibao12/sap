@@ -3700,7 +3700,7 @@ FORM f4_reg_datfld.
     EXCEPTIONS OTHERS    = 1.
   READ TABLE lt_dynp INTO ls_dynp INDEX 1.
   IF sy-subrc = 0.
-    lv_tab = ls_dynp-fieldval.
+    lv_tab = ls_dynp-fieldvalue.
     CONDENSE lv_tab NO-GAPS.
     TRANSLATE lv_tab TO UPPER CASE.
   ENDIF.
