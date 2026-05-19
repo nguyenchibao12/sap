@@ -3960,7 +3960,8 @@ FORM get_data.
 
   CLEAR gt_arch_stat.
 
-  SELECT DISTINCT table_name FROM zsp26_arch_log
+  SELECT DISTINCT table_name FROM zsp26_arch_cfg
+    WHERE is_active = 'X' OR is_active = ' '
     INTO TABLE @DATA(lt_tables).
 
   LOOP AT lt_tables INTO DATA(ls_tab).
