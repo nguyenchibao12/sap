@@ -4489,7 +4489,7 @@ FORM arch_copy_write_variant_dialog
   CLEAR ls_field.
   ls_field-tabname   = 'RSVARI'.
   ls_field-fieldname = 'VARIANT'.
-  ls_field-fieldtext = 'Ten variant moi' ##NO_TEXT.
+  ls_field-fieldtext = 'New variant name' ##NO_TEXT.
   CLEAR ls_field-value.
   APPEND ls_field TO lt_fields.
 
