@@ -65,7 +65,7 @@ MODULE status_0200 OUTPUT.
                       created_by, created_on, changed_by, changed_on
         FROM zsp26_arch_cfg
         WHERE is_active = 'X' OR is_active = ' '
-        INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data.
+        INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data ##TOO_MANY_ITAB_FIELDS.
       SORT gt_cfg_data BY table_name.
     ENDIF.
   ELSE.
@@ -306,7 +306,7 @@ MODULE status_0800 OUTPUT.
   " Auto-fill from existing config when table is already registered as active.
   CLEAR lv_already.
   IF gv_reg_table IS NOT INITIAL.
-    SELECT SINGLE * FROM zsp26_arch_cfg
+    SELECT SINGLE * FROM zsp26_arch_cfg ##WARN_OK
       INTO @ls_exist
       WHERE table_name = @gv_reg_table
         AND is_active  = 'X'.

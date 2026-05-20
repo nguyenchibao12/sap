@@ -104,7 +104,7 @@ FORM validate_table_against_cfg
   CLEAR lv_dd_tab.
   SELECT SINGLE tabname FROM dd02v
     INTO @lv_dd_tab
-    WHERE tabname = @lv_tn.
+    WHERE tabname = @lv_tn AND as4local = 'A'.
   IF sy-subrc <> 0.
     CLEAR lv_synced.
     IF iv_clear_if_ddic_bad = abap_true.
@@ -124,7 +124,7 @@ FORM validate_table_against_cfg
   " The value is 'M' (Modified) on some systems and 'N' (New) on others.
   " Checking for any entry with as4local <> 'A' is the definitive signal.
   " On successful activation only the 'A' entry remains.
-  SELECT SINGLE tabname FROM dd02l BYPASSING BUFFER INTO @DATA(lv_dd02l_inact)
+  SELECT SINGLE tabname FROM dd02l BYPASSING BUFFER INTO @DATA(lv_dd02l_inact) ##WARN_OK
     WHERE tabname = @lv_tn AND as4local <> 'A'.
   IF sy-subrc = 0.
     CLEAR lv_synced.
@@ -278,11 +278,11 @@ FORM zsp26_restore_cfg_if_ddic_ok
     IF lv_act > 0. CONTINUE. ENDIF.
 
     " DDIC check 1: active catalog entry
-    SELECT SINGLE tabname FROM dd02v INTO @DATA(lv_d2v) WHERE tabname = @lv_it.
+    SELECT SINGLE tabname FROM dd02v INTO @DATA(lv_d2v) WHERE tabname = @lv_it AND as4local = 'A'.
     IF sy-subrc <> 0. CONTINUE. ENDIF.
 
     " DDIC check 2: skip if table has any pending/failed SE11 activation (non-'A' in DD02L)
-    SELECT SINGLE tabname FROM dd02l BYPASSING BUFFER INTO @DATA(lv_dd02l_inact_r)
+    SELECT SINGLE tabname FROM dd02l BYPASSING BUFFER INTO @DATA(lv_dd02l_inact_r) ##WARN_OK
       WHERE tabname = @lv_it AND as4local <> 'A'.
     IF sy-subrc = 0. CONTINUE. ENDIF.
 

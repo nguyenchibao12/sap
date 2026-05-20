@@ -175,7 +175,7 @@ MODULE user_command_0200 INPUT.
                         created_by, created_on, changed_by, changed_on
           FROM zsp26_arch_cfg
           WHERE is_active = 'X' OR is_active = ' '
-          INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data.
+          INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data ##TOO_MANY_ITAB_FIELDS.
         SORT gt_cfg_data BY table_name.
         IF go_cont_200 IS BOUND.
           go_cont_200->free( ).

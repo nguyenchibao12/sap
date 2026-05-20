@@ -33,7 +33,7 @@ CLASS lcl_cfg_handler IMPLEMENTATION.
                     created_by, created_on, changed_by, changed_on
       FROM zsp26_arch_cfg
       WHERE is_active = 'X' OR is_active = ' '
-      INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data.
+      INTO CORRESPONDING FIELDS OF TABLE @gt_cfg_data ##TOO_MANY_ITAB_FIELDS.
     SORT gt_cfg_data BY table_name.
   ENDMETHOD.
 ENDCLASS.
@@ -3698,6 +3698,7 @@ FORM f4_reg_datfld.
               dynumb     = sy-dynnr
     TABLES    dynpfields = lt_dynp
     EXCEPTIONS OTHERS    = 1.
+  IF sy-subrc <> 0. RETURN. ENDIF.
   READ TABLE lt_dynp INTO ls_dynp INDEX 1.
   IF sy-subrc = 0.
     lv_tab = ls_dynp-fieldvalue.
@@ -3844,7 +3845,7 @@ FORM do_reg_validate_and_save.
     RETURN.
   ENDIF.
 
-  SELECT SINGLE tabname FROM dd02l BYPASSING BUFFER INTO @DATA(lv_dd02l_inact_reg)
+  SELECT SINGLE tabname FROM dd02l BYPASSING BUFFER INTO @DATA(lv_dd02l_inact_reg) ##WARN_OK
     WHERE tabname = @lv_tab AND as4local <> 'A'.
   IF sy-subrc = 0.
     SET CURSOR FIELD 'GV_REG_TABLE'.
