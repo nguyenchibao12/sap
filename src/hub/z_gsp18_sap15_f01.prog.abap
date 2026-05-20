@@ -4293,7 +4293,7 @@ FORM arch_popup_wvar_3ch_fb
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
       titlebar       = iv_titel
-      text_question  = '-' ##NO_TEXT
+      text_question  = 'Edit variant or copy / delete it?' ##NO_TEXT
       text_button_1  = TEXT-154
       text_button_2  = TEXT-155
       default_button = '1'
@@ -4316,7 +4316,7 @@ FORM arch_popup_wvar_3ch_fb
   CALL FUNCTION 'POPUP_TO_CONFIRM'
     EXPORTING
       titlebar       = iv_titel
-      text_question  = '-' ##NO_TEXT
+      text_question  = 'Copy variant to a new name, or delete it permanently?' ##NO_TEXT
       text_button_1  = TEXT-156
       text_button_2  = TEXT-157
       default_button = '1'

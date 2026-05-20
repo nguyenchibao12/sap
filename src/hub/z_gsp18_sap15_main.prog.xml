@@ -2765,26 +2765,26 @@
     <item>
      <ID>I</ID>
      <KEY>154</KEY>
-     <ENTRY>Change variant</ENTRY>
-     <LENGTH>14</LENGTH>
+     <ENTRY>Edit</ENTRY>
+     <LENGTH>4</LENGTH>
     </item>
     <item>
      <ID>I</ID>
      <KEY>155</KEY>
-     <ENTRY>Copy or delete...</ENTRY>
-     <LENGTH>17</LENGTH>
+     <ENTRY>Copy / Delete</ENTRY>
+     <LENGTH>13</LENGTH>
     </item>
     <item>
      <ID>I</ID>
      <KEY>156</KEY>
-     <ENTRY>Copy variant</ENTRY>
-     <LENGTH>12</LENGTH>
+     <ENTRY>Copy</ENTRY>
+     <LENGTH>4</LENGTH>
     </item>
     <item>
      <ID>I</ID>
      <KEY>157</KEY>
-     <ENTRY>Delete variant</ENTRY>
-     <LENGTH>14</LENGTH>
+     <ENTRY>Delete</ENTRY>
+     <LENGTH>6</LENGTH>
     </item>
     <item>
      <ID>I</ID>
