@@ -102,9 +102,9 @@ FORM validate_table_against_cfg
   ps_cfg-data_field = lv_df.
 
   CLEAR lv_dd_tab.
-  SELECT SINGLE tabname FROM dd02v
+  SELECT SINGLE tabname FROM dd02v ##WARN_OK
     INTO @lv_dd_tab
-    WHERE tabname = @lv_tn AND as4local = 'A'.
+    WHERE tabname = @lv_tn.
   IF sy-subrc <> 0.
     CLEAR lv_synced.
     IF iv_clear_if_ddic_bad = abap_true.
@@ -278,7 +278,7 @@ FORM zsp26_restore_cfg_if_ddic_ok
     IF lv_act > 0. CONTINUE. ENDIF.
 
     " DDIC check 1: active catalog entry
-    SELECT SINGLE tabname FROM dd02v INTO @DATA(lv_d2v) WHERE tabname = @lv_it AND as4local = 'A'.
+    SELECT SINGLE tabname FROM dd02v ##WARN_OK INTO @DATA(lv_d2v) WHERE tabname = @lv_it.
     IF sy-subrc <> 0. CONTINUE. ENDIF.
 
     " DDIC check 2: skip if table has any pending/failed SE11 activation (non-'A' in DD02L)
