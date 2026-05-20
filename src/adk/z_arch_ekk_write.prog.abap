@@ -467,7 +467,7 @@ FORM run_arch_ekk_write_main.
         ls_arch_rec-table_name = p_table.
         ls_arch_rec-key_vals   = lv_keyvals.
         ls_arch_rec-rec_type   = COND #( WHEN lv_jpos = 0 THEN 'D' ELSE '2' ).
-        lv_take = 255.
+        lv_take = 255 ##NUMBER_OK.
         IF lv_jpos + lv_take > lv_jlen.
           lv_take = lv_jlen - lv_jpos.
         ENDIF.

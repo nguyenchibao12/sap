@@ -263,7 +263,7 @@ FORM zsp26_restore_cfg_if_ddic_ok
     WHERE is_active  = ''
       AND data_field <> ''
       AND retention  > 0.
-  CHECK lt_inact IS NOT INITIAL.
+  IF lt_inact IS INITIAL. RETURN. ENDIF.
 
   LOOP AT lt_inact INTO lv_it.
 
@@ -437,7 +437,7 @@ FORM append_rules_eq_to_where
     lv_fn = ls_r-field_name.
     CONDENSE lv_fn.
     TRANSLATE lv_fn TO UPPER CASE.
-    IF strlen( lv_fn ) = 0 OR strlen( lv_fn ) > 30.
+    IF strlen( lv_fn ) = 0 OR strlen( lv_fn ) > 30 ##NUMBER_OK.
       CONTINUE.
     ENDIF.
     IF NOT lv_fn CO 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789'.
@@ -699,7 +699,7 @@ FORM f4_arch_cfg_table CHANGING cv_tabname TYPE tabname.
     FROM zsp26_arch_cfg
     WHERE is_active = 'X'
     INTO TABLE @DATA(lt_cfg_tmp)
-    UP TO 999 ROWS.
+    UP TO 999 ROWS ##NUMBER_OK.
   lt_cfg = CORRESPONDING #( lt_cfg_tmp ).
 
   " Step 2: Read all Z* transparent tables from DDIC
