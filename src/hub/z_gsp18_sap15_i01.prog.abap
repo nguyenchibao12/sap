@@ -491,6 +491,10 @@ MODULE user_command_0500 INPUT.
 
   lv_u5 = ok_code.
   CLEAR ok_code.
+  IF gv_test_mode <> 'X' AND gv_test_mode <> ' '.
+    CLEAR gv_test_mode.
+    MESSAGE 'Test Mode field accepts X or blank only.' TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
+  ENDIF.
 
   CASE lv_u5.
     WHEN 'BT_REFRESH'.
@@ -548,6 +552,10 @@ MODULE user_command_0600 INPUT.
 
   lv_u6 = ok_code.
   CLEAR ok_code.
+  IF gv_test_mode <> 'X' AND gv_test_mode <> ' '.
+    CLEAR gv_test_mode.
+    MESSAGE 'Test Mode field accepts X or blank only.' TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
+  ENDIF.
   IF gv_purge_mode <> 'X' AND gv_purge_mode <> ' '.
     CLEAR gv_purge_mode.
     MESSAGE 'Purge-only field accepts X or blank only.' TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
