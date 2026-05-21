@@ -759,6 +759,11 @@ MODULE user_command_0810 INPUT.
       gv_reg_ret    = '365'.
       gv_reg_active = 'X'.
       CALL SCREEN 0800 STARTING AT 12 6 ENDING AT 88 20.
+      IF gv_reg_active IS INITIAL.
+        " User cancelled from 0800 — stay on 0810, do not refresh config list
+        SET SCREEN 0810.
+        LEAVE SCREEN.
+      ENDIF.
       gv_cfg_action = 'R'.
       LEAVE TO SCREEN 0.
     WHEN 'BACK' OR 'EXIT' OR 'CANC'.
