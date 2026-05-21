@@ -2299,7 +2299,6 @@ FORM show_hub_admi_session_groups.
       FROM admi_run
       INTO TABLE @lt_run_src UP TO 500 ROWS
       WHERE client = @sy-mandt
-        AND object = @lv_obj
       ORDER BY creat_date DESCENDING, document DESCENDING.
   ELSE.
     SELECT *
@@ -2612,7 +2611,11 @@ FORM show_hub_admi_session_groups.
 
       lo_disp = lo_alv->get_display_settings( ).
       DATA lv_sess_hdr TYPE string.
-      lv_sess_hdr = |Archiving Sessions ({ lv_obj }) — grouped ranges (Errors / Incomplete / Complete)| ##NO_TEXT.
+      IF lv_adm_hub = abap_true.
+        lv_sess_hdr = |All Archiving Sessions — grouped ranges (Errors / Incomplete / Complete)| ##NO_TEXT.
+      ELSE.
+        lv_sess_hdr = |Archiving Sessions ({ lv_obj }) — grouped ranges (Errors / Incomplete / Complete)| ##NO_TEXT.
+      ENDIF.
       lo_disp->set_list_header( CONV #( lv_sess_hdr ) ).
       lo_alv->display( ).
 
