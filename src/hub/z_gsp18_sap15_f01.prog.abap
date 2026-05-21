@@ -2760,9 +2760,15 @@ FORM run_open_document USING VALUE(pv_doc) TYPE admi_run-document.
         lv_h      TYPE syst-tabix,
         lv_openrc TYPE sy-subrc.
 
-  lv_tab = gv_tabname.
-  CONDENSE lv_tab.
-  TRANSLATE lv_tab TO UPPER CASE.
+  DATA lv_is_adm_open TYPE abap_bool.
+  PERFORM is_arch_admin CHANGING lv_is_adm_open.
+  IF lv_is_adm_open = abap_true.
+    CLEAR lv_tab.
+  ELSE.
+    lv_tab = gv_tabname.
+    CONDENSE lv_tab.
+    TRANSLATE lv_tab TO UPPER CASE.
+  ENDIF.
 
   lv_obj = gv_object.
   IF lv_obj IS INITIAL.
