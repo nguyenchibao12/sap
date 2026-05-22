@@ -118,7 +118,11 @@ MODULE user_command_0100 INPUT.
       ENDIF.
 
     WHEN 'BT_MONITOR'.
-      PERFORM do_monitor_menu.
+      IF lv_is_admin = abap_true.
+        PERFORM do_monitor_menu.
+      ELSE.
+        MESSAGE TEXT-053 TYPE 'S' DISPLAY LIKE 'E'.
+      ENDIF.
 
     WHEN 'BT_MANAGE'.
       IF lv_is_admin = abap_true.

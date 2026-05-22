@@ -40,7 +40,8 @@ MODULE status_0100 OUTPUT.
         ENDIF.
         MODIFY SCREEN.
       WHEN 'MANAGE_BUTTON'
-        OR 'ADMIN_BTN'.
+        OR 'ADMIN_BTN'
+        OR 'MONITOR_BUTTON'.
         IF lv_adm_0100 = abap_true.
           screen-active = 1.
         ELSE.
