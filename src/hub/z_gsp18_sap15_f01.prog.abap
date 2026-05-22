@@ -706,12 +706,47 @@ FORM do_archive_write_bg_job.
         ls_vp       TYPE rsparams,
         lt_sdate    TYPE RANGE OF sy-datum,
         ls_sdate    LIKE LINE OF lt_sdate.
+  DATA: lv_pend_arch TYPE i,
+        lv_pend_del  TYPE i,
+        lv_pend_gap  TYPE i,
+        lv_pend_ans  TYPE char1.
 
   lv_save = gv_tabname.
 
   IF gv_tabname IS INITIAL.
     MESSAGE TEXT-071 TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
+  ENDIF.
+
+  " Pre-check: block duplicate Write when prior archive session(s) for this
+  " table have not been deleted yet — would create duplicate archive data
+  " where the second Delete finds nothing to remove.
+  SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_pend_arch
+    WHERE table_name = @gv_tabname
+      AND action     = 'ARCHIVE'
+      AND status     = 'S'.
+  SELECT COUNT(*) FROM zsp26_arch_log INTO @lv_pend_del
+    WHERE table_name = @gv_tabname
+      AND action     = 'DELETE'
+      AND status     = 'S'.
+  lv_pend_gap = lv_pend_arch - lv_pend_del.
+  IF lv_pend_gap > 0.
+    CALL FUNCTION 'POPUP_TO_CONFIRM'
+      EXPORTING
+        titlebar              = 'Pending archive session(s)' ##NO_TEXT
+        text_question         = |Table { gv_tabname } has { lv_pend_gap } archive session(s) not yet deleted. Running Write again may create duplicate archive data — the next Delete will find nothing to remove. Continue anyway?| ##NO_TEXT
+        text_button_1         = 'Yes' ##NO_TEXT
+        text_button_2         = 'No' ##NO_TEXT
+        default_button        = '2'
+        display_cancel_button = ' '
+      IMPORTING
+        answer                = lv_pend_ans
+      EXCEPTIONS
+        OTHERS                = 0.
+    IF lv_pend_ans <> '1'.
+      MESSAGE |Cancelled — please run Delete on the existing session(s) first.| TYPE 'S' DISPLAY LIKE 'W' ##NO_TEXT.
+      RETURN.
+    ENDIF.
   ENDIF.
 
   lv_jobname = |ZARCH_WR_{ sy-uname }| ##NO_TEXT.
